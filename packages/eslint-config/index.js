@@ -1,3 +1,6 @@
+// Consumers using this config MUST supply parserOptions in their own eslint.config.js:
+//   languageOptions: { parserOptions: { project: true, tsconfigRootDir: import.meta.dirname } }
+// Without this, rules from recommendedTypeChecked will throw "requires type information".
 import js from '@eslint/js'
 import tseslint from 'typescript-eslint'
 import prettier from 'eslint-config-prettier'
