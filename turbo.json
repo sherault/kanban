@@ -14,7 +14,6 @@
       "dependsOn": ["^lint"]
     },
     "test": {
-      "dependsOn": ["^build"],
       "outputs": ["coverage/**"]
     }
   }
