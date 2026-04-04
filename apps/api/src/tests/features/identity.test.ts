@@ -1,0 +1,151 @@
+import { describe, it, expect, beforeAll } from 'vitest'
+import { createTestDb } from '../../db/test-utils.js'
+import { createApp } from '../../app.js'
+
+beforeAll(() => {
+  process.env['JWT_SECRET'] = 'test-jwt-secret-must-be-at-least-32-chars!!'
+  process.env['NODE_ENV'] = 'test'
+})
+
+function setup() {
+  const testDb = createTestDb()
+  const app = createApp(testDb.db)
+  return { app, close: testDb.close }
+}
+
+const REGISTER_PAYLOAD = {
+  email: 'alice@example.com',
+  password: 'password123',
+  displayName: 'Alice',
+}
+
+describe('POST /auth/register', () => {
+  it('creates a user and returns 201', async () => {
+    const { app, close } = setup()
+    const res = await app.request('/auth/register', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(REGISTER_PAYLOAD),
+    })
+    expect(res.status).toBe(201)
+    const body = (await res.json()) as { user: { email: string; id: string } }
+    expect(body.user.email).toBe('alice@example.com')
+    expect(typeof body.user.id).toBe('string')
+    close()
+  })
+
+  it('returns 409 for duplicate email', async () => {
+    const { app, close } = setup()
+    const opts = { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(REGISTER_PAYLOAD) }
+    await app.request('/auth/register', opts)
+    const res = await app.request('/auth/register', opts)
+    expect(res.status).toBe(409)
+    close()
+  })
+
+  it('returns 400 for invalid email', async () => {
+    const { app, close } = setup()
+    const res = await app.request('/auth/register', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email: 'not-an-email', password: 'password123', displayName: 'X' }),
+    })
+    expect(res.status).toBe(400)
+    close()
+  })
+
+  it('returns 400 for password shorter than 8 chars', async () => {
+    const { app, close } = setup()
+    const res = await app.request('/auth/register', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email: 'x@example.com', password: 'short', displayName: 'X' }),
+    })
+    expect(res.status).toBe(400)
+    close()
+  })
+})
+
+describe('POST /auth/login', () => {
+  it('returns accessToken and sets refresh_token cookie', async () => {
+    const { app, close } = setup()
+    await app.request('/auth/register', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(REGISTER_PAYLOAD),
+    })
+    const res = await app.request('/auth/login', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email: 'alice@example.com', password: 'password123' }),
+    })
+    expect(res.status).toBe(200)
+    const body = (await res.json()) as { accessToken: string; user: { email: string } }
+    expect(typeof body.accessToken).toBe('string')
+    expect(body.user.email).toBe('alice@example.com')
+    const setCookie = res.headers.get('set-cookie') ?? ''
+    expect(setCookie).toMatch(/refresh_token=/)
+    expect(setCookie).toMatch(/HttpOnly/)
+    close()
+  })
+
+  it('returns 401 for wrong password', async () => {
+    const { app, close } = setup()
+    await app.request('/auth/register', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(REGISTER_PAYLOAD),
+    })
+    const res = await app.request('/auth/login', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email: 'alice@example.com', password: 'wrongpassword' }),
+    })
+    expect(res.status).toBe(401)
+    close()
+  })
+})
+
+describe('POST /auth/refresh', () => {
+  it('issues a new accessToken given a valid refresh cookie', async () => {
+    const { app, close } = setup()
+    await app.request('/auth/register', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(REGISTER_PAYLOAD),
+    })
+    const loginRes = await app.request('/auth/login', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email: 'alice@example.com', password: 'password123' }),
+    })
+    const cookieHeader = loginRes.headers.get('set-cookie') ?? ''
+    const match = /refresh_token=([^;]+)/.exec(cookieHeader)
+    const rawToken = match?.[1] ?? ''
+
+    const res = await app.request('/auth/refresh', {
+      method: 'POST',
+      headers: { Cookie: `refresh_token=${rawToken}` },
+    })
+    expect(res.status).toBe(200)
+    const body = (await res.json()) as { accessToken: string }
+    expect(typeof body.accessToken).toBe('string')
+    close()
+  })
+
+  it('returns 401 with no cookie', async () => {
+    const { app, close } = setup()
+    const res = await app.request('/auth/refresh', { method: 'POST' })
+    expect(res.status).toBe(401)
+    close()
+  })
+})
+
+describe('POST /auth/logout', () => {
+  it('returns 200 and clears the cookie', async () => {
+    const { app, close } = setup()
+    const res = await app.request('/auth/logout', { method: 'POST' })
+    expect(res.status).toBe(200)
+    close()
+  })
+})
