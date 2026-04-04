@@ -5,7 +5,7 @@ describe('GET /health', () => {
   it('returns 200 with status ok', async () => {
     const res = await app.request('/health')
     expect(res.status).toBe(200)
-    const body = await res.json()
+    const body = (await res.json()) as { status: string }
     expect(body).toEqual({ status: 'ok' })
   })
 })

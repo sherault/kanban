@@ -1,7 +1,6 @@
 import baseConfig from '@kanban/eslint-config'
 
 export default [
-  { ignores: ['.next/**', 'postcss.config.js'] },
   ...baseConfig,
   {
     languageOptions: {

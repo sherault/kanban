@@ -1,4 +1,5 @@
 import type { Role } from '../enums/roles.js'
+import type { UserDto } from './identity.js'
 
 export interface OrganizationDto {
   id: string
@@ -11,7 +12,7 @@ export interface MembershipDto {
   userId: string
   organizationId: string
   role: Role
-  user: Pick<import('./identity.js').UserDto, 'id' | 'displayName' | 'email'>
+  user: Pick<UserDto, 'id' | 'displayName' | 'email'>
 }
 
 export interface InvitationTokenDto {
