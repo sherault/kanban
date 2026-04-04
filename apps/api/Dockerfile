@@ -26,5 +26,7 @@ COPY --from=builder /app/apps/api/dist ./dist
 COPY --from=builder /app/apps/api/drizzle ./drizzle
 COPY --from=builder /app/apps/api/package.json ./
 COPY --from=builder /app/apps/api/node_modules ./node_modules
+COPY --from=builder /app/packages/shared/dist ./node_modules/@kanban/shared/dist
+COPY --from=builder /app/packages/shared/package.json ./node_modules/@kanban/shared/package.json
 EXPOSE 3001
 CMD ["node", "dist/index.js"]

@@ -13,8 +13,6 @@
     "lint": {
       "dependsOn": ["^lint"]
     },
-    "test": {
-      "outputs": ["coverage/**"]
-    }
+    "test": {}
   }
 }
