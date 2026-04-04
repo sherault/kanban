@@ -2,6 +2,8 @@ import { Hono } from 'hono'
 import { HTTPException } from 'hono/http-exception'
 import type { AppDb, HonoEnv } from './types.js'
 import { identityRoutes } from './features/identity/identity.routes.js'
+import { organizationRoutes } from './features/organization/organization.routes.js'
+import { apiKeyRoutes } from './features/api-key/api-key.routes.js'
 
 export function createApp(db: AppDb): Hono<HonoEnv> {
   const app = new Hono<HonoEnv>()
@@ -16,6 +18,8 @@ export function createApp(db: AppDb): Hono<HonoEnv> {
 
   app.get('/health', (c) => c.json({ status: 'ok' }))
   app.route('/auth', identityRoutes(db))
+  app.route('/organizations', organizationRoutes(db))
+  app.route('/profile', apiKeyRoutes(db))
 
   return app
 }
