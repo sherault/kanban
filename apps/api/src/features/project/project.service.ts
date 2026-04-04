@@ -46,6 +46,7 @@ export class ProjectService {
   updateProject(orgId: string, projectId: string, input: { name: string }): ProjectDto {
     const existing = this.db.select().from(projects).where(eq(projects.id, projectId)).get()
     if (!existing) throw notFound('Project not found')
+    if (existing.organizationId !== orgId) throw notFound('Project not found')
     const updated = this.db
       .update(projects)
       .set({ name: input.name })
@@ -61,6 +62,7 @@ export class ProjectService {
   deleteProject(orgId: string, projectId: string): void {
     const existing = this.db.select().from(projects).where(eq(projects.id, projectId)).get()
     if (!existing) throw notFound('Project not found')
+    if (existing.organizationId !== orgId) throw notFound('Project not found')
     this.db.delete(projects).where(eq(projects.id, projectId)).run()
     this.broadcast(`org:${orgId}`, { type: 'project.deleted', payload: { id: projectId } })
   }

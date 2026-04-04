@@ -104,6 +104,31 @@ describe('PATCH /organizations/:orgId/projects/:projectId', () => {
   })
 })
 
+describe('Authorization', () => {
+  it('returns 403 when accessing another org as non-member', async () => {
+    const { app, orgId, close } = await setup()
+
+    // Register a second user who is not a member of orgId
+    await app.request('/auth/register', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email: 'bob@example.com', password: 'password123', displayName: 'Bob' }),
+    })
+    const loginRes = await app.request('/auth/login', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email: 'bob@example.com', password: 'password123' }),
+    })
+    const { accessToken: bobToken } = (await loginRes.json()) as { accessToken: string }
+
+    const res = await app.request(`/organizations/${orgId}/projects`, {
+      headers: { Authorization: `Bearer ${bobToken}` },
+    })
+    expect(res.status).toBe(403)
+    close()
+  })
+})
+
 describe('DELETE /organizations/:orgId/projects/:projectId', () => {
   it('deletes the project', async () => {
     const { app, accessToken, orgId, close } = await setup()
