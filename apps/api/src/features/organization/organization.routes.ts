@@ -5,6 +5,7 @@ import type { AppDb, HonoEnv } from '../../types.js'
 import { authnMiddleware } from '../../middleware/authn.js'
 import { makeAuthz } from '../../middleware/authz.js'
 import { OrganizationService } from './organization.service.js'
+import { InvitationService } from '../invitation/invitation.service.js'
 import { notFound } from '../../lib/errors.js'
 
 const createOrgSchema = z.object({
@@ -24,6 +25,7 @@ const transferSchema = z.object({
 export function organizationRoutes(db: AppDb): Hono<HonoEnv> {
   const router = new Hono<HonoEnv>()
   const svc = new OrganizationService(db)
+  const invSvc = new InvitationService(db)
   const authz = makeAuthz(db)
 
   // All org routes require authentication
@@ -89,6 +91,21 @@ export function organizationRoutes(db: AppDb): Hono<HonoEnv> {
       svc.transferOwnership(c.req.param('orgId'), c.get('userId'), toUserId)
       return c.json({ success: true })
     }
+  )
+
+  router.post(
+    '/:orgId/invitations',
+    authz.requireOrgRole('manager', (c) => c.req.param('orgId')),
+    (c) => {
+      const result = invSvc.createInvitation(c.req.param('orgId'), c.get('userId'))
+      return c.json(result, 201)
+    }
+  )
+
+  router.get(
+    '/:orgId/invitations',
+    authz.requireOrgRole('manager', (c) => c.req.param('orgId')),
+    (c) => c.json(invSvc.listInvitations(c.req.param('orgId')))
   )
 
   return router
