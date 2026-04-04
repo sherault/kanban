@@ -3,8 +3,8 @@ import { SignJWT, jwtVerify } from 'jose'
 export interface AccessTokenPayload {
   sub: string
   sessionId: string
-  iat?: number
-  exp?: number
+  iat?: number | undefined
+  exp?: number | undefined
 }
 
 function getSecret(): Uint8Array {
