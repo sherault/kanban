@@ -174,5 +174,15 @@ export function taskRoutes(
     }
   )
 
+  // CSV import
+  router.post('/:projectId/import', async (c) => {
+    const body = await c.req.parseBody()
+    const file = body['file']
+    if (!(file instanceof File)) throw unprocessable('file field required')
+    const text = await file.text()
+    const result = svc.importTasks(c.req.param('projectId'), c.get('userId'), text)
+    return c.json(result, 201)
+  })
+
   return router
 }

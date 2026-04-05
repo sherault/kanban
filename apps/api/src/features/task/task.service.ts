@@ -4,6 +4,7 @@ import { noopBroadcaster } from '../../types.js'
 import type { TaskDto, TaskHistoryDto, Column } from '@kanban/shared'
 import { generateId } from '../../lib/id.js'
 import { notFound, unprocessable } from '../../lib/errors.js'
+import { parseCsvImport } from './csv-import.js'
 import {
   tasks,
   taskTags,
@@ -485,5 +486,46 @@ export class TaskService {
     // Position changes are cosmetic ordering; no audit history row needed.
     this.broadcast(`project:${row.projectId}`, { type: 'task.updated', payload: dto })
     return dto
+  }
+
+  importTasks(
+    projectId: string,
+    reporterId: string,
+    csvText: string
+  ): { imported: number; skipped: number } {
+    const { valid, skipped } = parseCsvImport(csvText)
+
+    const imported = this.db.transaction((tx) => {
+      let count = 0
+      for (const row of valid) {
+        const maxResult = tx
+          .select({ pos: max(tasks.position) })
+          .from(tasks)
+          .where(and(eq(tasks.projectId, projectId), eq(tasks.column, row.column)))
+          .get()
+        const position = (maxResult?.pos ?? 0) + 1
+        const id = generateId()
+        tx.insert(tasks).values({
+          id,
+          projectId,
+          reporterId,
+          column: row.column,
+          title: row.title,
+          description: row.description,
+          objective: row.objective,
+          startDate: row.startDate,
+          endDate: row.endDate,
+          backgroundColor: row.backgroundColor,
+          globalSubject: row.globalSubject,
+          doerId: null,
+          validatorId: null,
+          position,
+        }).run()
+        count++
+      }
+      return count
+    })
+
+    return { imported, skipped }
   }
 }
