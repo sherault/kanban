@@ -46,7 +46,8 @@ export function taskRoutes(
   router.use('*', authnMiddleware)
 
   // All task routes require project membership (sets orgId in context)
-  router.use('/:projectId/*', projectAuthz.requireProjectMember())
+  router.use('/:projectId/tasks', projectAuthz.requireProjectMember())
+  router.use('/:projectId/tasks/*', projectAuthz.requireProjectMember())
 
   // CRUD
   router.get('/:projectId/tasks', (c) => c.json(svc.listTasks(c.req.param('projectId'))))

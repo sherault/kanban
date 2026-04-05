@@ -103,6 +103,26 @@ describe('POST /projects/:projectId/tasks', () => {
 })
 
 describe('GET /projects/:projectId/tasks', () => {
+  it('returns 403 for non-member', async () => {
+    const { app, projectId, close } = await setup()
+    await app.request('/auth/register', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email: 'bob@example.com', password: 'password123', displayName: 'Bob' }),
+    })
+    const loginRes = await app.request('/auth/login', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email: 'bob@example.com', password: 'password123' }),
+    })
+    const { accessToken: bobToken } = (await loginRes.json()) as { accessToken: string }
+    const res = await app.request(`/projects/${projectId}/tasks`, {
+      headers: { Authorization: `Bearer ${bobToken}` },
+    })
+    expect(res.status).toBe(403)
+    close()
+  })
+
   it('returns list of tasks', async () => {
     const { app, token, projectId, close } = await setup()
     await app.request(`/projects/${projectId}/tasks`, {
