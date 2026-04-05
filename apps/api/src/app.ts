@@ -7,6 +7,7 @@ import { organizationRoutes } from './features/organization/organization.routes.
 import { invitationRoutes } from './features/invitation/invitation.routes.js'
 import { apiKeyRoutes } from './features/api-key/api-key.routes.js'
 import { projectRoutes } from './features/project/project.routes.js'
+import { taskRoutes } from './features/task/task.routes.js'
 
 export function createApp(
   db: AppDb,
@@ -26,6 +27,7 @@ export function createApp(
   app.route('/auth', identityRoutes(db))
   app.route('/organizations', organizationRoutes(db))
   app.route('/organizations', projectRoutes(db, broadcast))
+  app.route('/projects', taskRoutes(db, broadcast))
   app.route('/invite', invitationRoutes(db))
   app.route('/profile', apiKeyRoutes(db))
 
