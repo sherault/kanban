@@ -435,25 +435,25 @@ export class TaskService {
     const clearsDoer = (input.column === 'ideas' || input.column === 'todo') && row.doerId !== null
     const position = input.position ?? this.nextPosition(row.projectId, input.column)
 
-    const updateValues: Record<string, unknown> = {
+    this.db.update(tasks).set({
       column: input.column,
       position,
       updatedAt: sql`(datetime('now'))`,
+      ...(clearsDoer ? { doerId: null } : {}),
+    }).where(eq(tasks.id, taskId)).run()
+
+    // History: column change (only when column actually changes)
+    if (input.column !== oldColumn) {
+      this.db.insert(taskHistory).values({
+        id: generateId(),
+        taskId,
+        userId: actorId,
+        field: 'column',
+        oldValue: oldColumn,
+        newValue: input.column,
+        batchId: null,
+      }).run()
     }
-    if (clearsDoer) updateValues['doerId'] = null
-
-    this.db.update(tasks).set(updateValues).where(eq(tasks.id, taskId)).run()
-
-    // History: column change
-    this.db.insert(taskHistory).values({
-      id: generateId(),
-      taskId,
-      userId: actorId,
-      field: 'column',
-      oldValue: oldColumn,
-      newValue: input.column,
-      batchId: null,
-    }).run()
 
     if (clearsDoer) {
       this.db.insert(taskHistory).values({
@@ -482,6 +482,7 @@ export class TaskService {
       .run()
     const updated = this.getRow(taskId)
     const dto = assembleTaskDto(this.db, updated)
+    // Position changes are cosmetic ordering; no audit history row needed.
     this.broadcast(`project:${row.projectId}`, { type: 'task.updated', payload: dto })
     return dto
   }
