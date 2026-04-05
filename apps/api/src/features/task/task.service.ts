@@ -324,8 +324,14 @@ export class TaskService {
 
   addWatcher(taskId: string, userId: string, actorId: string): TaskDto {
     const row = this.getRow(taskId)
+    let added = false
     try {
       this.db.insert(taskWatchers).values({ taskId, userId }).run()
+      added = true
+    } catch {
+      // already watching — no-op
+    }
+    if (added) {
       this.db.insert(taskHistory).values({
         id: generateId(),
         taskId,
@@ -335,8 +341,6 @@ export class TaskService {
         newValue: userId,
         batchId: null,
       }).run()
-    } catch {
-      // already watching — no-op
     }
     const dto = assembleTaskDto(this.db, row)
     this.broadcast(`project:${row.projectId}`, { type: 'task.updated', payload: dto })
@@ -369,8 +373,14 @@ export class TaskService {
 
   addAdvisor(taskId: string, userId: string, actorId: string): TaskDto {
     const row = this.getRow(taskId)
+    let added = false
     try {
       this.db.insert(taskAdvisors).values({ taskId, userId }).run()
+      added = true
+    } catch {
+      // already advising — no-op
+    }
+    if (added) {
       this.db.insert(taskHistory).values({
         id: generateId(),
         taskId,
@@ -380,8 +390,6 @@ export class TaskService {
         newValue: userId,
         batchId: null,
       }).run()
-    } catch {
-      // already advising — no-op
     }
     const dto = assembleTaskDto(this.db, row)
     this.broadcast(`project:${row.projectId}`, { type: 'task.updated', payload: dto })
