@@ -93,5 +93,57 @@ export function taskRoutes(
     return c.json(svc.getTaskHistory(c.req.param('taskId')))
   })
 
+  // Tags
+  router.post('/:projectId/tasks/:taskId/tags/:tag', (c) => {
+    const task = svc.getTask(c.req.param('taskId'))
+    if (!task || task.projectId !== c.req.param('projectId')) throw notFound('Task not found')
+    return c.json(svc.addTag(c.req.param('taskId'), c.req.param('tag')))
+  })
+
+  router.delete('/:projectId/tasks/:taskId/tags/:tag', (c) => {
+    const task = svc.getTask(c.req.param('taskId'))
+    if (!task || task.projectId !== c.req.param('projectId')) throw notFound('Task not found')
+    return c.json(svc.removeTag(c.req.param('taskId'), c.req.param('tag')))
+  })
+
+  // Links
+  router.post('/:projectId/tasks/:taskId/links/:linkedTaskId', (c) => {
+    const task = svc.getTask(c.req.param('taskId'))
+    if (!task || task.projectId !== c.req.param('projectId')) throw notFound('Task not found')
+    return c.json(svc.addLink(c.req.param('taskId'), c.req.param('linkedTaskId')))
+  })
+
+  router.delete('/:projectId/tasks/:taskId/links/:linkedTaskId', (c) => {
+    const task = svc.getTask(c.req.param('taskId'))
+    if (!task || task.projectId !== c.req.param('projectId')) throw notFound('Task not found')
+    return c.json(svc.removeLink(c.req.param('taskId'), c.req.param('linkedTaskId')))
+  })
+
+  // Watchers
+  router.post('/:projectId/tasks/:taskId/watchers/:userId', (c) => {
+    const task = svc.getTask(c.req.param('taskId'))
+    if (!task || task.projectId !== c.req.param('projectId')) throw notFound('Task not found')
+    return c.json(svc.addWatcher(c.req.param('taskId'), c.req.param('userId'), c.get('userId')))
+  })
+
+  router.delete('/:projectId/tasks/:taskId/watchers/:userId', (c) => {
+    const task = svc.getTask(c.req.param('taskId'))
+    if (!task || task.projectId !== c.req.param('projectId')) throw notFound('Task not found')
+    return c.json(svc.removeWatcher(c.req.param('taskId'), c.req.param('userId'), c.get('userId')))
+  })
+
+  // Advisors
+  router.post('/:projectId/tasks/:taskId/advisors/:userId', (c) => {
+    const task = svc.getTask(c.req.param('taskId'))
+    if (!task || task.projectId !== c.req.param('projectId')) throw notFound('Task not found')
+    return c.json(svc.addAdvisor(c.req.param('taskId'), c.req.param('userId'), c.get('userId')))
+  })
+
+  router.delete('/:projectId/tasks/:taskId/advisors/:userId', (c) => {
+    const task = svc.getTask(c.req.param('taskId'))
+    if (!task || task.projectId !== c.req.param('projectId')) throw notFound('Task not found')
+    return c.json(svc.removeAdvisor(c.req.param('taskId'), c.req.param('userId'), c.get('userId')))
+  })
+
   return router
 }

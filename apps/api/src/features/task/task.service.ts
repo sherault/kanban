@@ -275,4 +275,140 @@ export class TaskService {
       }
     })
   }
+
+  addTag(taskId: string, tag: string): TaskDto {
+    const row = this.getRow(taskId)
+    try {
+      this.db.insert(taskTags).values({ taskId, tag }).run()
+    } catch {
+      // duplicate — no-op
+    }
+    const dto = assembleTaskDto(this.db, row)
+    this.broadcast(`project:${row.projectId}`, { type: 'task.updated', payload: dto })
+    return dto
+  }
+
+  removeTag(taskId: string, tag: string): TaskDto {
+    const row = this.getRow(taskId)
+    this.db.delete(taskTags).where(and(eq(taskTags.taskId, taskId), eq(taskTags.tag, tag))).run()
+    const dto = assembleTaskDto(this.db, row)
+    this.broadcast(`project:${row.projectId}`, { type: 'task.updated', payload: dto })
+    return dto
+  }
+
+  addLink(taskId: string, linkedTaskId: string): TaskDto {
+    const row = this.getRow(taskId)
+    this.getRow(linkedTaskId) // verify exists
+    try {
+      this.db.insert(taskLinks).values({ taskId, linkedTaskId }).run()
+    } catch {
+      // duplicate or reverse already exists — no-op
+    }
+    const dto = assembleTaskDto(this.db, row)
+    this.broadcast(`project:${row.projectId}`, { type: 'task.updated', payload: dto })
+    return dto
+  }
+
+  removeLink(taskId: string, linkedTaskId: string): TaskDto {
+    const row = this.getRow(taskId)
+    this.db.delete(taskLinks).where(
+      or(
+        and(eq(taskLinks.taskId, taskId), eq(taskLinks.linkedTaskId, linkedTaskId)),
+        and(eq(taskLinks.taskId, linkedTaskId), eq(taskLinks.linkedTaskId, taskId))
+      )
+    ).run()
+    const dto = assembleTaskDto(this.db, row)
+    this.broadcast(`project:${row.projectId}`, { type: 'task.updated', payload: dto })
+    return dto
+  }
+
+  addWatcher(taskId: string, userId: string, actorId: string): TaskDto {
+    const row = this.getRow(taskId)
+    try {
+      this.db.insert(taskWatchers).values({ taskId, userId }).run()
+      this.db.insert(taskHistory).values({
+        id: generateId(),
+        taskId,
+        userId: actorId,
+        field: 'watchers',
+        oldValue: null,
+        newValue: userId,
+        batchId: null,
+      }).run()
+    } catch {
+      // already watching — no-op
+    }
+    const dto = assembleTaskDto(this.db, row)
+    this.broadcast(`project:${row.projectId}`, { type: 'task.updated', payload: dto })
+    return dto
+  }
+
+  removeWatcher(taskId: string, userId: string, actorId: string): TaskDto {
+    const row = this.getRow(taskId)
+    const existing = this.db.select().from(taskWatchers)
+      .where(and(eq(taskWatchers.taskId, taskId), eq(taskWatchers.userId, userId)))
+      .get()
+    if (existing) {
+      this.db.delete(taskWatchers).where(
+        and(eq(taskWatchers.taskId, taskId), eq(taskWatchers.userId, userId))
+      ).run()
+      this.db.insert(taskHistory).values({
+        id: generateId(),
+        taskId,
+        userId: actorId,
+        field: 'watchers',
+        oldValue: userId,
+        newValue: null,
+        batchId: null,
+      }).run()
+    }
+    const dto = assembleTaskDto(this.db, row)
+    this.broadcast(`project:${row.projectId}`, { type: 'task.updated', payload: dto })
+    return dto
+  }
+
+  addAdvisor(taskId: string, userId: string, actorId: string): TaskDto {
+    const row = this.getRow(taskId)
+    try {
+      this.db.insert(taskAdvisors).values({ taskId, userId }).run()
+      this.db.insert(taskHistory).values({
+        id: generateId(),
+        taskId,
+        userId: actorId,
+        field: 'advisors',
+        oldValue: null,
+        newValue: userId,
+        batchId: null,
+      }).run()
+    } catch {
+      // already advising — no-op
+    }
+    const dto = assembleTaskDto(this.db, row)
+    this.broadcast(`project:${row.projectId}`, { type: 'task.updated', payload: dto })
+    return dto
+  }
+
+  removeAdvisor(taskId: string, userId: string, actorId: string): TaskDto {
+    const row = this.getRow(taskId)
+    const existing = this.db.select().from(taskAdvisors)
+      .where(and(eq(taskAdvisors.taskId, taskId), eq(taskAdvisors.userId, userId)))
+      .get()
+    if (existing) {
+      this.db.delete(taskAdvisors).where(
+        and(eq(taskAdvisors.taskId, taskId), eq(taskAdvisors.userId, userId))
+      ).run()
+      this.db.insert(taskHistory).values({
+        id: generateId(),
+        taskId,
+        userId: actorId,
+        field: 'advisors',
+        oldValue: userId,
+        newValue: null,
+        batchId: null,
+      }).run()
+    }
+    const dto = assembleTaskDto(this.db, row)
+    this.broadcast(`project:${row.projectId}`, { type: 'task.updated', payload: dto })
+    return dto
+  }
 }
