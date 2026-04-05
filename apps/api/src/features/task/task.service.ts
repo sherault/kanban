@@ -3,7 +3,7 @@ import type { AppDb, Broadcaster } from '../../types.js'
 import { noopBroadcaster } from '../../types.js'
 import type { TaskDto, TaskHistoryDto, Column } from '@kanban/shared'
 import { generateId } from '../../lib/id.js'
-import { notFound } from '../../lib/errors.js'
+import { notFound, unprocessable } from '../../lib/errors.js'
 import {
   tasks,
   taskTags,
@@ -416,6 +416,72 @@ export class TaskService {
       }).run()
     }
     const dto = assembleTaskDto(this.db, row)
+    this.broadcast(`project:${row.projectId}`, { type: 'task.updated', payload: dto })
+    return dto
+  }
+
+  moveTask(
+    taskId: string,
+    actorId: string,
+    input: { column: Column; position?: number }
+  ): TaskDto {
+    const row = this.getRow(taskId)
+    const oldColumn = row.column as Column
+
+    if (input.column === 'doing' && !row.doerId) {
+      throw unprocessable('A doer must be assigned before moving to doing')
+    }
+
+    const clearsDoer = (input.column === 'ideas' || input.column === 'todo') && row.doerId !== null
+    const position = input.position ?? this.nextPosition(row.projectId, input.column)
+
+    const updateValues: Record<string, unknown> = {
+      column: input.column,
+      position,
+      updatedAt: sql`(datetime('now'))`,
+    }
+    if (clearsDoer) updateValues['doerId'] = null
+
+    this.db.update(tasks).set(updateValues).where(eq(tasks.id, taskId)).run()
+
+    // History: column change
+    this.db.insert(taskHistory).values({
+      id: generateId(),
+      taskId,
+      userId: actorId,
+      field: 'column',
+      oldValue: oldColumn,
+      newValue: input.column,
+      batchId: null,
+    }).run()
+
+    if (clearsDoer) {
+      this.db.insert(taskHistory).values({
+        id: generateId(),
+        taskId,
+        userId: actorId,
+        field: 'doerId',
+        oldValue: row.doerId,
+        newValue: null,
+        batchId: null,
+      }).run()
+    }
+
+    const updated = this.getRow(taskId)
+    const dto = assembleTaskDto(this.db, updated)
+    this.broadcast(`project:${row.projectId}`, { type: 'task.updated', payload: dto })
+    return dto
+  }
+
+  reorderTask(taskId: string, position: number): TaskDto {
+    const row = this.getRow(taskId)
+    this.db
+      .update(tasks)
+      .set({ position, updatedAt: sql`(datetime('now'))` })
+      .where(eq(tasks.id, taskId))
+      .run()
+    const updated = this.getRow(taskId)
+    const dto = assembleTaskDto(this.db, updated)
     this.broadcast(`project:${row.projectId}`, { type: 'task.updated', payload: dto })
     return dto
   }

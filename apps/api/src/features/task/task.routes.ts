@@ -6,7 +6,7 @@ import { noopBroadcaster } from '../../types.js'
 import { authnMiddleware } from '../../middleware/authn.js'
 import { makeProjectAuthz } from '../../middleware/project-member.js'
 import { TaskService } from './task.service.js'
-import { notFound } from '../../lib/errors.js'
+import { notFound, unprocessable } from '../../lib/errors.js'
 
 const columnEnum = z.enum(['ideas', 'todo', 'doing', 'done'])
 
@@ -144,6 +144,35 @@ export function taskRoutes(
     if (!task || task.projectId !== c.req.param('projectId')) throw notFound('Task not found')
     return c.json(svc.removeAdvisor(c.req.param('taskId'), c.req.param('userId'), c.get('userId')))
   })
+
+  const moveSchema = z.object({
+    column: columnEnum,
+    position: z.number().positive().optional(),
+  })
+
+  const reorderSchema = z.object({
+    position: z.number().positive(),
+  })
+
+  router.post(
+    '/:projectId/tasks/:taskId/move',
+    zValidator('json', moveSchema),
+    (c) => {
+      const task = svc.getTask(c.req.param('taskId'))
+      if (!task || task.projectId !== c.req.param('projectId')) throw notFound('Task not found')
+      return c.json(svc.moveTask(c.req.param('taskId'), c.get('userId'), c.req.valid('json')))
+    }
+  )
+
+  router.post(
+    '/:projectId/tasks/:taskId/reorder',
+    zValidator('json', reorderSchema),
+    (c) => {
+      const task = svc.getTask(c.req.param('taskId'))
+      if (!task || task.projectId !== c.req.param('projectId')) throw notFound('Task not found')
+      return c.json(svc.reorderTask(c.req.param('taskId'), c.req.valid('json').position))
+    }
+  )
 
   return router
 }
