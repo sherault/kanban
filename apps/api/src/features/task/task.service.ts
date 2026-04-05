@@ -493,7 +493,13 @@ export class TaskService {
     reporterId: string,
     csvText: string
   ): { imported: number; skipped: number } {
-    const { valid, skipped } = parseCsvImport(csvText)
+    let parseResult: ReturnType<typeof parseCsvImport>
+    try {
+      parseResult = parseCsvImport(csvText)
+    } catch (err) {
+      throw unprocessable(err instanceof Error ? err.message : 'Invalid CSV')
+    }
+    const { valid, skipped } = parseResult
 
     const imported = this.db.transaction((tx) => {
       let count = 0
@@ -526,6 +532,8 @@ export class TaskService {
       return count
     })
 
+    // No per-task broadcast — bulk import is treated as a silent batch operation.
+    // Clients should refresh their task list after the import completes.
     return { imported, skipped }
   }
 }
