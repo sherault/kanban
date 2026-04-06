@@ -1,0 +1,37 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(git add:*)",
+      "Bash(git commit:*)",
+      "Bash(git -c commit.gpgsign=false add docs/superpowers/plans/2026-04-03-plan-1-foundation.md)",
+      "Bash(git -c:*)",
+      "Bash(git check-ignore:*)",
+      "Bash(pnpm --version)",
+      "Bash(pnpm --filter @kanban/shared build)",
+      "Bash(pnpm test:*)",
+      "Bash(pnpm --filter @kanban/web build)",
+      "Bash(pnpm drizzle-kit:*)",
+      "Bash(node --import tsx/esm ./node_modules/.bin/drizzle-kit generate)",
+      "Bash(tsx --version)",
+      "Bash(node_modules/.bin/tsx node_modules/.bin/drizzle-kit generate)",
+      "Bash(NODE_OPTIONS=\"--require tsx/cjs\" node_modules/.bin/drizzle-kit generate)",
+      "Bash(pnpm rebuild:*)",
+      "Bash(node -e \"require\\(''better-sqlite3''\\)\")",
+      "Bash(find /Users/stephane/projects/saas/kanban/.worktrees/plan-1-foundation -name *.node)",
+      "Bash(node -e \"const db = require\\(''better-sqlite3''\\)\\('':memory:''\\); console.log\\(db.prepare\\(''SELECT 1+1 as r''\\).get\\(\\)\\)\")",
+      "Bash(pnpm build:*)",
+      "Bash(./node_modules/.bin/eslint src:*)",
+      "Bash(./node_modules/.bin/next lint:*)",
+      "Bash(./node_modules/.bin/turbo lint:*)",
+      "Bash(node_modules/.bin/eslint src:*)",
+      "Bash(echo \"EXIT: $?\")",
+      "Bash(node -e \"require\\(''''better-sqlite3''''\\)\")",
+      "Bash(find /Users/stephane/projects/saas/kanban/node_modules/.pnpm/better-sqlite3@11.10.0 -name *.node)",
+      "Bash(pnpm add:*)",
+      "Bash(pnpm --filter api test --run)",
+      "Bash(rtk pnpm:*)",
+      "Bash(node -e \":*)",
+      "Bash(node:*)"
+    ]
+  }
+}
