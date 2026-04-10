@@ -215,6 +215,7 @@ export function BoardClient({ initialTasks, orgMembers, projectId, orgId }: Prop
           projectId={projectId}
           orgId={orgId}
           initialColumn={newTaskColumn}
+          orgMembers={orgMembers}
           onClose={() => setNewTaskColumn(null)}
           onCreated={(task) => {
             setTasks((prev) => [...prev, task])

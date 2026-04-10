@@ -20,6 +20,11 @@ export async function createTaskAction(
   const column = (formData.get('column') as Column) ?? Column.TODO
   const startDate = formData.get('startDate') as string
   const endDate = formData.get('endDate') as string
+  const description = (formData.get('description') as string) || null
+  const objective = (formData.get('objective') as string) || null
+  const tags = formData.getAll('tags') as string[]
+  const bgRaw = formData.get('backgroundColor') as string | null
+  const backgroundColor = bgRaw && bgRaw !== '#ffffff' ? bgRaw : null
 
   try {
     const { data: task } = await api.tasks.create(token, projectId, {
@@ -27,6 +32,10 @@ export async function createTaskAction(
       column,
       startDate,
       endDate,
+      description,
+      objective,
+      tags,
+      backgroundColor,
     })
     revalidatePath(`/orgs/${orgId}/projects/${projectId}`)
     return { task }

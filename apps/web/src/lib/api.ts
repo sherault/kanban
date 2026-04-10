@@ -127,7 +127,10 @@ export const api = {
         column: Column
         startDate: string
         endDate: string
-        description?: string
+        description?: string | null
+        objective?: string | null
+        tags?: string[]
+        backgroundColor?: string | null
       }
     ) {
       return apiFetch<TaskDto>(`/projects/${projectId}/tasks`, {
