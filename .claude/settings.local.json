@@ -51,7 +51,8 @@
       "Bash(rtk grep:*)",
       "Bash(python3:*)",
       "mcp__code-review-graph__get_review_context_tool",
-      "Bash(grep -v \"^$\")"
+      "Bash(grep -v \"^$\")",
+      "Bash(pnpm lint:*)"
     ]
   },
   "enableAllProjectMcpServers": true,
