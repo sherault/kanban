@@ -14,7 +14,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
             Kanban
           </Link>
           <div className="flex items-center gap-4">
-            <span className="text-sm text-gray-500">{displayName}</span>
+            <Link href="/profile" className="text-sm text-gray-500 hover:text-gray-900 transition-colors">{displayName}</Link>
             <form action={logoutAction}>
               <button type="submit" className="text-sm text-gray-500 hover:text-gray-900 transition-colors">
                 Sign out

@@ -6,6 +6,8 @@ import type {
   ProjectDto,
   TaskDto,
   TaskHistoryDto,
+  ApiKeyDto,
+  ApiKeyCreatedDto,
   Column,
 } from '@kanban/shared'
 
@@ -202,6 +204,22 @@ export const api = {
     },
     removeAdvisor(token: string, projectId: string, taskId: string, userId: string) {
       return apiFetch<TaskDto>(`/projects/${projectId}/tasks/${taskId}/advisors/${userId}`, { method: 'DELETE', token })
+    },
+  },
+
+  profile: {
+    listKeys(token: string) {
+      return apiFetch<ApiKeyDto[]>('/profile/api-keys', { token })
+    },
+    createKey(token: string, label: string) {
+      return apiFetch<ApiKeyCreatedDto>('/profile/api-keys', {
+        method: 'POST',
+        token,
+        body: JSON.stringify({ label }),
+      })
+    },
+    revokeKey(token: string, keyId: string) {
+      return apiFetch<{ success: true }>(`/profile/api-keys/${keyId}`, { method: 'DELETE', token })
     },
   },
 
