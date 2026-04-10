@@ -20,7 +20,8 @@ export function TaskCard({ task, onClick, overlay = false }: Props) {
     ...(task.backgroundColor ? { backgroundColor: task.backgroundColor } : {}),
   }
 
-  const isOverdue = new Date(task.endDate) < new Date()
+  const endDateObj = task.endDate ? new Date(task.endDate) : null
+  const isOverdue = endDateObj != null && !isNaN(endDateObj.getTime()) && endDateObj < new Date()
   const initials = task.doer
     ? task.doer.displayName
         .split(' ')
@@ -46,9 +47,11 @@ export function TaskCard({ task, onClick, overlay = false }: Props) {
       </p>
 
       <div className="flex items-center justify-between gap-2">
-        <span className={`text-xs ${isOverdue ? 'text-red-500 font-medium' : 'text-gray-400'}`}>
-          {new Date(task.endDate).toLocaleDateString('en', { month: 'short', day: 'numeric' })}
-        </span>
+        {endDateObj && !isNaN(endDateObj.getTime()) && (
+          <span className={`text-xs ${isOverdue ? 'text-red-500 font-medium' : 'text-gray-400'}`}>
+            {endDateObj.toLocaleDateString('en', { month: 'short', day: 'numeric' })}
+          </span>
+        )}
         {initials && (
           <span className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-blue-100 text-blue-700 text-xs font-semibold shrink-0">
             {initials}
