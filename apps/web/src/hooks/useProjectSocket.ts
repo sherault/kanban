@@ -110,7 +110,7 @@ export function useProjectSocket(
       // Exponential backoff: 100ms × 2^attempt, capped at 30 s
       const backoff = Math.min(100 * 2 ** attemptRef.current, 30_000)
       attemptRef.current += 1
-      setTimeout(connect, backoff)
+      setTimeout(() => void connect(), backoff)
     }
   }, [projectId])
 
