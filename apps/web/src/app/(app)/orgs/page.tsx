@@ -10,7 +10,7 @@ export default async function OrgsPage() {
   const { data: orgs } = await api.orgs.list(token)
 
   return (
-    <div>
+    <div className="p-6 max-w-4xl mx-auto overflow-auto h-full">
       <div className="flex items-center justify-between mb-6">
         <h1 className="text-2xl font-bold text-gray-900">Organizations</h1>
         <Link

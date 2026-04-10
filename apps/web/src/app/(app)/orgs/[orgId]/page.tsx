@@ -11,14 +11,17 @@ export default async function OrgPage({ params }: { params: Promise<{ orgId: str
   const { data: projects } = await api.projects.list(token, orgId)
 
   return (
-    <div>
+    <div className="p-6 max-w-4xl mx-auto overflow-auto h-full">
+      <nav className="flex items-center gap-1 text-sm text-gray-500 mb-6">
+        <Link href="/orgs" className="hover:text-gray-900 transition-colors">Organizations</Link>
+        <span className="text-gray-300">/</span>
+        <span className="text-gray-700">Projects</span>
+      </nav>
+
       <div className="flex items-center justify-between mb-6">
         <h2 className="text-xl font-bold text-gray-900">Projects</h2>
         <div className="flex items-center gap-3">
-          <Link
-            href={`/orgs/${orgId}/settings`}
-            className="text-sm text-gray-500 hover:text-gray-900 transition-colors"
-          >
+          <Link href={`/orgs/${orgId}/settings`} className="text-sm text-gray-500 hover:text-gray-900 transition-colors">
             Settings
           </Link>
           <Link
@@ -44,9 +47,7 @@ export default async function OrgPage({ params }: { params: Promise<{ orgId: str
               className="block bg-white border border-gray-200 rounded-lg p-5 hover:border-blue-400 hover:shadow-sm transition-all"
             >
               <div className="font-medium text-gray-900">{p.name}</div>
-              <div className="text-xs text-gray-400 mt-1">
-                {new Date(p.createdAt).toLocaleDateString()}
-              </div>
+              <div className="text-xs text-gray-400 mt-1">{new Date(p.createdAt).toLocaleDateString()}</div>
             </Link>
           ))}
         </div>
