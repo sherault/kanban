@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useTransition } from 'react'
-import type { TaskDto, MembershipDto } from '@kanban/shared'
+import type { TaskDto, MembershipDto, Column } from '@kanban/shared'
 import { updateTaskAction, deleteTaskAction } from '@/actions/tasks'
 
 interface Props {
@@ -13,7 +13,7 @@ interface Props {
   onDeleted: (taskId: string) => void
 }
 
-const COLUMN_BADGE: Record<string, string> = {
+const COLUMN_BADGE: Record<Column, string> = {
   ideas: 'bg-purple-100 text-purple-700',
   todo: 'bg-gray-100 text-gray-700',
   doing: 'bg-blue-100 text-blue-700',

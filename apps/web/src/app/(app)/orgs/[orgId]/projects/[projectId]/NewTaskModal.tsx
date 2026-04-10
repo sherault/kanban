@@ -42,7 +42,7 @@ export function NewTaskModal({ projectId, orgId, initialColumn, onClose, onCreat
 
   useEffect(() => {
     if (state.task) onCreated(state.task)
-  }, [state.task])
+  }, [state.task, onCreated])
 
   return (
     <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
