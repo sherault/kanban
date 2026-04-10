@@ -4,15 +4,15 @@ import { useActionState, useEffect } from 'react'
 import { useFormStatus } from 'react-dom'
 import { Column } from '@kanban/shared'
 import type { TaskDto } from '@kanban/shared'
-import { createTaskAction } from '../../../../../actions/tasks'
+import { createTaskAction } from '@/actions/tasks'
 
 function today() {
-  return new Date().toISOString().split('T')[0] as string
+  return new Date().toISOString().split('T')[0]
 }
 function todayPlus2() {
   const d = new Date()
   d.setDate(d.getDate() + 2)
-  return d.toISOString().split('T')[0] as string
+  return d.toISOString().split('T')[0]
 }
 
 function SubmitButton() {

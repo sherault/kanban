@@ -3,16 +3,16 @@
 import { useState, useTransition } from 'react'
 import {
   DndContext,
-  DragEndEvent,
+  type DragEndEvent,
   DragOverlay,
-  DragStartEvent,
+  type DragStartEvent,
   PointerSensor,
   useSensor,
   useSensors,
 } from '@dnd-kit/core'
 import type { TaskDto, MembershipDto } from '@kanban/shared'
 import { Column } from '@kanban/shared'
-import { moveTaskAction } from '../../../../../actions/tasks'
+import { moveTaskAction } from '@/actions/tasks'
 import { TaskCard } from './TaskCard'
 import { BoardColumn } from './BoardColumn'
 import { NewTaskModal } from './NewTaskModal'
