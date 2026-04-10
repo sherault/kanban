@@ -13,6 +13,8 @@ import {
   taskAdvisors,
   taskHistory,
   users,
+  projects,
+  memberships,
 } from '../../db/schema/index.js'
 
 // ---------- assembly helper ----------
@@ -113,6 +115,17 @@ export class TaskService {
       .where(and(eq(tasks.projectId, projectId), eq(tasks.column, column)))
       .get()
     return (result?.pos ?? 0) + 1
+  }
+
+  private assertOrgMember(projectId: string, userId: string): void {
+    const project = this.db.select({ organizationId: projects.organizationId })
+      .from(projects).where(eq(projects.id, projectId)).get()
+    if (!project) throw notFound('Project not found')
+    const membership = this.db.select({ role: memberships.role })
+      .from(memberships)
+      .where(and(eq(memberships.userId, userId), eq(memberships.organizationId, project.organizationId)))
+      .get()
+    if (!membership) throw notFound('User not found')
   }
 
   private getRow(taskId: string): typeof tasks.$inferSelect {
@@ -299,7 +312,8 @@ export class TaskService {
 
   addLink(taskId: string, linkedTaskId: string): TaskDto {
     const row = this.getRow(taskId)
-    this.getRow(linkedTaskId) // verify exists
+    const linkedRow = this.getRow(linkedTaskId) // verify exists
+    if (linkedRow.projectId !== row.projectId) throw notFound('Task not found')
     try {
       this.db.insert(taskLinks).values({ taskId, linkedTaskId }).run()
     } catch {
@@ -325,6 +339,7 @@ export class TaskService {
 
   addWatcher(taskId: string, userId: string, actorId: string): TaskDto {
     const row = this.getRow(taskId)
+    this.assertOrgMember(row.projectId, userId)
     let added = false
     try {
       this.db.insert(taskWatchers).values({ taskId, userId }).run()
@@ -374,6 +389,7 @@ export class TaskService {
 
   addAdvisor(taskId: string, userId: string, actorId: string): TaskDto {
     const row = this.getRow(taskId)
+    this.assertOrgMember(row.projectId, userId)
     let added = false
     try {
       this.db.insert(taskAdvisors).values({ taskId, userId }).run()
