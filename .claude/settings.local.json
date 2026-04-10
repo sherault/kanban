@@ -38,7 +38,20 @@
       "mcp__code-review-graph__get_architecture_overview_tool",
       "mcp__code-review-graph__detect_changes_tool",
       "Bash(git merge:*)",
-      "Bash(timeout 10 pnpm dev)"
+      "Bash(timeout 10 pnpm dev)",
+      "Bash(rtk gain:*)",
+      "Bash(rtk discover:*)",
+      "Bash(rtk rewrite:*)",
+      "Bash(echo \"exit: $?\")",
+      "Bash(rtk --help)",
+      "Bash(bash ~/.claude/hooks/rtk-rewrite.sh)",
+      "Bash(echo \"exit $?\")",
+      "Bash(rtk ls:*)",
+      "Bash(rtk read:*)",
+      "Bash(rtk grep:*)",
+      "Bash(python3:*)",
+      "mcp__code-review-graph__get_review_context_tool",
+      "Bash(grep -v \"^$\")"
     ]
   },
   "enableAllProjectMcpServers": true,
