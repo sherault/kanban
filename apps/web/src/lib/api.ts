@@ -36,10 +36,10 @@ async function apiFetch<T>(
   const res = await fetch(`${API_URL}${path}`, { ...init, headers })
 
   if (!res.ok) {
-    const payload = await res.json().catch(() => ({ error: 'Request failed' }))
+    const payload = await res.json().catch(() => ({ error: 'Request failed' })) as { error?: string }
     throw new ApiError(
       res.status,
-      (payload as { error?: string }).error ?? 'Request failed'
+      payload.error ?? 'Request failed'
     )
   }
 
