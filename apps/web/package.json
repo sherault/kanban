@@ -12,6 +12,7 @@
     "@dnd-kit/core": "^6.3.1",
     "@dnd-kit/utilities": "^3.2.2",
     "@kanban/shared": "workspace:*",
+    "@tanstack/react-query": "^5.97.0",
     "next": "^16.2.3",
     "react": "^19.2.5",
     "react-dom": "^19.2.5"
