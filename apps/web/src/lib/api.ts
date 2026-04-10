@@ -1,0 +1,125 @@
+import type {
+  UserDto,
+  OrganizationDto,
+  MembershipDto,
+  InvitationTokenDto,
+  ProjectDto,
+} from '@kanban/shared'
+
+const API_URL = process.env['API_URL'] ?? 'http://localhost:3001'
+
+export class ApiError extends Error {
+  constructor(
+    public readonly status: number,
+    message: string
+  ) {
+    super(message)
+    this.name = 'ApiError'
+  }
+}
+
+interface FetchOptions extends RequestInit {
+  token?: string
+  refreshToken?: string
+}
+
+async function apiFetch<T>(
+  path: string,
+  { token, refreshToken, ...init }: FetchOptions = {}
+): Promise<{ data: T; headers: Headers }> {
+  const headers: Record<string, string> = {
+    ...(init.body ? { 'Content-Type': 'application/json' } : {}),
+    ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    ...(refreshToken ? { Cookie: `refresh_token=${refreshToken}` } : {}),
+  }
+
+  const res = await fetch(`${API_URL}${path}`, { ...init, headers })
+
+  if (!res.ok) {
+    const payload = await res.json().catch(() => ({ error: 'Request failed' }))
+    throw new ApiError(
+      res.status,
+      (payload as { error?: string }).error ?? 'Request failed'
+    )
+  }
+
+  const data = (await res.json()) as T
+  return { data, headers: res.headers }
+}
+
+export const api = {
+  auth: {
+    register(body: { email: string; password: string; displayName: string }) {
+      return apiFetch<{ user: UserDto }>('/auth/register', {
+        method: 'POST',
+        body: JSON.stringify(body),
+      })
+    },
+    login(body: { email: string; password: string }) {
+      return apiFetch<{ user: UserDto; accessToken: string }>('/auth/login', {
+        method: 'POST',
+        body: JSON.stringify(body),
+      })
+    },
+    refresh(refreshToken: string) {
+      return apiFetch<{ accessToken: string }>('/auth/refresh', {
+        method: 'POST',
+        refreshToken,
+      })
+    },
+    logout(token: string, refreshToken: string) {
+      return apiFetch<{ success: true }>('/auth/logout', {
+        method: 'POST',
+        token,
+        refreshToken,
+      })
+    },
+  },
+
+  orgs: {
+    list(token: string) {
+      return apiFetch<OrganizationDto[]>('/organizations', { token })
+    },
+    create(token: string, body: { name: string; website?: string | null }) {
+      return apiFetch<OrganizationDto>('/organizations', {
+        method: 'POST',
+        body: JSON.stringify(body),
+        token,
+      })
+    },
+    listMembers(token: string, orgId: string) {
+      return apiFetch<MembershipDto[]>(`/organizations/${orgId}/members`, { token })
+    },
+    createInvitation(token: string, orgId: string) {
+      return apiFetch<InvitationTokenDto & { rawToken: string }>(
+        `/organizations/${orgId}/invitations`,
+        { method: 'POST', token }
+      )
+    },
+  },
+
+  projects: {
+    list(token: string, orgId: string) {
+      return apiFetch<ProjectDto[]>(`/organizations/${orgId}/projects`, { token })
+    },
+    create(token: string, orgId: string, body: { name: string }) {
+      return apiFetch<ProjectDto>(`/organizations/${orgId}/projects`, {
+        method: 'POST',
+        body: JSON.stringify(body),
+        token,
+      })
+    },
+  },
+
+  invite: {
+    get(rawToken: string) {
+      return apiFetch<{ organization: { id: string; name: string } }>(`/invite/${rawToken}`)
+    },
+    accept(rawToken: string, body: { email: string; password: string; displayName: string }) {
+      return apiFetch<{ user: UserDto; accessToken: string }>(`/invite/${rawToken}`, {
+        method: 'POST',
+        body: JSON.stringify(body),
+      })
+    },
+  },
+}
