@@ -30,7 +30,8 @@ async function apiFetch<T>(
   { token, refreshToken, ...init }: FetchOptions = {}
 ): Promise<{ data: T; headers: Headers }> {
   const headers: Record<string, string> = {
-    ...(init.body ? { 'Content-Type': 'application/json' } : {}),
+    // Don't set Content-Type for FormData — browser sets it with boundary automatically
+    ...(init.body && !(init.body instanceof FormData) ? { 'Content-Type': 'application/json' } : {}),
     ...(token ? { Authorization: `Bearer ${token}` } : {}),
     ...(refreshToken ? { Cookie: `refresh_token=${refreshToken}` } : {}),
   }
@@ -166,6 +167,15 @@ export const api = {
       return apiFetch<{ success: true }>(`/projects/${projectId}/tasks/${taskId}`, {
         method: 'DELETE',
         token,
+      })
+    },
+    importCsv(token: string, projectId: string, file: File) {
+      const form = new FormData()
+      form.append('file', file)
+      return apiFetch<{ imported: number; skipped: number }>(`/projects/${projectId}/import`, {
+        method: 'POST',
+        token,
+        body: form,
       })
     },
   },

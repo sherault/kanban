@@ -18,6 +18,7 @@ import { TaskCard } from './TaskCard'
 import { BoardColumn } from './BoardColumn'
 import { NewTaskModal } from './NewTaskModal'
 import { TaskDetailSidebar } from './TaskDetailSidebar'
+import { CsvImportModal } from './CsvImportModal'
 
 const COLUMNS: { id: Column; label: string }[] = [
   { id: Column.IDEAS, label: 'Ideas' },
@@ -38,6 +39,7 @@ export function BoardClient({ initialTasks, orgMembers, projectId, orgId }: Prop
   const [activeTask, setActiveTask] = useState<TaskDto | null>(null)
   const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null)
   const [newTaskColumn, setNewTaskColumn] = useState<Column | null>(null)
+  const [showImport, setShowImport] = useState(false)
   const [ideasCollapsed, setIdeasCollapsed] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [, startTransition] = useTransition()
@@ -159,14 +161,23 @@ export function BoardClient({ initialTasks, orgMembers, projectId, orgId }: Prop
             ))}
           </div>
 
+          {/* Toolbar */}
+          <div className="px-6 pb-3 flex items-center justify-between shrink-0">
+            <button
+              onClick={() => setShowImport(true)}
+              className="text-xs text-gray-500 hover:text-gray-700 border border-gray-200 rounded px-2 py-1 transition-colors"
+            >
+              Import CSV
+            </button>
           {/* Connection status indicator */}
-          <div className="px-6 pb-3 flex items-center gap-1.5 shrink-0">
+          <div className="flex items-center gap-1.5">
             <span
               className={`w-1.5 h-1.5 rounded-full ${isConnected ? 'bg-green-400' : 'bg-gray-300'}`}
             />
             <span className="text-xs text-gray-400">
               {isConnected ? 'Live' : 'Connecting…'}
             </span>
+          </div>
           </div>
         </div>
 
@@ -188,6 +199,14 @@ export function BoardClient({ initialTasks, orgMembers, projectId, orgId }: Prop
             setTasks((prev) => prev.filter((t) => t.id !== taskId))
             setSelectedTaskId(null)
           }}
+        />
+      )}
+
+      {showImport && (
+        <CsvImportModal
+          projectId={projectId}
+          onClose={() => setShowImport(false)}
+          onImported={() => setShowImport(false)}
         />
       )}
 

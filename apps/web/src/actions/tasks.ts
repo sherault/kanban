@@ -75,6 +75,26 @@ export async function deleteTaskAction(
   }
 }
 
+export async function importCsvAction(
+  projectId: string,
+  _prev: { error?: string; result?: { imported: number; skipped: number } },
+  formData: FormData
+): Promise<{ error?: string; result?: { imported: number; skipped: number } }> {
+  const token = await getAccessToken()
+  if (!token) redirect('/login')
+
+  const file = formData.get('file')
+  if (!(file instanceof File) || file.size === 0) return { error: 'Please select a CSV file' }
+
+  try {
+    const { data: result } = await api.tasks.importCsv(token, projectId, file)
+    revalidatePath(`/orgs/[orgId]/projects/${projectId}`)
+    return { result }
+  } catch (e) {
+    return { error: e instanceof ApiError ? e.message : 'Import failed' }
+  }
+}
+
 export async function moveTaskAction(
   projectId: string,
   taskId: string,
