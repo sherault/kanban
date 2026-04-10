@@ -4,7 +4,9 @@ import type {
   MembershipDto,
   InvitationTokenDto,
   ProjectDto,
+  TaskDto,
 } from '@kanban/shared'
+import type { Column } from '@kanban/shared'
 
 const API_URL = process.env['API_URL'] ?? 'http://localhost:3001'
 
@@ -106,6 +108,63 @@ export const api = {
       return apiFetch<ProjectDto>(`/organizations/${orgId}/projects`, {
         method: 'POST',
         body: JSON.stringify(body),
+        token,
+      })
+    },
+  },
+
+  tasks: {
+    list(token: string, projectId: string) {
+      return apiFetch<TaskDto[]>(`/projects/${projectId}/tasks`, { token })
+    },
+    create(
+      token: string,
+      projectId: string,
+      body: {
+        title: string
+        column: Column
+        startDate: string
+        endDate: string
+        description?: string
+      }
+    ) {
+      return apiFetch<TaskDto>(`/projects/${projectId}/tasks`, {
+        method: 'POST',
+        body: JSON.stringify(body),
+        token,
+      })
+    },
+    update(
+      token: string,
+      projectId: string,
+      taskId: string,
+      body: {
+        title?: string
+        description?: string | null
+        objective?: string | null
+        startDate?: string
+        endDate?: string
+        doerId?: string | null
+        validatorId?: string | null
+        backgroundColor?: string | null
+      }
+    ) {
+      return apiFetch<TaskDto>(`/projects/${projectId}/tasks/${taskId}`, {
+        method: 'PATCH',
+        body: JSON.stringify(body),
+        token,
+      })
+    },
+    move(token: string, projectId: string, taskId: string, body: { column: Column }) {
+      return apiFetch<TaskDto>(`/projects/${projectId}/tasks/${taskId}/move`, {
+        method: 'POST',
+        body: JSON.stringify(body),
+        token,
+      })
+    },
+    delete(token: string, projectId: string, taskId: string) {
+      return apiFetch<{ success: true }>(`/projects/${projectId}/tasks/${taskId}`, {
+        method: 'DELETE',
         token,
       })
     },
