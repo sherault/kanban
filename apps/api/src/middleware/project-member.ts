@@ -14,6 +14,7 @@ export function makeProjectAuthz(db: AppDb) {
       return async (c, next) => {
         const userId = c.get('userId')
         const projectId = c.req.param('projectId')
+        if (!projectId) throw notFound('Project not found')
 
         const project = db
           .select({ organizationId: projects.organizationId })

@@ -160,7 +160,9 @@ export function taskRoutes(
     (c) => {
       const task = svc.getTask(c.req.param('taskId'))
       if (!task || task.projectId !== c.req.param('projectId')) throw notFound('Task not found')
-      return c.json(svc.moveTask(c.req.param('taskId'), c.get('userId'), c.req.valid('json')))
+      const { column, position } = c.req.valid('json')
+      const move = position !== undefined ? { column, position } : { column }
+      return c.json(svc.moveTask(c.req.param('taskId'), c.get('userId'), move))
     }
   )
 

@@ -13,7 +13,7 @@ function toOrgDto(row: typeof organizations.$inferSelect): OrganizationDto {
 export class OrganizationService {
   constructor(private readonly db: AppDb) {}
 
-  createOrg(userId: string, input: { name: string; website?: string | null }): OrganizationDto {
+  createOrg(userId: string, input: { name: string; website?: string | null | undefined }): OrganizationDto {
     const id = generateId()
     const org = this.db
       .insert(organizations)
@@ -48,7 +48,7 @@ export class OrganizationService {
     return row ? toOrgDto(row) : undefined
   }
 
-  updateOrg(orgId: string, input: { name?: string; website?: string | null }): OrganizationDto {
+  updateOrg(orgId: string, input: { name?: string | undefined; website?: string | null | undefined }): OrganizationDto {
     const existing = this.db.select().from(organizations).where(eq(organizations.id, orgId)).get()
     if (!existing) throw notFound('Organization not found')
     const updated = this.db

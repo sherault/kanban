@@ -139,15 +139,15 @@ export class TaskService {
     reporterId: string,
     input: {
       title: string
-      description?: string | null
-      objective?: string | null
+      description?: string | null | undefined
+      objective?: string | null | undefined
       startDate: string
       endDate: string
-      backgroundColor?: string | null
-      globalSubject?: string | null
-      column?: Column
-      doerId?: string | null
-      validatorId?: string | null
+      backgroundColor?: string | null | undefined
+      globalSubject?: string | null | undefined
+      column?: Column | undefined
+      doerId?: string | null | undefined
+      validatorId?: string | null | undefined
     }
   ): TaskDto {
     const column: Column = input.column ?? 'todo'
@@ -193,15 +193,15 @@ export class TaskService {
     taskId: string,
     actorId: string,
     input: {
-      title?: string
-      description?: string | null
-      objective?: string | null
-      startDate?: string
-      endDate?: string
-      backgroundColor?: string | null
-      globalSubject?: string | null
-      doerId?: string | null
-      validatorId?: string | null
+      title?: string | undefined
+      description?: string | null | undefined
+      objective?: string | null | undefined
+      startDate?: string | undefined
+      endDate?: string | undefined
+      backgroundColor?: string | null | undefined
+      globalSubject?: string | null | undefined
+      doerId?: string | null | undefined
+      validatorId?: string | null | undefined
     }
   ): TaskDto {
     const existing = this.getRow(taskId)
