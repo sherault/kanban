@@ -8,6 +8,7 @@ import { invitationRoutes } from './features/invitation/invitation.routes.js'
 import { apiKeyRoutes } from './features/api-key/api-key.routes.js'
 import { projectRoutes } from './features/project/project.routes.js'
 import { taskRoutes } from './features/task/task.routes.js'
+import { mcpRoutes } from './features/mcp/mcp.routes.js'
 
 export function createApp(
   db: AppDb,
@@ -30,6 +31,7 @@ export function createApp(
   app.route('/projects', taskRoutes(db, broadcast))
   app.route('/invite', invitationRoutes(db))
   app.route('/profile', apiKeyRoutes(db))
+  app.route('/mcp', mcpRoutes(db, broadcast))
 
   return app
 }

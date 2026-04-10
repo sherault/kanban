@@ -15,6 +15,7 @@
     "@hono/node-ws": "^1.3.0",
     "@hono/zod-validator": "^0.7.6",
     "@kanban/shared": "workspace:*",
+    "@modelcontextprotocol/sdk": "^1.29.0",
     "argon2": "^0.44.0",
     "better-sqlite3": "^11.1.2",
     "csv-parse": "^6.2.1",
