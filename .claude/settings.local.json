@@ -52,7 +52,14 @@
       "Bash(python3:*)",
       "mcp__code-review-graph__get_review_context_tool",
       "Bash(grep -v \"^$\")",
-      "Bash(pnpm lint:*)"
+      "Bash(pnpm lint:*)",
+      "Bash(sed -n '137,160p' /Users/stephane/projects/saas/kanban/apps/api/src/features/task/task.service.ts)",
+      "Bash(sed -n '192,260p' /Users/stephane/projects/saas/kanban/apps/api/src/features/task/task.service.ts)",
+      "Bash(sed -n '258,270p' /Users/stephane/projects/saas/kanban/apps/api/src/features/task/task.service.ts)",
+      "Bash(sed -n '440,455p' /Users/stephane/projects/saas/kanban/apps/api/src/features/task/task.service.ts)",
+      "Bash(npx tsc:*)",
+      "Bash(npx eslint:*)",
+      "Bash(grep -n \"ApiKeyDto\\\\|ApiKeyCreatedDto\" /Users/stephane/projects/saas/kanban/packages/shared/src/dtos/*.ts)"
     ]
   },
   "enableAllProjectMcpServers": true,

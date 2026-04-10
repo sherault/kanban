@@ -10,3 +10,5 @@ coverage/
 .env
 .env.local
 drizzle/migrations/meta/
+apps/api/tsconfig.tsbuildinfo
+apps/web/tsconfig.tsbuildinfo
