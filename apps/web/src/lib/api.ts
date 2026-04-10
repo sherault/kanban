@@ -5,8 +5,8 @@ import type {
   InvitationTokenDto,
   ProjectDto,
   TaskDto,
+  Column,
 } from '@kanban/shared'
-import type { Column } from '@kanban/shared'
 
 const API_URL = process.env['API_URL'] ?? 'http://localhost:3001'
 
