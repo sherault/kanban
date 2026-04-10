@@ -11,7 +11,8 @@ export default async function OrgPage({ params }: { params: Promise<{ orgId: str
   const { data: projects } = await api.projects.list(token, orgId)
 
   return (
-    <div className="p-6 max-w-4xl mx-auto overflow-auto h-full">
+    <div className="p-6 overflow-auto h-full">
+      <div className="max-w-4xl mx-auto">
       <nav className="flex items-center gap-1 text-sm text-gray-500 mb-6">
         <Link href="/orgs" className="hover:text-gray-900 transition-colors">Organizations</Link>
         <span className="text-gray-300">/</span>
@@ -52,6 +53,7 @@ export default async function OrgPage({ params }: { params: Promise<{ orgId: str
           ))}
         </div>
       )}
+      </div>
     </div>
   )
 }
