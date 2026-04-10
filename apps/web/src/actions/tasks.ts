@@ -5,7 +5,7 @@ import { revalidatePath } from 'next/cache'
 import { api, ApiError } from '../lib/api'
 import { getAccessToken } from '../lib/session'
 import { Column } from '@kanban/shared'
-import type { TaskDto } from '@kanban/shared'
+import type { TaskDto, TaskHistoryDto } from '@kanban/shared'
 
 export async function createTaskAction(
   projectId: string,
@@ -47,6 +47,7 @@ export async function updateTaskAction(
     doerId?: string | null
     validatorId?: string | null
     backgroundColor?: string | null
+    globalSubject?: string | null
   }
 ): Promise<{ error?: string; task?: TaskDto }> {
   const token = await getAccessToken()
@@ -92,6 +93,117 @@ export async function importCsvAction(
     return { result }
   } catch (e) {
     return { error: e instanceof ApiError ? e.message : 'Import failed' }
+  }
+}
+
+export async function getTaskHistoryAction(
+  projectId: string,
+  taskId: string
+): Promise<{ history?: TaskHistoryDto[]; error?: string }> {
+  const token = await getAccessToken()
+  if (!token) redirect('/login')
+
+  try {
+    const { data: history } = await api.tasks.getHistory(token, projectId, taskId)
+    return { history }
+  } catch (e) {
+    return { error: e instanceof ApiError ? e.message : 'Failed to load history' }
+  }
+}
+
+export async function addTagAction(
+  projectId: string,
+  taskId: string,
+  tag: string
+): Promise<{ error?: string; task?: TaskDto }> {
+  const token = await getAccessToken()
+  if (!token) redirect('/login')
+
+  try {
+    const { data: task } = await api.tasks.addTag(token, projectId, taskId, tag)
+    return { task }
+  } catch (e) {
+    return { error: e instanceof ApiError ? e.message : 'Failed to add tag' }
+  }
+}
+
+export async function removeTagAction(
+  projectId: string,
+  taskId: string,
+  tag: string
+): Promise<{ error?: string; task?: TaskDto }> {
+  const token = await getAccessToken()
+  if (!token) redirect('/login')
+
+  try {
+    const { data: task } = await api.tasks.removeTag(token, projectId, taskId, tag)
+    return { task }
+  } catch (e) {
+    return { error: e instanceof ApiError ? e.message : 'Failed to remove tag' }
+  }
+}
+
+export async function addWatcherAction(
+  projectId: string,
+  taskId: string,
+  userId: string
+): Promise<{ error?: string; task?: TaskDto }> {
+  const token = await getAccessToken()
+  if (!token) redirect('/login')
+
+  try {
+    const { data: task } = await api.tasks.addWatcher(token, projectId, taskId, userId)
+    return { task }
+  } catch (e) {
+    return { error: e instanceof ApiError ? e.message : 'Failed to add watcher' }
+  }
+}
+
+export async function removeWatcherAction(
+  projectId: string,
+  taskId: string,
+  userId: string
+): Promise<{ error?: string; task?: TaskDto }> {
+  const token = await getAccessToken()
+  if (!token) redirect('/login')
+
+  try {
+    const { data: task } = await api.tasks.removeWatcher(token, projectId, taskId, userId)
+    return { task }
+  } catch (e) {
+    return { error: e instanceof ApiError ? e.message : 'Failed to remove watcher' }
+  }
+}
+
+export async function addAdvisorAction(
+  projectId: string,
+  taskId: string,
+  userId: string
+): Promise<{ error?: string; task?: TaskDto }> {
+  const token = await getAccessToken()
+  if (!token) redirect('/login')
+
+  try {
+    const { data: task } = await api.tasks.addAdvisor(token, projectId, taskId, userId)
+    return { task }
+  } catch (e) {
+    return { error: e instanceof ApiError ? e.message : 'Failed to add advisor' }
+  }
+}
+
+export async function removeAdvisorAction(
+  projectId: string,
+  taskId: string,
+  userId: string
+): Promise<{ error?: string; task?: TaskDto }> {
+  const token = await getAccessToken()
+  if (!token) redirect('/login')
+
+  try {
+    const { data: task } = await api.tasks.removeAdvisor(token, projectId, taskId, userId)
+    return { task }
+  } catch (e) {
+    return { error: e instanceof ApiError ? e.message : 'Failed to remove advisor' }
   }
 }
 

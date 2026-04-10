@@ -5,6 +5,7 @@ import type {
   InvitationTokenDto,
   ProjectDto,
   TaskDto,
+  TaskHistoryDto,
   Column,
 } from '@kanban/shared'
 
@@ -177,6 +178,27 @@ export const api = {
         token,
         body: form,
       })
+    },
+    getHistory(token: string, projectId: string, taskId: string) {
+      return apiFetch<TaskHistoryDto[]>(`/projects/${projectId}/tasks/${taskId}/history`, { token })
+    },
+    addTag(token: string, projectId: string, taskId: string, tag: string) {
+      return apiFetch<TaskDto>(`/projects/${projectId}/tasks/${taskId}/tags/${encodeURIComponent(tag)}`, { method: 'POST', token })
+    },
+    removeTag(token: string, projectId: string, taskId: string, tag: string) {
+      return apiFetch<TaskDto>(`/projects/${projectId}/tasks/${taskId}/tags/${encodeURIComponent(tag)}`, { method: 'DELETE', token })
+    },
+    addWatcher(token: string, projectId: string, taskId: string, userId: string) {
+      return apiFetch<TaskDto>(`/projects/${projectId}/tasks/${taskId}/watchers/${userId}`, { method: 'POST', token })
+    },
+    removeWatcher(token: string, projectId: string, taskId: string, userId: string) {
+      return apiFetch<TaskDto>(`/projects/${projectId}/tasks/${taskId}/watchers/${userId}`, { method: 'DELETE', token })
+    },
+    addAdvisor(token: string, projectId: string, taskId: string, userId: string) {
+      return apiFetch<TaskDto>(`/projects/${projectId}/tasks/${taskId}/advisors/${userId}`, { method: 'POST', token })
+    },
+    removeAdvisor(token: string, projectId: string, taskId: string, userId: string) {
+      return apiFetch<TaskDto>(`/projects/${projectId}/tasks/${taskId}/advisors/${userId}`, { method: 'DELETE', token })
     },
   },
 
