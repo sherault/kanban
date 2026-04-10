@@ -1,0 +1,92 @@
+'use server'
+
+import { redirect } from 'next/navigation'
+import { revalidatePath } from 'next/cache'
+import { api, ApiError } from '../lib/api'
+import { getAccessToken } from '../lib/session'
+import { Column } from '@kanban/shared'
+import type { TaskDto } from '@kanban/shared'
+
+export async function createTaskAction(
+  projectId: string,
+  orgId: string,
+  _prev: { error?: string; task?: TaskDto },
+  formData: FormData
+): Promise<{ error?: string; task?: TaskDto }> {
+  const token = await getAccessToken()
+  if (!token) redirect('/login')
+
+  const title = formData.get('title') as string
+  const column = (formData.get('column') as Column) ?? Column.TODO
+  const startDate = formData.get('startDate') as string
+  const endDate = formData.get('endDate') as string
+
+  try {
+    const { data: task } = await api.tasks.create(token, projectId, {
+      title,
+      column,
+      startDate,
+      endDate,
+    })
+    revalidatePath(`/orgs/${orgId}/projects/${projectId}`)
+    return { task }
+  } catch (e) {
+    return { error: e instanceof ApiError ? e.message : 'Failed to create task' }
+  }
+}
+
+export async function updateTaskAction(
+  projectId: string,
+  taskId: string,
+  body: {
+    title?: string
+    description?: string | null
+    objective?: string | null
+    startDate?: string
+    endDate?: string
+    doerId?: string | null
+    validatorId?: string | null
+    backgroundColor?: string | null
+  }
+): Promise<{ error?: string; task?: TaskDto }> {
+  const token = await getAccessToken()
+  if (!token) redirect('/login')
+
+  try {
+    const { data: task } = await api.tasks.update(token, projectId, taskId, body)
+    return { task }
+  } catch (e) {
+    return { error: e instanceof ApiError ? e.message : 'Failed to update task' }
+  }
+}
+
+export async function deleteTaskAction(
+  projectId: string,
+  taskId: string
+): Promise<{ error?: string }> {
+  const token = await getAccessToken()
+  if (!token) redirect('/login')
+
+  try {
+    await api.tasks.delete(token, projectId, taskId)
+    return {}
+  } catch (e) {
+    return { error: e instanceof ApiError ? e.message : 'Failed to delete task' }
+  }
+}
+
+export async function moveTaskAction(
+  projectId: string,
+  taskId: string,
+  column: Column
+): Promise<{ error?: string; task?: TaskDto }> {
+  const token = await getAccessToken()
+  if (!token) redirect('/login')
+
+  try {
+    const { data: task } = await api.tasks.move(token, projectId, taskId, { column })
+    return { task }
+  } catch (e) {
+    return { error: e instanceof ApiError ? e.message : 'Failed to move task' }
+  }
+}
