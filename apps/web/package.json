@@ -3,9 +3,9 @@
   "version": "0.0.1",
   "type": "module",
   "scripts": {
-    "dev": "next dev -p 3000",
+    "dev": "next dev -p 3009",
     "build": "next build",
-    "start": "next start -p 3000",
+    "start": "next start -p 3009",
     "lint": "eslint src --max-warnings 0"
   },
   "dependencies": {
