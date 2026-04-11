@@ -3,6 +3,7 @@ import { cookies } from 'next/headers'
 const ACCESS_COOKIE = 'access_token'
 const REFRESH_COOKIE = 'refresh_token'
 const USER_NAME_COOKIE = 'user_name'
+const USER_ID_COOKIE = 'user_id'
 
 const secure = process.env['NODE_ENV'] === 'production'
 
@@ -18,6 +19,10 @@ export async function getUserName(): Promise<string> {
   return (await cookies()).get(USER_NAME_COOKIE)?.value ?? 'User'
 }
 
+export async function getUserId(): Promise<string | undefined> {
+  return (await cookies()).get(USER_ID_COOKIE)?.value
+}
+
 /**
  * Store access token, display name, and optionally the refresh token.
  * The refresh token comes from the API's Set-Cookie header — see extractRefreshToken().
@@ -25,7 +30,8 @@ export async function getUserName(): Promise<string> {
 export async function setTokens(
   accessToken: string,
   displayName: string,
-  refreshToken?: string
+  refreshToken?: string,
+  userId?: string
 ): Promise<void> {
   const jar = await cookies()
   jar.set(ACCESS_COOKIE, accessToken, {
@@ -42,6 +48,15 @@ export async function setTokens(
     maxAge: 7 * 24 * 60 * 60,
     path: '/',
   })
+  if (userId) {
+    jar.set(USER_ID_COOKIE, userId, {
+      httpOnly: false,
+      sameSite: 'lax',
+      secure,
+      maxAge: 7 * 24 * 60 * 60,
+      path: '/',
+    })
+  }
   if (refreshToken) {
     jar.set(REFRESH_COOKIE, refreshToken, {
       httpOnly: true,

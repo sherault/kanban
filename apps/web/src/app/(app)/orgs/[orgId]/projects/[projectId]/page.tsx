@@ -1,6 +1,6 @@
 import { redirect } from 'next/navigation'
 import { api } from '../../../../../../lib/api'
-import { getAccessToken } from '../../../../../../lib/session'
+import { getAccessToken, getUserId } from '../../../../../../lib/session'
 import { BoardClient } from './BoardClient'
 
 export default async function ProjectBoardPage({
@@ -12,9 +12,10 @@ export default async function ProjectBoardPage({
   const token = await getAccessToken()
   if (!token) redirect('/login')
 
-  const [{ data: tasks }, { data: members }] = await Promise.all([
+  const [{ data: tasks }, { data: members }, currentUserId] = await Promise.all([
     api.tasks.list(token, projectId),
     api.orgs.listMembers(token, orgId),
+    getUserId(),
   ])
 
   return (
@@ -23,6 +24,7 @@ export default async function ProjectBoardPage({
       orgMembers={members}
       projectId={projectId}
       orgId={orgId}
+      currentUserId={currentUserId ?? ''}
     />
   )
 }

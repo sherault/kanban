@@ -212,7 +212,7 @@ export function TaskDetailSidebar({
   }, [showHistory, projectId, task.id])
 
   return (
-    <aside className="w-96 border-l border-gray-200 bg-white flex flex-col h-full overflow-hidden shrink-0">
+    <aside data-sidebar="true" className="w-96 border-l border-gray-200 bg-white flex flex-col h-full overflow-hidden shrink-0">
       {/* Header */}
       <div className="flex items-center justify-between px-5 py-3 border-b border-gray-200 shrink-0">
         <span className={`text-xs font-medium px-2 py-0.5 rounded-full capitalize ${COLUMN_BADGE[task.column] ?? 'bg-gray-100 text-gray-700'}`}>

@@ -32,9 +32,10 @@ interface Props {
   orgMembers: MembershipDto[]
   projectId: string
   orgId: string
+  currentUserId: string
 }
 
-export function BoardClient({ initialTasks, orgMembers, projectId, orgId }: Props) {
+export function BoardClient({ initialTasks, orgMembers, projectId, orgId, currentUserId }: Props) {
   const [tasks, setTasks] = useState<TaskDto[]>(initialTasks)
   const [activeTask, setActiveTask] = useState<TaskDto | null>(null)
   const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null)
@@ -42,14 +43,18 @@ export function BoardClient({ initialTasks, orgMembers, projectId, orgId }: Prop
   const [showImport, setShowImport] = useState(false)
   const [ideasCollapsed, setIdeasCollapsed] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [sidebarRevision, setSidebarRevision] = useState(0)
   const [, startTransition] = useTransition()
 
-  // Keep a ref to selectedTaskId so WS callbacks (closures) always read
-  // the latest value without needing to be recreated on every render.
+  // Stable ref to selectedTaskId for WS callbacks
   const selectedTaskIdRef = useRef<string | null>(null)
   useEffect(() => {
     selectedTaskIdRef.current = selectedTaskId
   }, [selectedTaskId])
+
+  // Track task IDs added locally (from our own create action) so WS
+  // `task.created` broadcast for the same task doesn't duplicate it.
+  const pendingLocalTaskIds = useRef(new Set<string>())
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 8 } })
@@ -59,19 +64,28 @@ export function BoardClient({ initialTasks, orgMembers, projectId, orgId }: Prop
 
   const { isConnected } = useProjectSocket(projectId, {
     onTaskCreated(task) {
-      // Ignore if we already have the task (e.g. from our own Server Action)
+      // Skip tasks we already added locally from our own Server Action
+      if (pendingLocalTaskIds.current.has(task.id)) {
+        pendingLocalTaskIds.current.delete(task.id)
+        return
+      }
       setTasks((prev) => (prev.some((t) => t.id === task.id) ? prev : [...prev, task]))
     },
     onTaskUpdated(task) {
-      setTasks((prev) =>
-        prev.map((t) => {
-          if (t.id !== task.id) return t
-          // Don't overwrite a task the user has open in the sidebar —
-          // their in-progress edits take precedence until they close it.
-          if (selectedTaskIdRef.current === task.id) return t
-          return task
-        })
-      )
+      // Always update state — the sidebar uses uncontrolled inputs (defaultValue)
+      // so in-progress text edits are preserved automatically.
+      setTasks((prev) => prev.map((t) => (t.id !== task.id ? t : task)))
+
+      // If the updated task is open in the sidebar, bump the revision to
+      // remount it with fresh values — but only when no sidebar field has focus
+      // (i.e. the user isn't actively typing).
+      if (selectedTaskIdRef.current === task.id) {
+        const focused = document.activeElement
+        const sidebarHasFocus = focused?.closest('[data-sidebar="true"]') ?? false
+        if (!sidebarHasFocus) {
+          setSidebarRevision((v) => v + 1)
+        }
+      }
     },
     onTaskDeleted(taskId) {
       setTasks((prev) => prev.filter((t) => t.id !== taskId))
@@ -98,28 +112,36 @@ export function BoardClient({ initialTasks, orgMembers, projectId, orgId }: Prop
     const task = tasks.find((t) => t.id === taskId)
     if (!task || task.column === newColumn) return
 
-    if (newColumn === Column.DOING && !task.doer) {
-      setError('Assign a doer to this task before moving it to Doing.')
-      return
-    }
+    // When moving to "doing" with no doer, the API auto-assigns the current
+    // user — optimistically reflect that in local state.
+    const optimisticDoer =
+      newColumn === Column.DOING && !task.doer
+        ? orgMembers.find((m) => m.userId === currentUserId)
+        : null
 
     // Optimistic update
     setTasks((prev) =>
-      prev.map((t) => (t.id === taskId ? { ...t, column: newColumn } : t))
+      prev.map((t) =>
+        t.id === taskId
+          ? {
+              ...t,
+              column: newColumn,
+              ...(optimisticDoer
+                ? { doer: { id: optimisticDoer.userId, displayName: optimisticDoer.user.displayName } }
+                : {}),
+            }
+          : t
+      )
     )
 
     startTransition(async () => {
       const result = await moveTaskAction(projectId, taskId, newColumn)
       if (result.error) {
-        // Revert to original column
-        setTasks((prev) =>
-          prev.map((t) => (t.id === taskId ? { ...t, column: task.column } : t))
-        )
+        // Revert to original state
+        setTasks((prev) => prev.map((t) => (t.id === taskId ? task : t)))
         setError(result.error)
       } else if (result.task) {
-        setTasks((prev) =>
-          prev.map((t) => (t.id === result.task!.id ? result.task! : t))
-        )
+        setTasks((prev) => prev.map((t) => (t.id === result.task!.id ? result.task! : t)))
       }
     })
   }
@@ -169,15 +191,15 @@ export function BoardClient({ initialTasks, orgMembers, projectId, orgId }: Prop
             >
               Import CSV
             </button>
-          {/* Connection status indicator */}
-          <div className="flex items-center gap-1.5">
-            <span
-              className={`w-1.5 h-1.5 rounded-full ${isConnected ? 'bg-green-400' : 'bg-gray-300'}`}
-            />
-            <span className="text-xs text-gray-400">
-              {isConnected ? 'Live' : 'Connecting…'}
-            </span>
-          </div>
+            {/* Connection status indicator */}
+            <div className="flex items-center gap-1.5">
+              <span
+                className={`w-1.5 h-1.5 rounded-full ${isConnected ? 'bg-green-400' : 'bg-gray-300'}`}
+              />
+              <span className="text-xs text-gray-400">
+                {isConnected ? 'Live' : 'Connecting…'}
+              </span>
+            </div>
           </div>
         </div>
 
@@ -188,6 +210,7 @@ export function BoardClient({ initialTasks, orgMembers, projectId, orgId }: Prop
 
       {selectedTask && (
         <TaskDetailSidebar
+          key={`${selectedTask.id}-${sidebarRevision}`}
           task={selectedTask}
           orgMembers={orgMembers}
           projectId={projectId}
@@ -218,6 +241,9 @@ export function BoardClient({ initialTasks, orgMembers, projectId, orgId }: Prop
           orgMembers={orgMembers}
           onClose={() => setNewTaskColumn(null)}
           onCreated={(task) => {
+            // Register locally before adding to state, so the WS broadcast
+            // for this task (which arrives shortly after) is deduplicated.
+            pendingLocalTaskIds.current.add(task.id)
             setTasks((prev) => [...prev, task])
             setNewTaskColumn(null)
           }}

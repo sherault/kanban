@@ -76,7 +76,7 @@ describe('POST /projects/:projectId/tasks/:taskId/move', () => {
     close()
   })
 
-  it('returns 422 when moving to doing without a doer', async () => {
+  it('auto-assigns the actor as doer when moving to doing without a doer', async () => {
     const { app, token, projectId, createTask, close } = await setup()
     const task = await createTask()
 
@@ -85,7 +85,10 @@ describe('POST /projects/:projectId/tasks/:taskId/move', () => {
       headers: { ...auth(token), 'Content-Type': 'application/json' },
       body: JSON.stringify({ column: 'doing' }),
     })
-    expect(res.status).toBe(422)
+    expect(res.status).toBe(200)
+    const body = (await res.json()) as { column: string; doer: { id: string } | null }
+    expect(body.column).toBe('doing')
+    expect(body.doer).not.toBeNull()
     close()
   })
 

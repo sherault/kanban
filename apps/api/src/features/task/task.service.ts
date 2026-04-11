@@ -445,10 +445,8 @@ export class TaskService {
     const row = this.getRow(taskId)
     const oldColumn = row.column as Column
 
-    if (input.column === 'doing' && !row.doerId) {
-      throw unprocessable('A doer must be assigned before moving to doing')
-    }
-
+    // Auto-assign the actor as doer when moving to "doing" with no doer set
+    const autoAssignDoer = input.column === 'doing' && !row.doerId
     const clearsDoer = (input.column === 'ideas' || input.column === 'todo') && row.doerId !== null
     const position = input.position ?? this.nextPosition(row.projectId, input.column)
 
@@ -456,10 +454,13 @@ export class TaskService {
       column: input.column,
       position,
       updatedAt: sql`(datetime('now'))`,
+      ...(autoAssignDoer ? { doerId: actorId } : {}),
       ...(clearsDoer ? { doerId: null } : {}),
     }).where(eq(tasks.id, taskId)).run()
 
-    // History: column change (only when column actually changes)
+    const batchId = autoAssignDoer ? generateId() : null
+
+    // History: column change
     if (input.column !== oldColumn) {
       this.db.insert(taskHistory).values({
         id: generateId(),
@@ -468,7 +469,19 @@ export class TaskService {
         field: 'column',
         oldValue: oldColumn,
         newValue: input.column,
-        batchId: null,
+        batchId,
+      }).run()
+    }
+
+    if (autoAssignDoer) {
+      this.db.insert(taskHistory).values({
+        id: generateId(),
+        taskId,
+        userId: actorId,
+        field: 'doerId',
+        oldValue: null,
+        newValue: actorId,
+        batchId,
       }).run()
     }
 

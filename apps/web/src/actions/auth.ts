@@ -26,11 +26,10 @@ export async function loginAction(
     accessToken = data.accessToken
     displayName = data.user.displayName
     refreshToken = extractRefreshToken(headers.get('set-cookie'))
+    await setTokens(accessToken, displayName, refreshToken, data.user.id)
   } catch (e) {
     return { error: e instanceof ApiError ? e.message : 'Login failed' }
   }
-
-  await setTokens(accessToken, displayName, refreshToken)
   redirect('/orgs')
 }
 
@@ -79,10 +78,9 @@ export async function acceptInviteAction(
     accessToken = data.accessToken
     userDisplayName = data.user.displayName
     refreshToken = extractRefreshToken(headers.get('set-cookie'))
+    await setTokens(accessToken, userDisplayName, refreshToken, data.user.id)
   } catch (e) {
     return { error: e instanceof ApiError ? e.message : 'Failed to accept invitation' }
   }
-
-  await setTokens(accessToken, userDisplayName, refreshToken)
   redirect('/orgs')
 }
