@@ -13,6 +13,9 @@ interface Props {
   onToggleCollapse?: () => void
   onTaskClick: (taskId: string) => void
   onNewTask: () => void
+  selectable?: boolean
+  selectedIds?: Set<string>
+  onSelectionChange?: (id: string, selected: boolean) => void
 }
 
 const COLUMN_DOT: Record<Column, string> = {
@@ -30,6 +33,9 @@ export function BoardColumn({
   onToggleCollapse,
   onTaskClick,
   onNewTask,
+  selectable = false,
+  selectedIds,
+  onSelectionChange,
 }: Props) {
   const { setNodeRef, isOver } = useDroppable({ id: column })
 
@@ -75,15 +81,24 @@ export function BoardColumn({
           .slice()
           .sort((a, b) => a.position - b.position)
           .map((task) => (
-            <TaskCard key={task.id} task={task} onClick={() => onTaskClick(task.id)} />
+            <TaskCard
+            key={task.id}
+            task={task}
+            onClick={() => onTaskClick(task.id)}
+            selectable={selectable}
+            selected={selectedIds?.has(task.id) ?? false}
+            onSelectChange={(sel) => onSelectionChange?.(task.id, sel)}
+          />
           ))}
 
-        <button
-          onClick={onNewTask}
-          className="mt-1 w-full text-sm text-gray-400 hover:text-gray-600 hover:bg-white rounded-md py-2 transition-colors text-left px-3 border border-dashed border-gray-200 hover:border-gray-300"
-        >
-          + New task
-        </button>
+        {(column === Column.IDEAS || column === Column.TODO) && (
+          <button
+            onClick={onNewTask}
+            className="mt-1 w-full text-sm text-gray-400 hover:text-gray-600 hover:bg-white rounded-md py-2 transition-colors text-left px-3 border border-dashed border-gray-200 hover:border-gray-300"
+          >
+            + New task
+          </button>
+        )}
       </div>
     </div>
   )

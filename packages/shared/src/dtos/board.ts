@@ -22,6 +22,7 @@ export interface TaskDto {
   linkedTaskIds: string[]
   createdAt: string
   updatedAt: string
+  archivedAt: string | null
 }
 
 export interface TaskHistoryDto {

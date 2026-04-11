@@ -1,4 +1,4 @@
-import { eq, and, or, max, sql } from 'drizzle-orm'
+import { eq, and, or, max, sql, isNull, isNotNull } from 'drizzle-orm'
 import type { AppDb, Broadcaster } from '../../types.js'
 import { noopBroadcaster } from '../../types.js'
 import type { TaskDto, TaskHistoryDto, Column } from '@kanban/shared'
@@ -97,6 +97,7 @@ function assembleTaskDto(
     linkedTaskIds,
     createdAt: row.createdAt,
     updatedAt: row.updatedAt,
+    archivedAt: row.archivedAt ?? null,
   }
 }
 
@@ -185,7 +186,7 @@ export class TaskService {
   }
 
   listTasks(projectId: string): TaskDto[] {
-    const rows = this.db.select().from(tasks).where(eq(tasks.projectId, projectId)).all()
+    const rows = this.db.select().from(tasks).where(and(eq(tasks.projectId, projectId), isNull(tasks.archivedAt))).all()
     return rows.map((r) => assembleTaskDto(this.db, r))
   }
 
@@ -515,6 +516,56 @@ export class TaskService {
     // Position changes are cosmetic ordering; no audit history row needed.
     this.broadcast(`project:${row.projectId}`, { type: 'task.updated', payload: dto })
     return dto
+  }
+
+  archiveTasks(projectId: string, taskIds: string[], actorId: string): void {
+    const now = new Date().toISOString()
+    for (const taskId of taskIds) {
+      const row = this.db.select().from(tasks).where(and(eq(tasks.id, taskId), eq(tasks.projectId, projectId))).get()
+      if (!row || row.column !== 'done') continue
+      this.db.update(tasks).set({ archivedAt: now, updatedAt: sql`(datetime('now'))` }).where(eq(tasks.id, taskId)).run()
+      this.db.insert(taskHistory).values({ id: generateId(), taskId, userId: actorId, field: 'archivedAt', oldValue: null, newValue: now, batchId: null }).run()
+      this.broadcast(`project:${projectId}`, { type: 'task.deleted', payload: { id: taskId, projectId } })
+    }
+  }
+
+  restoreTask(taskId: string, actorId: string): TaskDto {
+    const row = this.getRow(taskId)
+    if (!row.archivedAt) throw unprocessable('Task is not archived')
+    const position = this.nextPosition(row.projectId, 'todo')
+    this.db.update(tasks).set({ archivedAt: null, column: 'todo', position, updatedAt: sql`(datetime('now'))` }).where(eq(tasks.id, taskId)).run()
+    this.db.insert(taskHistory).values({ id: generateId(), taskId, userId: actorId, field: 'archivedAt', oldValue: row.archivedAt, newValue: null, batchId: null }).run()
+    const updated = this.getRow(taskId)
+    const dto = assembleTaskDto(this.db, updated)
+    this.broadcast(`project:${row.projectId}`, { type: 'task.created', payload: dto })
+    return dto
+  }
+
+  listArchivedTasks(projectId: string, opts: { search?: string; page?: number; limit?: number } = {}): { tasks: TaskDto[]; total: number } {
+    const { search, page = 1, limit = 20 } = opts
+    const offset = (page - 1) * limit
+
+    const baseWhere = and(
+      eq(tasks.projectId, projectId),
+      isNotNull(tasks.archivedAt)
+    )
+
+    const countResult = this.db.select({ count: sql<number>`count(*)` }).from(tasks).where(baseWhere).get()
+    const total = countResult?.count ?? 0
+
+    let rows = this.db.select().from(tasks).where(baseWhere).orderBy(tasks.archivedAt).limit(limit).offset(offset).all()
+
+    if (search) {
+      const q = search.toLowerCase()
+      rows = rows.filter(r =>
+        r.title.toLowerCase().includes(q) ||
+        (r.description ?? '').toLowerCase().includes(q) ||
+        (r.objective ?? '').toLowerCase().includes(q) ||
+        (r.globalSubject ?? '').toLowerCase().includes(q)
+      )
+    }
+
+    return { tasks: rows.map(r => assembleTaskDto(this.db, r)), total }
   }
 
   importTasks(

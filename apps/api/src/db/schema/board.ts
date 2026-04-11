@@ -31,6 +31,7 @@ export const tasks = sqliteTable('tasks', {
   updatedAt: text('updated_at')
     .notNull()
     .default(sql`(datetime('now'))`),
+  archivedAt: text('archived_at'),
 })
 
 export const taskTags = sqliteTable(

@@ -220,6 +220,28 @@ export async function removeAdvisorAction(
   }
 }
 
+export async function archiveTasksAction(projectId: string, taskIds: string[]): Promise<{ error?: string }> {
+  const token = await getAccessToken()
+  if (!token) redirect('/login')
+  try {
+    await api.tasks.archive(token, projectId, taskIds)
+    return {}
+  } catch (e) {
+    return { error: e instanceof ApiError ? e.message : 'Failed to archive tasks' }
+  }
+}
+
+export async function restoreTaskAction(projectId: string, taskId: string): Promise<{ error?: string; task?: TaskDto }> {
+  const token = await getAccessToken()
+  if (!token) redirect('/login')
+  try {
+    const { data: task } = await api.tasks.restore(token, projectId, taskId)
+    return { task }
+  } catch (e) {
+    return { error: e instanceof ApiError ? e.message : 'Failed to restore task' }
+  }
+}
+
 export async function moveTaskAction(
   projectId: string,
   taskId: string,

@@ -8,9 +8,12 @@ interface Props {
   task: TaskDto
   onClick: () => void
   overlay?: boolean
+  selectable?: boolean
+  selected?: boolean
+  onSelectChange?: (selected: boolean) => void
 }
 
-export function TaskCard({ task, onClick, overlay = false }: Props) {
+export function TaskCard({ task, onClick, overlay = false, selectable = false, selected = false, onSelectChange }: Props) {
   const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({
     id: task.id,
   })
@@ -38,10 +41,26 @@ export function TaskCard({ task, onClick, overlay = false }: Props) {
       {...attributes}
       {...listeners}
       onClick={onClick}
-      className={`bg-white rounded-lg border border-gray-200 p-3 cursor-pointer select-none transition-shadow ${
+      className={`relative bg-white rounded-lg border p-3 cursor-pointer select-none transition-shadow ${
+        selected ? 'border-blue-400 ring-1 ring-blue-200' : 'border-gray-200'
+      } ${
         isDragging ? 'opacity-40 shadow-lg' : 'hover:shadow-sm hover:border-gray-300'
       } ${overlay ? 'shadow-xl rotate-2 opacity-90' : ''}`}
     >
+      {selectable && (
+        <div
+          className="absolute top-2 right-2"
+          onClick={e => { e.stopPropagation(); onSelectChange?.(!selected) }}
+        >
+          <input
+            type="checkbox"
+            checked={selected}
+            onChange={e => { e.stopPropagation(); onSelectChange?.(e.target.checked) }}
+            onClick={e => e.stopPropagation()}
+            className="w-3.5 h-3.5 accent-blue-500 cursor-pointer"
+          />
+        </div>
+      )}
       <p className="text-sm text-gray-900 font-medium leading-snug mb-2 line-clamp-2">
         {task.title}
       </p>

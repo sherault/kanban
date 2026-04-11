@@ -48,6 +48,23 @@ export function taskRoutes(
   // All task routes require project membership (sets orgId in context)
   router.use('/:projectId/*', projectAuthz.requireProjectMember())
 
+  // Archive multiple tasks (must be in "done")
+  router.post('/:projectId/tasks/archive', zValidator('json', z.object({ taskIds: z.array(z.string()).min(1) })), (c) => {
+    svc.archiveTasks(c.req.param('projectId'), c.req.valid('json').taskIds, c.get('userId'))
+    return c.json({ success: true })
+  })
+
+  // List archived tasks with pagination + search
+  router.get('/:projectId/archived-tasks', (c) => {
+    const searchRaw = c.req.query('search')
+    const page = parseInt(c.req.query('page') ?? '1', 10)
+    const limit = parseInt(c.req.query('limit') ?? '20', 10)
+    const opts: { search?: string; page?: number; limit?: number } = { page, limit }
+    if (searchRaw !== undefined) opts.search = searchRaw
+    const result = svc.listArchivedTasks(c.req.param('projectId'), opts)
+    return c.json(result)
+  })
+
   // CRUD
   router.get('/:projectId/tasks', (c) => c.json(svc.listTasks(c.req.param('projectId'))))
 
@@ -63,6 +80,12 @@ export function taskRoutes(
       return c.json(task, 201)
     }
   )
+
+  // Restore an archived task to "todo"
+  router.post('/:projectId/tasks/:taskId/restore', (c) => {
+    const task = svc.restoreTask(c.req.param('taskId'), c.get('userId'))
+    return c.json(task)
+  })
 
   router.get('/:projectId/tasks/:taskId', (c) => {
     const task = svc.getTask(c.req.param('taskId'))

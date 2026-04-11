@@ -199,6 +199,20 @@ export const api = {
         },
       );
     },
+    archive(token: string, projectId: string, taskIds: string[]) {
+      return apiFetch<{ success: true }>(`/projects/${projectId}/tasks/archive`, {
+        method: 'POST', token, body: JSON.stringify({ taskIds }),
+      })
+    },
+    restore(token: string, projectId: string, taskId: string) {
+      return apiFetch<TaskDto>(`/projects/${projectId}/tasks/${taskId}/restore`, { method: 'POST', token })
+    },
+    listArchived(token: string, projectId: string, search?: string, page?: number) {
+      const params = new URLSearchParams()
+      if (search) params.set('search', search)
+      if (page) params.set('page', String(page))
+      return apiFetch<{ tasks: TaskDto[]; total: number }>(`/projects/${projectId}/archived-tasks?${params}`, { token })
+    },
     getHistory(token: string, projectId: string, taskId: string) {
       return apiFetch<TaskHistoryDto[]>(
         `/projects/${projectId}/tasks/${taskId}/history`,

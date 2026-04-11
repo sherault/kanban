@@ -12,13 +12,14 @@ import {
 } from '@dnd-kit/core'
 import type { TaskDto, MembershipDto } from '@kanban/shared'
 import { Column } from '@kanban/shared'
-import { moveTaskAction } from '@/actions/tasks'
+import { moveTaskAction, archiveTasksAction } from '@/actions/tasks'
 import { useProjectSocket } from '@/hooks/useProjectSocket'
 import { TaskCard } from './TaskCard'
 import { BoardColumn } from './BoardColumn'
 import { NewTaskModal } from './NewTaskModal'
 import { TaskDetailSidebar } from './TaskDetailSidebar'
 import { CsvImportModal } from './CsvImportModal'
+import { ArchivePanel } from './ArchivePanel'
 
 const COLUMNS: { id: Column; label: string }[] = [
   { id: Column.IDEAS, label: 'Ideas' },
@@ -44,6 +45,8 @@ export function BoardClient({ initialTasks, orgMembers, projectId, orgId, curren
   const [ideasCollapsed, setIdeasCollapsed] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [sidebarRevision, setSidebarRevision] = useState(0)
+  const [selectedDoneIds, setSelectedDoneIds] = useState<Set<string>>(new Set())
+  const [archiving, setArchiving] = useState(false)
   const [, startTransition] = useTransition()
 
   // Stable ref to selectedTaskId for WS callbacks
@@ -51,10 +54,6 @@ export function BoardClient({ initialTasks, orgMembers, projectId, orgId, curren
   useEffect(() => {
     selectedTaskIdRef.current = selectedTaskId
   }, [selectedTaskId])
-
-  // Track task IDs added locally (from our own create action) so WS
-  // `task.created` broadcast for the same task doesn't duplicate it.
-  const pendingLocalTaskIds = useRef(new Set<string>())
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 8 } })
@@ -64,11 +63,6 @@ export function BoardClient({ initialTasks, orgMembers, projectId, orgId, curren
 
   const { isConnected } = useProjectSocket(projectId, {
     onTaskCreated(task) {
-      // Skip tasks we already added locally from our own Server Action
-      if (pendingLocalTaskIds.current.has(task.id)) {
-        pendingLocalTaskIds.current.delete(task.id)
-        return
-      }
       setTasks((prev) => (prev.some((t) => t.id === task.id) ? prev : [...prev, task]))
     },
     onTaskUpdated(task) {
@@ -89,6 +83,7 @@ export function BoardClient({ initialTasks, orgMembers, projectId, orgId, curren
     },
     onTaskDeleted(taskId) {
       setTasks((prev) => prev.filter((t) => t.id !== taskId))
+      setSelectedDoneIds((prev) => { const next = new Set(prev); next.delete(taskId); return next })
       if (selectedTaskIdRef.current === taskId) setSelectedTaskId(null)
     },
   })
@@ -146,12 +141,28 @@ export function BoardClient({ initialTasks, orgMembers, projectId, orgId, curren
     })
   }
 
+  // ── Archive ───────────────────────────────────────────────────────────────
+
+  async function handleArchiveSelected() {
+    if (selectedDoneIds.size === 0) return
+    setArchiving(true)
+    const ids = Array.from(selectedDoneIds)
+    const result = await archiveTasksAction(projectId, ids)
+    setArchiving(false)
+    if (result.error) {
+      setError(result.error)
+    } else {
+      setTasks((prev) => prev.filter((t) => !ids.includes(t.id)))
+      setSelectedDoneIds(new Set())
+    }
+  }
+
   // ── Render ────────────────────────────────────────────────────────────────
 
   return (
     <div className="flex h-full overflow-hidden">
       <DndContext sensors={sensors} onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
-        <div className="flex-1 flex flex-col overflow-hidden">
+        <div className="flex-1 flex flex-col overflow-hidden min-h-0">
           {/* Error banner */}
           {error && (
             <div className="mx-6 mt-4 bg-red-50 border border-red-200 text-red-700 text-sm rounded-md px-3 py-2 flex items-center justify-between shrink-0">
@@ -179,18 +190,38 @@ export function BoardClient({ initialTasks, orgMembers, projectId, orgId, curren
                 }
                 onTaskClick={(taskId) => setSelectedTaskId(taskId)}
                 onNewTask={() => setNewTaskColumn(id)}
+                selectable={id === Column.DONE}
+                selectedIds={id === Column.DONE ? selectedDoneIds : undefined}
+                onSelectionChange={id === Column.DONE ? (tid, sel) => {
+                  setSelectedDoneIds((prev) => {
+                    const next = new Set(prev)
+                    if (sel) next.add(tid); else next.delete(tid)
+                    return next
+                  })
+                } : undefined}
               />
             ))}
           </div>
 
           {/* Toolbar */}
           <div className="px-6 pb-3 flex items-center justify-between shrink-0">
-            <button
-              onClick={() => setShowImport(true)}
-              className="text-xs text-gray-500 hover:text-gray-700 border border-gray-200 rounded px-2 py-1 transition-colors"
-            >
-              Import CSV
-            </button>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => setShowImport(true)}
+                className="text-xs text-gray-500 hover:text-gray-700 border border-gray-200 rounded px-2 py-1 transition-colors"
+              >
+                Import CSV
+              </button>
+              {selectedDoneIds.size > 0 && (
+                <button
+                  onClick={() => void handleArchiveSelected()}
+                  disabled={archiving}
+                  className="text-xs text-white bg-amber-500 hover:bg-amber-600 disabled:opacity-50 rounded px-2 py-1 transition-colors"
+                >
+                  {archiving ? 'Archiving...' : `Archive ${selectedDoneIds.size} task${selectedDoneIds.size > 1 ? 's' : ''}`}
+                </button>
+              )}
+            </div>
             {/* Connection status indicator */}
             <div className="flex items-center gap-1.5">
               <span
@@ -201,6 +232,14 @@ export function BoardClient({ initialTasks, orgMembers, projectId, orgId, curren
               </span>
             </div>
           </div>
+
+          {/* Archive panel */}
+          <ArchivePanel
+            projectId={projectId}
+            onRestored={(task) => {
+              setTasks((prev) => prev.some((t) => t.id === task.id) ? prev : [...prev, task])
+            }}
+          />
         </div>
 
         <DragOverlay>
@@ -241,10 +280,7 @@ export function BoardClient({ initialTasks, orgMembers, projectId, orgId, curren
           orgMembers={orgMembers}
           onClose={() => setNewTaskColumn(null)}
           onCreated={(task) => {
-            // Register locally before adding to state, so the WS broadcast
-            // for this task (which arrives shortly after) is deduplicated.
-            pendingLocalTaskIds.current.add(task.id)
-            setTasks((prev) => [...prev, task])
+            setTasks((prev) => prev.some((t) => t.id === task.id) ? prev : [...prev, task])
             setNewTaskColumn(null)
           }}
         />
