@@ -136,7 +136,6 @@ export const api = {
         endDate: string;
         description?: string | null;
         objective?: string | null;
-        tags?: string[];
         backgroundColor?: string | null;
       },
     ) {

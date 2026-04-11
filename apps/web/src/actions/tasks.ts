@@ -27,16 +27,20 @@ export async function createTaskAction(
   const backgroundColor = bgRaw && bgRaw !== '#ffffff' ? bgRaw : null
 
   try {
-    const { data: task } = await api.tasks.create(token, projectId, {
+    let { data: task } = await api.tasks.create(token, projectId, {
       title,
       column,
       startDate,
       endDate,
       description,
       objective,
-      tags,
       backgroundColor,
     })
+    // Tags are managed separately — add each after creation
+    for (const tag of tags) {
+      const res = await api.tasks.addTag(token, projectId, task.id, tag)
+      task = res.data
+    }
     revalidatePath(`/orgs/${orgId}/projects/${projectId}`)
     return { task }
   } catch (e) {
