@@ -19,6 +19,7 @@
     "argon2": "^0.44.0",
     "better-sqlite3": "^11.1.2",
     "csv-parse": "^6.2.1",
+    "dotenv": "^17.4.1",
     "drizzle-orm": "^0.32.2",
     "hono": "^4.5.3",
     "jose": "^6.2.2",
