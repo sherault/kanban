@@ -14,6 +14,8 @@ interface Props {
   onTaskClick: (taskId: string) => void
   onNewTask: () => void
   onTagClick: (tag: string) => void
+  onObjectiveClick?: (objective: string) => void
+  onDoerClick?: (userId: string) => void
   selectable?: boolean
   selectedIds?: Set<string>
   onSelectionChange?: (id: string, selected: boolean) => void
@@ -35,6 +37,8 @@ export function BoardColumn({
   onTaskClick,
   onNewTask,
   onTagClick,
+  onObjectiveClick,
+  onDoerClick,
   selectable = false,
   selectedIds,
   onSelectionChange,
@@ -91,6 +95,8 @@ export function BoardColumn({
               selected={selectedIds?.has(task.id) ?? false}
               onSelectChange={(sel) => onSelectionChange?.(task.id, sel)}
               onTagClick={onTagClick}
+              onObjectiveClick={onObjectiveClick}
+              onDoerClick={onDoerClick}
             />
           ))}
 

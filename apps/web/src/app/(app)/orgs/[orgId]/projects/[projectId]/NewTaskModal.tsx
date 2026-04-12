@@ -5,6 +5,8 @@ import { useFormStatus } from 'react-dom'
 import { Column } from '@kanban/shared'
 import type { TaskDto, MembershipDto } from '@kanban/shared'
 import { createTaskAction } from '@/actions/tasks'
+import { ColorPicker } from './ColorPicker'
+import { DescriptionEditor } from './DescriptionEditor'
 
 function today() {
   return new Date().toISOString().split('T')[0]
@@ -33,15 +35,19 @@ interface Props {
   orgId: string
   initialColumn: Column
   orgMembers: MembershipDto[]
+  objectives: string[]
+  allTags: string[]
   onClose: () => void
   onCreated: (task: TaskDto) => void
 }
 
-export function NewTaskModal({ projectId, orgId, initialColumn, orgMembers, onClose, onCreated }: Props) {
+export function NewTaskModal({ projectId, orgId, initialColumn, orgMembers, objectives, allTags, onClose, onCreated }: Props) {
   const action = createTaskAction.bind(null, projectId, orgId)
   const [state, formAction] = useActionState(action, {})
   const [tags, setTags] = useState<string[]>([])
   const [tagInput, setTagInput] = useState('')
+  const [backgroundColor, setBackgroundColor] = useState<string | null>(null)
+  const [description, setDescription] = useState('')
 
   useEffect(() => {
     if (state.task) onCreated(state.task)
@@ -82,22 +88,31 @@ export function NewTaskModal({ projectId, orgId, initialColumn, orgMembers, onCl
 
           {/* Description */}
           <div>
-            <label htmlFor="description" className="block text-sm font-medium text-gray-700 mb-1">Description</label>
-            <textarea
-              id="description" name="description" rows={3}
+            <label className="block text-sm font-medium text-gray-700 mb-1">Description</label>
+            {description && <input type="hidden" name="description" value={description} />}
+            <DescriptionEditor
+              value={description}
+              onChange={setDescription}
+              onFocus={() => {}}
+              onBlur={() => {}}
               placeholder="Optional description…"
-              className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none"
             />
           </div>
 
           {/* Objective */}
           <div>
             <label htmlFor="objective" className="block text-sm font-medium text-gray-700 mb-1">Objective</label>
-            <textarea
-              id="objective" name="objective" rows={2}
+            <input
+              id="objective"
+              name="objective"
+              type="text"
+              list="new-task-objectives"
               placeholder="Optional objective…"
-              className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none"
+              className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
             />
+            <datalist id="new-task-objectives">
+              {objectives.map((o) => <option key={o} value={o} />)}
+            </datalist>
           </div>
 
           {/* Column */}
@@ -126,12 +141,25 @@ export function NewTaskModal({ projectId, orgId, initialColumn, orgMembers, onCl
                 </span>
               ))}
               <input
+                list="new-task-tags"
                 value={tagInput}
-                onChange={(e) => setTagInput(e.target.value)}
+                onChange={(e) => {
+                  const val = e.target.value
+                  const normalized = val.trim().toLowerCase()
+                  if (allTags.includes(normalized) && !tags.includes(normalized)) {
+                    setTags((prev) => [...prev, normalized])
+                    setTagInput('')
+                  } else {
+                    setTagInput(val)
+                  }
+                }}
                 onKeyDown={handleTagKey}
                 placeholder={tags.length === 0 ? 'Add tag, press Enter…' : ''}
                 className="flex-1 min-w-[120px] text-sm outline-none bg-transparent"
               />
+              <datalist id="new-task-tags">
+                {allTags.filter((t) => !tags.includes(t)).map((t) => <option key={t} value={t} />)}
+              </datalist>
             </div>
           </div>
 
@@ -152,9 +180,9 @@ export function NewTaskModal({ projectId, orgId, initialColumn, orgMembers, onCl
           {/* Background color + Reporter */}
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label htmlFor="backgroundColor" className="block text-sm font-medium text-gray-700 mb-1">Color</label>
-              <input id="backgroundColor" name="backgroundColor" type="color" defaultValue="#ffffff"
-                className="h-9 w-full cursor-pointer rounded-md border border-gray-300" />
+              <label className="block text-sm font-medium text-gray-700 mb-2">Color</label>
+              {backgroundColor && <input type="hidden" name="backgroundColor" value={backgroundColor} />}
+              <ColorPicker value={backgroundColor} onChange={setBackgroundColor} />
             </div>
             {orgMembers.length > 0 && (
               <div>

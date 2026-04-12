@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useCallback, useTransition } from 'react'
+import { useState, useEffect, useCallback, useTransition, useRef } from 'react'
 import type { TaskDto } from '@kanban/shared'
 import { restoreTaskAction } from '@/actions/tasks'
 
@@ -14,6 +14,7 @@ interface Props {
 
 export function ArchivePanel({ projectId, onRestored, onTaskClick }: Props) {
   const [open, setOpen] = useState(false)
+  const [panelHeight, setPanelHeight] = useState(320)
   const [search, setSearch] = useState('')
   const [dateFrom, setDateFrom] = useState('')
   const [dateTo, setDateTo] = useState('')
@@ -21,6 +22,26 @@ export function ArchivePanel({ projectId, onRestored, onTaskClick }: Props) {
   const [data, setData] = useState<{ tasks: TaskDto[]; total: number } | null>(null)
   const [loading, setLoading] = useState(false)
   const [isPending, startTransition] = useTransition()
+  const dragStartY = useRef<number>(0)
+  const dragStartHeight = useRef<number>(0)
+
+  const onResizeMouseDown = useCallback((e: React.MouseEvent) => {
+    e.preventDefault()
+    dragStartY.current = e.clientY
+    dragStartHeight.current = panelHeight
+
+    function onMouseMove(ev: MouseEvent) {
+      // Dragging up increases height (panel grows upward)
+      const delta = dragStartY.current - ev.clientY
+      setPanelHeight(Math.min(600, Math.max(120, dragStartHeight.current + delta)))
+    }
+    function onMouseUp() {
+      document.removeEventListener('mousemove', onMouseMove)
+      document.removeEventListener('mouseup', onMouseUp)
+    }
+    document.addEventListener('mousemove', onMouseMove)
+    document.addEventListener('mouseup', onMouseUp)
+  }, [panelHeight])
 
   const load = useCallback(async (s: string, p: number, from: string, to: string) => {
     setLoading(true)
@@ -84,7 +105,12 @@ export function ArchivePanel({ projectId, onRestored, onTaskClick }: Props) {
       </button>
 
       {open && (
-        <div className="border-t border-gray-100 max-h-80 flex flex-col">
+        <div className="border-t border-gray-100 flex flex-col relative" style={{ height: panelHeight }}>
+          {/* Drag handle */}
+          <div
+            onMouseDown={onResizeMouseDown}
+            className="absolute top-0 left-0 right-0 h-1 cursor-row-resize hover:bg-blue-200 transition-colors z-10"
+          />
           {/* Filters */}
           <div className="px-6 py-3 border-b border-gray-100 flex flex-col gap-2">
             <input

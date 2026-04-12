@@ -12,9 +12,11 @@ interface Props {
   selected?: boolean
   onSelectChange?: (selected: boolean) => void
   onTagClick?: (tag: string) => void
+  onObjectiveClick?: (objective: string) => void
+  onDoerClick?: (userId: string) => void
 }
 
-export function TaskCard({ task, onClick, overlay = false, selectable = false, selected = false, onSelectChange, onTagClick }: Props) {
+export function TaskCard({ task, onClick, overlay = false, selectable = false, selected = false, onSelectChange, onTagClick, onObjectiveClick, onDoerClick }: Props) {
   const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({
     id: task.id,
   })
@@ -73,15 +75,29 @@ export function TaskCard({ task, onClick, overlay = false, selectable = false, s
           </span>
         )}
         {initials && (
-          <span className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-blue-100 text-blue-700 text-xs font-semibold shrink-0">
+          <span
+            onClick={onDoerClick ? (e) => { e.stopPropagation(); onDoerClick(task.doer!.id) } : undefined}
+            className={`inline-flex items-center justify-center w-6 h-6 rounded-full bg-blue-100 text-blue-700 text-xs font-semibold shrink-0 ${onDoerClick ? 'cursor-pointer hover:bg-blue-200' : ''}`}
+            title={task.doer?.displayName}
+          >
             {initials}
           </span>
         )}
       </div>
 
+      {task.objective && (
+        <div
+          onClick={onObjectiveClick ? (e) => { e.stopPropagation(); onObjectiveClick(task.objective!) } : undefined}
+          className={`text-xs text-gray-400 italic mt-1.5 line-clamp-1 ${onObjectiveClick ? 'cursor-pointer hover:text-purple-600' : ''}`}
+          title={task.objective}
+        >
+          {task.objective}
+        </div>
+      )}
+
       {task.tags.length > 0 && (
-        <div className="flex flex-wrap gap-1 mt-2">
-          {task.tags.slice(0, 3).map((tag) => (
+        <div className="flex flex-wrap gap-1 mt-1.5">
+          {task.tags.map((tag) => (
             <span
               key={tag}
               onClick={onTagClick ? (e) => { e.stopPropagation(); onTagClick(tag) } : undefined}
@@ -90,9 +106,6 @@ export function TaskCard({ task, onClick, overlay = false, selectable = false, s
               {tag}
             </span>
           ))}
-          {task.tags.length > 3 && (
-            <span className="text-xs text-gray-400">+{task.tags.length - 3}</span>
-          )}
         </div>
       )}
     </div>

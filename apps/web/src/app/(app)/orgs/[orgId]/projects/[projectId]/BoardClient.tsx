@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useTransition, useRef, useEffect } from 'react'
+import { useState, useTransition, useRef, useEffect, useMemo } from 'react'
 import {
   DndContext,
   type DragEndEvent,
@@ -48,7 +48,21 @@ export function BoardClient({ initialTasks, orgMembers, projectId, orgId, curren
   const [selectedDoneIds, setSelectedDoneIds] = useState<Set<string>>(new Set())
   const [archiving, setArchiving] = useState(false)
   const [activeTag, setActiveTag] = useState<string | null>(null)
+  const [activeObjective, setActiveObjective] = useState<string | null>(null)
+  const [activeDoerId, setActiveDoerId] = useState<string | null>(null)
   const [selectedArchivedTask, setSelectedArchivedTask] = useState<TaskDto | null>(null)
+
+  const objectives = useMemo(
+    () => [...new Set(tasks.flatMap((t) => (t.objective ? [t.objective] : [])))],
+    [tasks]
+  )
+  const allTags = useMemo(
+    () => [...new Set(tasks.flatMap((t) => t.tags))],
+    [tasks]
+  )
+  const activeDoerName = activeDoerId
+    ? (tasks.find((t) => t.doer?.id === activeDoerId)?.doer?.displayName ?? activeDoerId)
+    : null
   const [, startTransition] = useTransition()
 
   // Stable ref to selectedTaskId for WS callbacks
@@ -179,20 +193,36 @@ export function BoardClient({ initialTasks, orgMembers, projectId, orgId, curren
             </div>
           )}
 
-          {/* Tag filter bar */}
-          {activeTag && (
-            <div className="mx-6 mt-4 flex items-center gap-2 shrink-0">
-              <span className="text-xs text-gray-500">Filtered by tag:</span>
-              <span className="inline-flex items-center gap-1.5 text-xs bg-blue-100 text-blue-700 font-medium px-2 py-1 rounded-full">
-                {activeTag}
+          {/* Active filter chips */}
+          {(activeTag || activeObjective || activeDoerId) && (
+            <div className="mx-6 mt-4 flex items-center gap-2 shrink-0 flex-wrap">
+              <span className="text-xs text-gray-400">Filters:</span>
+              {activeTag && (
+                <span className="inline-flex items-center gap-1 text-xs bg-blue-100 text-blue-700 font-medium px-2 py-0.5 rounded-full">
+                  #{activeTag}
+                  <button onClick={() => setActiveTag(null)} className="text-blue-500 hover:text-blue-800 leading-none ml-0.5">×</button>
+                </span>
+              )}
+              {activeObjective && (
+                <span className="inline-flex items-center gap-1 text-xs bg-purple-100 text-purple-700 font-medium px-2 py-0.5 rounded-full">
+                  {activeObjective}
+                  <button onClick={() => setActiveObjective(null)} className="text-purple-500 hover:text-purple-800 leading-none ml-0.5">×</button>
+                </span>
+              )}
+              {activeDoerName && (
+                <span className="inline-flex items-center gap-1 text-xs bg-green-100 text-green-700 font-medium px-2 py-0.5 rounded-full">
+                  {activeDoerName}
+                  <button onClick={() => setActiveDoerId(null)} className="text-green-500 hover:text-green-800 leading-none ml-0.5">×</button>
+                </span>
+              )}
+              {[activeTag, activeObjective, activeDoerId].filter(Boolean).length > 1 && (
                 <button
-                  onClick={() => setActiveTag(null)}
-                  className="text-blue-500 hover:text-blue-800 leading-none"
-                  aria-label="Clear tag filter"
+                  onClick={() => { setActiveTag(null); setActiveObjective(null); setActiveDoerId(null) }}
+                  className="text-xs text-gray-400 hover:text-gray-600 underline underline-offset-2 ml-1"
                 >
-                  ×
+                  Clear all
                 </button>
-              </span>
+              )}
             </div>
           )}
 
@@ -200,7 +230,10 @@ export function BoardClient({ initialTasks, orgMembers, projectId, orgId, curren
           <div className="flex gap-4 p-6 overflow-x-auto flex-1 items-start">
             {COLUMNS.map(({ id, label }) => {
               const columnTasks = tasks.filter((t) =>
-                t.column === id && (!activeTag || t.tags.includes(activeTag))
+                t.column === id
+                && (!activeTag || t.tags.includes(activeTag))
+                && (!activeObjective || t.objective === activeObjective)
+                && (!activeDoerId || t.doer?.id === activeDoerId)
               )
               return (
                 <BoardColumn
@@ -215,6 +248,8 @@ export function BoardClient({ initialTasks, orgMembers, projectId, orgId, curren
                   onTaskClick={(taskId) => { setSelectedArchivedTask(null); setSelectedTaskId(taskId) }}
                   onNewTask={() => setNewTaskColumn(id)}
                   onTagClick={(tag) => setActiveTag(tag)}
+                  onObjectiveClick={(obj) => setActiveObjective(obj)}
+                  onDoerClick={(userId) => setActiveDoerId(userId)}
                   selectable={id === Column.DONE}
                   selectedIds={id === Column.DONE ? selectedDoneIds : undefined}
                   onSelectionChange={id === Column.DONE ? (tid, sel) => {
@@ -285,6 +320,8 @@ export function BoardClient({ initialTasks, orgMembers, projectId, orgId, curren
           orgMembers={orgMembers}
           projectId={projectId}
           revision={sidebarRevision}
+          objectives={objectives}
+          allTags={allTags}
           onClose={() => { setSelectedTaskId(null); setSelectedArchivedTask(null) }}
           onUpdated={(updated) => {
             setTasks((prev) => prev.map((t) => (t.id === updated.id ? updated : t)))
@@ -312,6 +349,8 @@ export function BoardClient({ initialTasks, orgMembers, projectId, orgId, curren
           orgId={orgId}
           initialColumn={newTaskColumn}
           orgMembers={orgMembers}
+          objectives={objectives}
+          allTags={allTags}
           onClose={() => setNewTaskColumn(null)}
           onCreated={(task) => {
             setTasks((prev) => prev.some((t) => t.id === task.id) ? prev : [...prev, task])
