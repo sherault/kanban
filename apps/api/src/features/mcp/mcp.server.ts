@@ -126,7 +126,7 @@ export function createMcpServer(
     {
       taskId: z.string().describe('Task ID'),
       title: z.string().min(1).max(500).optional().describe('New title'),
-      description: z.string().nullable().optional().describe('New description (null to clear)'),
+      description: z.string().nullable().optional().describe('New description in Markdown (null to clear). Supports GFM: **bold**, *italic*, `code`, ## headings, - lists, ```code blocks```'),
       objective: z.string().nullable().optional().describe('New objective (null to clear)'),
       startDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional().describe('New start date'),
       endDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional().describe('New end date'),
