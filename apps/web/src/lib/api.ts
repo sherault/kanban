@@ -118,6 +118,19 @@ export const api = {
         token,
       });
     },
+    transferOwnership(token: string, orgId: string, toUserId: string) {
+      return apiFetch<{ success: true }>(`/organizations/${orgId}/transfer`, {
+        method: "POST",
+        body: JSON.stringify({ toUserId }),
+        token,
+      });
+    },
+    delete(token: string, orgId: string) {
+      return apiFetch<{ success: true }>(`/organizations/${orgId}`, {
+        method: "DELETE",
+        token,
+      });
+    },
   },
 
   projects: {

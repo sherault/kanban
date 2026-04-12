@@ -36,6 +36,32 @@ export async function removeMemberAction(
   }
 }
 
+export async function transferOwnershipAction(
+  orgId: string,
+  toUserId: string
+): Promise<{ error?: string }> {
+  const token = await getAccessToken()
+  if (!token) redirect('/login')
+  try {
+    await api.orgs.transferOwnership(token, orgId, toUserId)
+    revalidatePath(`/orgs/${orgId}/settings`)
+    return {}
+  } catch (e) {
+    return { error: e instanceof ApiError ? e.message : 'Failed to transfer ownership' }
+  }
+}
+
+export async function deleteOrgAction(orgId: string): Promise<{ error?: string }> {
+  const token = await getAccessToken()
+  if (!token) redirect('/login')
+  try {
+    await api.orgs.delete(token, orgId)
+  } catch (e) {
+    return { error: e instanceof ApiError ? e.message : 'Failed to delete organization' }
+  }
+  redirect('/orgs')
+}
+
 export async function createOrgAction(
   _prev: { error?: string },
   formData: FormData

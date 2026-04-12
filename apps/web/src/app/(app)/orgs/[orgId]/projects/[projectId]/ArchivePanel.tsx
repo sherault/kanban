@@ -91,7 +91,18 @@ export function ArchivePanel({ projectId, onRestored, onTaskClick }: Props) {
   const totalPages = data ? Math.ceil(data.total / PAGE_SIZE) : 1
 
   return (
-    <div className="border-t border-gray-200 bg-white shrink-0">
+    <div className="bg-white shrink-0 relative">
+      {/* Drag handle — sits on top border, only active when open */}
+      {open && (
+        <div
+          onMouseDown={onResizeMouseDown}
+          className="absolute top-0 left-0 right-0 h-2 cursor-row-resize z-20 flex items-center justify-center group"
+          title="Drag to resize"
+        >
+          <div className="w-10 h-1 rounded-full bg-gray-300 group-hover:bg-blue-400 transition-colors" />
+        </div>
+      )}
+      <div className="border-t border-gray-200" />
       {/* Toggle */}
       <button
         onClick={() => setOpen(v => !v)}
@@ -105,12 +116,7 @@ export function ArchivePanel({ projectId, onRestored, onTaskClick }: Props) {
       </button>
 
       {open && (
-        <div className="border-t border-gray-100 flex flex-col relative" style={{ height: panelHeight }}>
-          {/* Drag handle */}
-          <div
-            onMouseDown={onResizeMouseDown}
-            className="absolute top-0 left-0 right-0 h-1 cursor-row-resize hover:bg-blue-200 transition-colors z-10"
-          />
+        <div className="border-t border-gray-100 flex flex-col" style={{ height: panelHeight }}>
           {/* Filters */}
           <div className="px-6 py-3 border-b border-gray-100 flex flex-col gap-2">
             <input
