@@ -1,7 +1,6 @@
 import { describe, it, expect, beforeAll } from 'vitest'
-import { createTestDb } from '../../db/test-utils.js'
+import { createTestDb, loginTestUser } from '../../db/test-utils.js'
 import { createApp } from '../../app.js'
-import { IdentityService } from '../../features/identity/identity.service.js'
 
 beforeAll(() => {
   process.env['JWT_SECRET'] = 'test-jwt-secret-must-be-at-least-32-chars!!'
@@ -11,12 +10,7 @@ beforeAll(() => {
 async function setup() {
   const testDb = createTestDb()
   const app = createApp(testDb.db)
-  const idSvc = new IdentityService(testDb.db)
-
-  // Create a user and get their access token
-  await idSvc.register({ email: 'alice@example.com', password: 'password123', displayName: 'Alice' })
-  const { accessToken } = await idSvc.login({ email: 'alice@example.com', password: 'password123' })
-
+  const { accessToken } = await loginTestUser(app, testDb.db, { email: 'alice@example.com', password: 'password123', displayName: 'Alice' })
   return { app, accessToken, close: testDb.close }
 }
 

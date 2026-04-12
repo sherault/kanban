@@ -1,7 +1,6 @@
 import { describe, it, expect, beforeAll } from 'vitest'
-import { createTestDb } from '../../db/test-utils.js'
+import { createTestDb, loginTestUser } from '../../db/test-utils.js'
 import { createApp } from '../../app.js'
-import { IdentityService } from '../../features/identity/identity.service.js'
 import { OrganizationService } from '../../features/organization/organization.service.js'
 
 beforeAll(() => {
@@ -12,15 +11,9 @@ beforeAll(() => {
 async function setup() {
   const testDb = createTestDb()
   const app = createApp(testDb.db)
-  const idSvc = new IdentityService(testDb.db)
   const orgSvc = new OrganizationService(testDb.db)
 
-  await idSvc.register({ email: 'owner@example.com', password: 'password123', displayName: 'Owner' })
-  const { accessToken } = await idSvc.login({ email: 'owner@example.com', password: 'password123' })
-
-  // Get owner userId from the token (decode without verify to get sub)
-  const payload = JSON.parse(Buffer.from(accessToken.split('.')[1]!, 'base64url').toString())
-  const userId: string = payload.sub
+  const { accessToken, userId } = await loginTestUser(app, testDb.db, { email: 'owner@example.com', password: 'password123', displayName: 'Owner' })
 
   const org = orgSvc.createOrg(userId, { name: 'Acme' })
 

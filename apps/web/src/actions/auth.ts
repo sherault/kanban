@@ -11,23 +11,31 @@ import {
 } from '../lib/session'
 
 export async function loginAction(
-  _prev: { error?: string },
+  _prev: { error?: string; totpRequired?: boolean; email?: string; password?: string },
   formData: FormData
-): Promise<{ error?: string }> {
+): Promise<{ error?: string; totpRequired?: boolean; email?: string; password?: string }> {
   const email = formData.get('email') as string
   const password = formData.get('password') as string
-
-  let accessToken: string
-  let displayName: string
-  let refreshToken: string | undefined
+  const totpCode = (formData.get('totpCode') as string | null) ?? undefined
 
   try {
-    const { data, headers } = await api.auth.login({ email, password })
-    accessToken = data.accessToken
-    displayName = data.user.displayName
-    refreshToken = extractRefreshToken(headers.get('set-cookie'))
+    const { data, headers } = await api.auth.login({ email, password, totpCode })
+
+    if ('totpRequired' in data) {
+      return { totpRequired: true, email, password }
+    }
+
+    const accessToken = data.accessToken
+    const displayName = data.user.displayName
+    const refreshToken = extractRefreshToken(headers.get('set-cookie'))
     await setTokens(accessToken, displayName, refreshToken, data.user.id)
   } catch (e) {
+    if (e instanceof ApiError && e.status === 401) {
+      const msg = e.message
+      // Pass back email/password so the TOTP step can re-submit them
+      if (totpCode) return { error: msg, totpRequired: true, email, password }
+      return { error: msg }
+    }
     return { error: e instanceof ApiError ? e.message : 'Login failed' }
   }
   redirect('/orgs')
@@ -47,7 +55,7 @@ export async function registerAction(
     return { error: e instanceof ApiError ? e.message : 'Registration failed' }
   }
 
-  redirect('/login')
+  redirect('/register/check-email')
 }
 
 export async function logoutAction(): Promise<void> {

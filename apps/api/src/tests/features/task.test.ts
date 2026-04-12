@@ -1,7 +1,6 @@
 import { describe, it, expect, beforeAll } from 'vitest'
-import { createTestDb } from '../../db/test-utils.js'
+import { createTestDb, loginTestUser } from '../../db/test-utils.js'
 import { createApp } from '../../app.js'
-import { IdentityService } from '../../features/identity/identity.service.js'
 
 beforeAll(() => {
   process.env['JWT_SECRET'] = 'test-jwt-secret-must-be-at-least-32-chars!!'
@@ -11,17 +10,7 @@ beforeAll(() => {
 async function setup() {
   const testDb = createTestDb()
   const app = createApp(testDb.db)
-  const idSvc = new IdentityService(testDb.db)
-
-  await idSvc.register({ email: 'alice@example.com', password: 'password123', displayName: 'Alice' })
-
-  // Get token via HTTP
-  const loginRes = await app.request('/auth/login', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ email: 'alice@example.com', password: 'password123' }),
-  })
-  const { accessToken: token } = (await loginRes.json()) as { accessToken: string }
+  const { accessToken: token } = await loginTestUser(app, testDb.db, { email: 'alice@example.com', password: 'password123', displayName: 'Alice' })
 
   // Create org + project via API
   const orgRes = await app.request('/organizations', {
@@ -38,7 +27,7 @@ async function setup() {
   })
   const { id: projectId } = (await projRes.json()) as { id: string }
 
-  return { app, token, orgId, projectId, close: testDb.close }
+  return { app, db: testDb.db, token, orgId, projectId, close: testDb.close }
 }
 
 function auth(token: string) {
@@ -79,19 +68,9 @@ describe('POST /projects/:projectId/tasks', () => {
   })
 
   it('returns 403 for non-member', async () => {
-    const { app, projectId, close } = await setup()
-    // Register Bob who is not in the project's org
-    await app.request('/auth/register', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email: 'bob@example.com', password: 'password123', displayName: 'Bob' }),
-    })
-    const loginRes = await app.request('/auth/login', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email: 'bob@example.com', password: 'password123' }),
-    })
-    const { accessToken: bobToken } = (await loginRes.json()) as { accessToken: string }
+    const { app, db, projectId, close } = await setup()
+    // Create Bob who is not in the project's org
+    const { accessToken: bobToken } = await loginTestUser(app, db, { email: 'bob@example.com', password: 'password123', displayName: 'Bob' })
     const res = await app.request(`/projects/${projectId}/tasks`, {
       method: 'POST',
       headers: { ...auth(bobToken), 'Content-Type': 'application/json' },
@@ -104,18 +83,8 @@ describe('POST /projects/:projectId/tasks', () => {
 
 describe('GET /projects/:projectId/tasks', () => {
   it('returns 403 for non-member', async () => {
-    const { app, projectId, close } = await setup()
-    await app.request('/auth/register', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email: 'bob@example.com', password: 'password123', displayName: 'Bob' }),
-    })
-    const loginRes = await app.request('/auth/login', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email: 'bob@example.com', password: 'password123' }),
-    })
-    const { accessToken: bobToken } = (await loginRes.json()) as { accessToken: string }
+    const { app, db, projectId, close } = await setup()
+    const { accessToken: bobToken } = await loginTestUser(app, db, { email: 'bob@example.com', password: 'password123', displayName: 'Bob' })
     const res = await app.request(`/projects/${projectId}/tasks`, {
       headers: { Authorization: `Bearer ${bobToken}` },
     })

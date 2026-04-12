@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeAll } from 'vitest'
-import { createTestDb } from '../../db/test-utils.js'
+import { createTestDb, createVerifiedUser } from '../../db/test-utils.js'
 import { IdentityService } from '../../features/identity/identity.service.js'
 
 beforeAll(() => {
@@ -37,7 +37,7 @@ describe('IdentityService.login', () => {
   it('returns accessToken, refreshToken, and UserDto on valid credentials', async () => {
     const { db, close } = createTestDb()
     const svc = new IdentityService(db)
-    await svc.register({ email: 'bob@example.com', password: 'secret', displayName: 'Bob' })
+    await createVerifiedUser(db, { email: 'bob@example.com', password: 'secret', displayName: 'Bob' })
     const result = await svc.login({ email: 'bob@example.com', password: 'secret' })
     expect(typeof result.accessToken).toBe('string')
     expect(typeof result.refreshToken).toBe('string')
@@ -48,7 +48,7 @@ describe('IdentityService.login', () => {
   it('throws 401 for wrong password', async () => {
     const { db, close } = createTestDb()
     const svc = new IdentityService(db)
-    await svc.register({ email: 'bob@example.com', password: 'secret', displayName: 'Bob' })
+    await createVerifiedUser(db, { email: 'bob@example.com', password: 'secret', displayName: 'Bob' })
     await expect(
       svc.login({ email: 'bob@example.com', password: 'wrongpass' })
     ).rejects.toMatchObject({ status: 401 })
@@ -69,7 +69,7 @@ describe('IdentityService.refresh', () => {
   it('returns new accessToken and rotated refreshToken', async () => {
     const { db, close } = createTestDb()
     const svc = new IdentityService(db)
-    await svc.register({ email: 'carol@example.com', password: 'pw', displayName: 'Carol' })
+    await createVerifiedUser(db, { email: 'carol@example.com', password: 'pw', displayName: 'Carol' })
     const { refreshToken: rt1 } = await svc.login({ email: 'carol@example.com', password: 'pw' })
     const result = await svc.refresh(rt1)
     expect(typeof result.accessToken).toBe('string')
@@ -80,7 +80,7 @@ describe('IdentityService.refresh', () => {
   it('invalidates the old refresh token after rotation', async () => {
     const { db, close } = createTestDb()
     const svc = new IdentityService(db)
-    await svc.register({ email: 'carol@example.com', password: 'pw', displayName: 'Carol' })
+    await createVerifiedUser(db, { email: 'carol@example.com', password: 'pw', displayName: 'Carol' })
     const { refreshToken: rt1 } = await svc.login({ email: 'carol@example.com', password: 'pw' })
     await svc.refresh(rt1)
     await expect(svc.refresh(rt1)).rejects.toMatchObject({ status: 401 })
@@ -92,7 +92,7 @@ describe('IdentityService.logout', () => {
   it('invalidates the refresh token so refresh fails', async () => {
     const { db, close } = createTestDb()
     const svc = new IdentityService(db)
-    await svc.register({ email: 'dave@example.com', password: 'pw', displayName: 'Dave' })
+    await createVerifiedUser(db, { email: 'dave@example.com', password: 'pw', displayName: 'Dave' })
     const { refreshToken } = await svc.login({ email: 'dave@example.com', password: 'pw' })
     await svc.logout(refreshToken)
     await expect(svc.refresh(refreshToken)).rejects.toMatchObject({ status: 401 })

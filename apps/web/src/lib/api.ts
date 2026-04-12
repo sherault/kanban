@@ -62,10 +62,42 @@ export const api = {
         body: JSON.stringify(body),
       });
     },
-    login(body: { email: string; password: string }) {
-      return apiFetch<{ user: UserDto; accessToken: string }>("/auth/login", {
+    login(body: { email: string; password: string; totpCode?: string }) {
+      return apiFetch<{ user: UserDto; accessToken: string } | { totpRequired: true }>("/auth/login", {
         method: "POST",
         body: JSON.stringify(body),
+      });
+    },
+    verifyEmail(token: string) {
+      return apiFetch<{ success: true }>(`/auth/verify-email?token=${encodeURIComponent(token)}`);
+    },
+    resendVerification(token: string) {
+      return apiFetch<{ success: true }>("/auth/resend-verification", {
+        method: "POST",
+        token,
+      });
+    },
+    me(token: string) {
+      return apiFetch<UserDto>("/auth/me", { token });
+    },
+    setupTotp(token: string) {
+      return apiFetch<{ secret: string; uri: string; qrCode: string }>("/auth/totp/setup", {
+        method: "POST",
+        token,
+      });
+    },
+    enableTotp(token: string, code: string) {
+      return apiFetch<{ success: true }>("/auth/totp/enable", {
+        method: "POST",
+        body: JSON.stringify({ code }),
+        token,
+      });
+    },
+    disableTotp(token: string, code: string) {
+      return apiFetch<{ success: true }>("/auth/totp", {
+        method: "DELETE",
+        body: JSON.stringify({ code }),
+        token,
       });
     },
     refresh(refreshToken: string) {

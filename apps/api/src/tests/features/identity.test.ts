@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeAll } from 'vitest'
-import { createTestDb } from '../../db/test-utils.js'
+import { createTestDb, createVerifiedUser, loginTestUser } from '../../db/test-utils.js'
 import { createApp } from '../../app.js'
 
 beforeAll(() => {
@@ -10,7 +10,7 @@ beforeAll(() => {
 function setup() {
   const testDb = createTestDb()
   const app = createApp(testDb.db)
-  return { app, close: testDb.close }
+  return { app, db: testDb.db, close: testDb.close }
 }
 
 const REGISTER_PAYLOAD = {
@@ -68,12 +68,8 @@ describe('POST /auth/register', () => {
 
 describe('POST /auth/login', () => {
   it('returns accessToken and sets refresh_token cookie', async () => {
-    const { app, close } = setup()
-    await app.request('/auth/register', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(REGISTER_PAYLOAD),
-    })
+    const { app, db, close } = setup()
+    await createVerifiedUser(db, { email: 'alice@example.com', password: 'password123', displayName: 'Alice' })
     const res = await app.request('/auth/login', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -90,6 +86,18 @@ describe('POST /auth/login', () => {
   })
 
   it('returns 401 for wrong password', async () => {
+    const { app, db, close } = setup()
+    await createVerifiedUser(db, { email: 'alice@example.com', password: 'password123', displayName: 'Alice' })
+    const res = await app.request('/auth/login', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email: 'alice@example.com', password: 'wrongpassword' }),
+    })
+    expect(res.status).toBe(401)
+    close()
+  })
+
+  it('returns 403 for unverified user', async () => {
     const { app, close } = setup()
     await app.request('/auth/register', {
       method: 'POST',
@@ -99,27 +107,17 @@ describe('POST /auth/login', () => {
     const res = await app.request('/auth/login', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email: 'alice@example.com', password: 'wrongpassword' }),
+      body: JSON.stringify({ email: 'alice@example.com', password: 'password123' }),
     })
-    expect(res.status).toBe(401)
+    expect(res.status).toBe(403)
     close()
   })
 })
 
 describe('POST /auth/refresh', () => {
   it('issues a new accessToken given a valid refresh cookie', async () => {
-    const { app, close } = setup()
-    await app.request('/auth/register', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(REGISTER_PAYLOAD),
-    })
-    const loginRes = await app.request('/auth/login', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email: 'alice@example.com', password: 'password123' }),
-    })
-    const cookieHeader = loginRes.headers.get('set-cookie') ?? ''
+    const { app, db, close } = setup()
+    const { cookieHeader } = await loginTestUser(app, db, { email: 'alice@example.com', password: 'password123', displayName: 'Alice' })
     const match = /refresh_token=([^;]+)/.exec(cookieHeader)
     const rawToken = match?.[1] ?? ''
 

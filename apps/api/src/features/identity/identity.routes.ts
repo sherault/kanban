@@ -3,7 +3,8 @@ import { zValidator } from '@hono/zod-validator'
 import { z } from 'zod'
 import { setCookie, getCookie, deleteCookie } from 'hono/cookie'
 import type { AppDb, HonoEnv } from '../../types.js'
-import { IdentityService } from './identity.service.js'
+import { authnMiddleware } from '../../middleware/authn.js'
+import { IdentityService, TotpRequiredError } from './identity.service.js'
 
 const COOKIE_NAME = 'refresh_token'
 const COOKIE_MAX_AGE = 7 * 24 * 60 * 60 // 7 days in seconds
@@ -17,11 +18,18 @@ const registerSchema = z.object({
 const loginSchema = z.object({
   email: z.string().email(),
   password: z.string().min(1),
+  totpCode: z.string().optional(),
+})
+
+const totpCodeSchema = z.object({
+  code: z.string().length(6),
 })
 
 export function identityRoutes(db: AppDb): Hono<HonoEnv> {
   const router = new Hono<HonoEnv>()
   const svc = new IdentityService(db)
+
+  // ── Public ─────────────────────────────────────────────────────────────────
 
   router.post('/register', zValidator('json', registerSchema), async (c) => {
     const body = c.req.valid('json')
@@ -31,15 +39,22 @@ export function identityRoutes(db: AppDb): Hono<HonoEnv> {
 
   router.post('/login', zValidator('json', loginSchema), async (c) => {
     const body = c.req.valid('json')
-    const result = await svc.login(body)
-    setCookie(c, COOKIE_NAME, result.refreshToken, {
-      httpOnly: true,
-      sameSite: 'Strict',
-      secure: process.env['NODE_ENV'] === 'production',
-      path: '/',
-      maxAge: COOKIE_MAX_AGE,
-    })
-    return c.json({ user: result.user, accessToken: result.accessToken })
+    try {
+      const result = await svc.login(body)
+      setCookie(c, COOKIE_NAME, result.refreshToken, {
+        httpOnly: true,
+        sameSite: 'Strict',
+        secure: process.env['NODE_ENV'] === 'production',
+        path: '/',
+        maxAge: COOKIE_MAX_AGE,
+      })
+      return c.json({ user: result.user, accessToken: result.accessToken })
+    } catch (err) {
+      if (err instanceof TotpRequiredError) {
+        return c.json({ totpRequired: true }, 401)
+      }
+      throw err
+    }
   })
 
   router.post('/refresh', async (c) => {
@@ -60,6 +75,41 @@ export function identityRoutes(db: AppDb): Hono<HonoEnv> {
     const rawToken = getCookie(c, COOKIE_NAME)
     if (rawToken) await svc.logout(rawToken)
     deleteCookie(c, COOKIE_NAME, { path: '/' })
+    return c.json({ success: true })
+  })
+
+  router.get('/verify-email', async (c) => {
+    const token = c.req.query('token')
+    if (!token) return c.json({ error: 'Missing token' }, 400)
+    await svc.verifyEmail(token)
+    return c.json({ success: true })
+  })
+
+  // ── Authenticated ──────────────────────────────────────────────────────────
+
+  router.use('/me', authnMiddleware)
+  router.get('/me', (c) => c.json(svc.getUser(c.get('userId'))))
+
+  router.use('/resend-verification', authnMiddleware)
+  router.post('/resend-verification', async (c) => {
+    await svc.resendVerification(c.get('userId'))
+    return c.json({ success: true })
+  })
+
+  router.use('/totp/*', authnMiddleware)
+
+  router.post('/totp/setup', async (c) => {
+    const result = await svc.setupTotp(c.get('userId'))
+    return c.json(result)
+  })
+
+  router.post('/totp/enable', zValidator('json', totpCodeSchema), (c) => {
+    svc.enableTotp(c.get('userId'), c.req.valid('json').code)
+    return c.json({ success: true })
+  })
+
+  router.delete('/totp', zValidator('json', totpCodeSchema), (c) => {
+    svc.disableTotp(c.get('userId'), c.req.valid('json').code)
     return c.json({ success: true })
   })
 

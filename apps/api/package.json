@@ -23,17 +23,22 @@
     "drizzle-orm": "^0.32.2",
     "hono": "^4.5.3",
     "jose": "^6.2.2",
+    "nodemailer": "^8.0.5",
+    "otplib": "^13.4.0",
+    "qrcode": "^1.5.4",
     "zod": "^4.3.6"
   },
   "devDependencies": {
     "@kanban/eslint-config": "workspace:*",
     "@types/better-sqlite3": "^7.6.11",
     "@types/node": "^20.16.1",
-    "@vitest/coverage-v8": "^1.6.0",
+    "@types/nodemailer": "^8.0.0",
+    "@types/qrcode": "^1.5.6",
+    "@vitest/coverage-v8": "^3.2.4",
     "drizzle-kit": "^0.23.2",
     "eslint": "^9.9.0",
     "tsx": "^4.17.0",
     "typescript": "^5.5.4",
-    "vitest": "^1.6.0"
+    "vitest": "^3.2.4"
   }
 }

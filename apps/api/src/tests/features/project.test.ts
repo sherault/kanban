@@ -1,8 +1,6 @@
 import { describe, it, expect, beforeAll } from 'vitest'
-import { createTestDb } from '../../db/test-utils.js'
+import { createTestDb, loginTestUser, createVerifiedUser } from '../../db/test-utils.js'
 import { createApp } from '../../app.js'
-import { IdentityService } from '../../features/identity/identity.service.js'
-import { OrganizationService } from '../../features/organization/organization.service.js'
 
 beforeAll(() => {
   process.env['JWT_SECRET'] = 'test-jwt-secret-must-be-at-least-32-chars!!'
@@ -12,11 +10,7 @@ beforeAll(() => {
 async function setup() {
   const testDb = createTestDb()
   const app = createApp(testDb.db)
-  const idSvc = new IdentityService(testDb.db)
-  const orgSvc = new OrganizationService(testDb.db)
-
-  await idSvc.register({ email: 'alice@example.com', password: 'password123', displayName: 'Alice' })
-  const { accessToken } = await idSvc.login({ email: 'alice@example.com', password: 'password123' })
+  const { accessToken } = await loginTestUser(app, testDb.db, { email: 'alice@example.com', password: 'password123', displayName: 'Alice' })
 
   // Create org as Alice via API
   const aliceOrgRes = await app.request('/organizations', {
@@ -26,7 +20,7 @@ async function setup() {
   })
   const aliceOrg = (await aliceOrgRes.json()) as { id: string }
 
-  return { app, accessToken, orgId: aliceOrg.id, close: testDb.close }
+  return { app, db: testDb.db, accessToken, orgId: aliceOrg.id, close: testDb.close }
 }
 
 function auth(token: string) {
@@ -106,20 +100,10 @@ describe('PATCH /organizations/:orgId/projects/:projectId', () => {
 
 describe('Authorization', () => {
   it('returns 403 when accessing another org as non-member', async () => {
-    const { app, orgId, close } = await setup()
+    const { app, db, orgId, close } = await setup()
 
-    // Register a second user who is not a member of orgId
-    await app.request('/auth/register', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email: 'bob@example.com', password: 'password123', displayName: 'Bob' }),
-    })
-    const loginRes = await app.request('/auth/login', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email: 'bob@example.com', password: 'password123' }),
-    })
-    const { accessToken: bobToken } = (await loginRes.json()) as { accessToken: string }
+    // Create a second user who is not a member of orgId
+    const { accessToken: bobToken } = await loginTestUser(app, db, { email: 'bob@example.com', password: 'password123', displayName: 'Bob' })
 
     const res = await app.request(`/organizations/${orgId}/projects`, {
       headers: { Authorization: `Bearer ${bobToken}` },

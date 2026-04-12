@@ -1,7 +1,6 @@
 import { describe, it, expect, beforeAll } from 'vitest'
-import { createTestDb } from '../../db/test-utils.js'
+import { createTestDb, loginTestUser } from '../../db/test-utils.js'
 import { createApp } from '../../app.js'
-import { IdentityService } from '../../features/identity/identity.service.js'
 
 beforeAll(() => {
   process.env['JWT_SECRET'] = 'test-jwt-secret-must-be-at-least-32-chars!!'
@@ -11,15 +10,7 @@ beforeAll(() => {
 async function setup() {
   const testDb = createTestDb()
   const app = createApp(testDb.db)
-  const idSvc = new IdentityService(testDb.db)
-
-  await idSvc.register({ email: 'alice@example.com', password: 'pass', displayName: 'Alice' })
-  const loginRes = await app.request('/auth/login', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ email: 'alice@example.com', password: 'pass' }),
-  })
-  const { accessToken: token } = (await loginRes.json()) as { accessToken: string }
+  const { accessToken: token } = await loginTestUser(app, testDb.db, { email: 'alice@example.com', password: 'pass', displayName: 'Alice' })
 
   const orgRes = await app.request('/organizations', {
     method: 'POST',
@@ -44,10 +35,7 @@ async function setup() {
     return (await res.json()) as { id: string; column: string; position: number; doer: null | { id: string } }
   }
 
-  // Get alice's userId
-  const { accessToken: tok2 } = await idSvc.login({ email: 'alice@example.com', password: 'pass' })
-  const profileRes = await app.request('/profile/api-keys', { headers: { Authorization: `Bearer ${token}` } })
-  // Use reporter id from a task instead
+  // Get alice's userId from a probe task reporter
   const t = await createTask('probe')
   const tRes = await app.request(`/projects/${projectId}/tasks/${t.id}`, { headers: { Authorization: `Bearer ${token}` } })
   const { reporter } = (await tRes.json()) as { reporter: { id: string } }
