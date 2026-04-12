@@ -21,13 +21,24 @@ export default async function ProfilePage() {
 
       <section>
         <h2 className="text-lg font-semibold text-gray-900 mb-1">MCP API Keys</h2>
-        <p className="text-sm text-gray-500 mb-4">
+        <p className="text-sm text-gray-500 mb-2">
           Use these keys to authenticate Claude (or other MCP clients) with your Kanban board.
-          Configure your client:
         </p>
+        <p className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-1">Streamable HTTP (recommended)</p>
+        <pre className="bg-gray-50 border border-gray-200 rounded-md px-4 py-3 text-xs font-mono text-gray-700 mb-3 overflow-x-auto">{`{
+  "mcpServers": {
+    "kanban": {
+      "type": "http",
+      "url": "${process.env['NEXT_PUBLIC_API_URL'] ?? 'http://localhost:3001'}/mcp/",
+      "headers": { "Authorization": "Bearer <your-key>" }
+    }
+  }
+}`}</pre>
+        <p className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-1">Legacy SSE (older clients)</p>
         <pre className="bg-gray-50 border border-gray-200 rounded-md px-4 py-3 text-xs font-mono text-gray-700 mb-6 overflow-x-auto">{`{
   "mcpServers": {
     "kanban": {
+      "type": "sse",
       "url": "${process.env['NEXT_PUBLIC_API_URL'] ?? 'http://localhost:3001'}/mcp/sse",
       "headers": { "Authorization": "Bearer <your-key>" }
     }
