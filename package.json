@@ -19,6 +19,19 @@
   },
   "packageManager": "pnpm@10.33.0",
   "pnpm": {
-    "onlyBuiltDependencies": ["argon2", "better-sqlite3", "esbuild", "unrs-resolver"]
+    "onlyBuiltDependencies": [
+      "argon2",
+      "better-sqlite3",
+      "esbuild",
+      "unrs-resolver"
+    ],
+    "overrides": {
+      "esbuild@<=0.24.2": ">=0.25.0",
+      "vite@<=6.4.1": ">=6.4.2",
+      "hono@<4.12.12": ">=4.12.12",
+      "drizzle-orm@<0.45.2": ">=0.45.2",
+      "hono@>=4.0.0 <=4.12.11": ">=4.12.12",
+      "@hono/node-server@<1.19.13": ">=1.19.13"
+    }
   }
 }
