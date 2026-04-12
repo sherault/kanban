@@ -65,7 +65,11 @@
       "Bash(sqlite3:*)",
       "Bash(shasum:*)",
       "Bash(rtk find:*)",
-      "Bash(rtk git:*)"
+      "Bash(rtk git:*)",
+      "Bash(pnpm --filter @kanban/web add react-syntax-highlighter)",
+      "Bash(pnpm --filter @kanban/web add -D @types/react-syntax-highlighter)",
+      "Bash(tty)",
+      "Bash(export GPG_TTY=$\\(tty\\) 2)"
     ]
   },
   "enableAllProjectMcpServers": true,
