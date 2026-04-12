@@ -47,6 +47,8 @@ export function BoardClient({ initialTasks, orgMembers, projectId, orgId, curren
   const [sidebarRevision, setSidebarRevision] = useState(0)
   const [selectedDoneIds, setSelectedDoneIds] = useState<Set<string>>(new Set())
   const [archiving, setArchiving] = useState(false)
+  const [activeTag, setActiveTag] = useState<string | null>(null)
+  const [selectedArchivedTask, setSelectedArchivedTask] = useState<TaskDto | null>(null)
   const [, startTransition] = useTransition()
 
   // Stable ref to selectedTaskId for WS callbacks
@@ -90,7 +92,8 @@ export function BoardClient({ initialTasks, orgMembers, projectId, orgId, curren
 
   // ── Drag and drop ─────────────────────────────────────────────────────────
 
-  const selectedTask = tasks.find((t) => t.id === selectedTaskId) ?? null
+  const selectedBoardTask = tasks.find((t) => t.id === selectedTaskId) ?? null
+  const selectedTask = selectedArchivedTask ?? selectedBoardTask
 
   function handleDragStart(event: DragStartEvent) {
     setActiveTask(tasks.find((t) => t.id === event.active.id) ?? null)
@@ -161,7 +164,7 @@ export function BoardClient({ initialTasks, orgMembers, projectId, orgId, curren
 
   return (
     <div className="flex h-full overflow-hidden">
-      <DndContext sensors={sensors} onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
+      <DndContext id="board-dnd" sensors={sensors} onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
         <div className="flex-1 flex flex-col overflow-hidden min-h-0">
           {/* Error banner */}
           {error && (
@@ -176,31 +179,54 @@ export function BoardClient({ initialTasks, orgMembers, projectId, orgId, curren
             </div>
           )}
 
+          {/* Tag filter bar */}
+          {activeTag && (
+            <div className="mx-6 mt-4 flex items-center gap-2 shrink-0">
+              <span className="text-xs text-gray-500">Filtered by tag:</span>
+              <span className="inline-flex items-center gap-1.5 text-xs bg-blue-100 text-blue-700 font-medium px-2 py-1 rounded-full">
+                {activeTag}
+                <button
+                  onClick={() => setActiveTag(null)}
+                  className="text-blue-500 hover:text-blue-800 leading-none"
+                  aria-label="Clear tag filter"
+                >
+                  ×
+                </button>
+              </span>
+            </div>
+          )}
+
           {/* Board columns */}
           <div className="flex gap-4 p-6 overflow-x-auto flex-1 items-start">
-            {COLUMNS.map(({ id, label }) => (
-              <BoardColumn
-                key={id}
-                column={id}
-                label={label}
-                tasks={tasks.filter((t) => t.column === id)}
-                collapsed={id === Column.IDEAS ? ideasCollapsed : false}
-                onToggleCollapse={
-                  id === Column.IDEAS ? () => setIdeasCollapsed((v) => !v) : undefined
-                }
-                onTaskClick={(taskId) => setSelectedTaskId(taskId)}
-                onNewTask={() => setNewTaskColumn(id)}
-                selectable={id === Column.DONE}
-                selectedIds={id === Column.DONE ? selectedDoneIds : undefined}
-                onSelectionChange={id === Column.DONE ? (tid, sel) => {
-                  setSelectedDoneIds((prev) => {
-                    const next = new Set(prev)
-                    if (sel) next.add(tid); else next.delete(tid)
-                    return next
-                  })
-                } : undefined}
-              />
-            ))}
+            {COLUMNS.map(({ id, label }) => {
+              const columnTasks = tasks.filter((t) =>
+                t.column === id && (!activeTag || t.tags.includes(activeTag))
+              )
+              return (
+                <BoardColumn
+                  key={id}
+                  column={id}
+                  label={label}
+                  tasks={columnTasks}
+                  collapsed={id === Column.IDEAS ? ideasCollapsed : false}
+                  onToggleCollapse={
+                    id === Column.IDEAS ? () => setIdeasCollapsed((v) => !v) : undefined
+                  }
+                  onTaskClick={(taskId) => { setSelectedArchivedTask(null); setSelectedTaskId(taskId) }}
+                  onNewTask={() => setNewTaskColumn(id)}
+                  onTagClick={(tag) => setActiveTag(tag)}
+                  selectable={id === Column.DONE}
+                  selectedIds={id === Column.DONE ? selectedDoneIds : undefined}
+                  onSelectionChange={id === Column.DONE ? (tid, sel) => {
+                    setSelectedDoneIds((prev) => {
+                      const next = new Set(prev)
+                      if (sel) next.add(tid); else next.delete(tid)
+                      return next
+                    })
+                  } : undefined}
+                />
+              )
+            })}
           </div>
 
           {/* Toolbar */}
@@ -238,6 +264,11 @@ export function BoardClient({ initialTasks, orgMembers, projectId, orgId, curren
             projectId={projectId}
             onRestored={(task) => {
               setTasks((prev) => prev.some((t) => t.id === task.id) ? prev : [...prev, task])
+              setSelectedArchivedTask(null)
+            }}
+            onTaskClick={(task) => {
+              setSelectedTaskId(null)
+              setSelectedArchivedTask(task)
             }}
           />
         </div>
@@ -249,17 +280,20 @@ export function BoardClient({ initialTasks, orgMembers, projectId, orgId, curren
 
       {selectedTask && (
         <TaskDetailSidebar
-          key={`${selectedTask.id}-${sidebarRevision}`}
+          key={selectedTask.id}
           task={selectedTask}
           orgMembers={orgMembers}
           projectId={projectId}
-          onClose={() => setSelectedTaskId(null)}
-          onUpdated={(updated) =>
+          revision={sidebarRevision}
+          onClose={() => { setSelectedTaskId(null); setSelectedArchivedTask(null) }}
+          onUpdated={(updated) => {
             setTasks((prev) => prev.map((t) => (t.id === updated.id ? updated : t)))
-          }
+            if (selectedArchivedTask?.id === updated.id) setSelectedArchivedTask(updated)
+          }}
           onDeleted={(taskId) => {
             setTasks((prev) => prev.filter((t) => t.id !== taskId))
             setSelectedTaskId(null)
+            setSelectedArchivedTask(null)
           }}
         />
       )}

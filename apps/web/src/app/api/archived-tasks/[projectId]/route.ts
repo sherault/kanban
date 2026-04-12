@@ -11,11 +11,18 @@ export async function GET(
   if (!token) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
   const url = new URL(_req.url)
-  const search = url.searchParams.get('search') ?? undefined
+  const opts: { search?: string; page?: number; dateFrom?: string; dateTo?: string } = {}
+  const search = url.searchParams.get('search')
   const page = parseInt(url.searchParams.get('page') ?? '1', 10)
+  const dateFrom = url.searchParams.get('dateFrom')
+  const dateTo = url.searchParams.get('dateTo')
+  if (search) opts.search = search
+  opts.page = page
+  if (dateFrom) opts.dateFrom = dateFrom
+  if (dateTo) opts.dateTo = dateTo
 
   try {
-    const { data } = await api.tasks.listArchived(token, projectId, search, page)
+    const { data } = await api.tasks.listArchived(token, projectId, opts)
     return NextResponse.json(data)
   } catch {
     return NextResponse.json({ error: 'Failed' }, { status: 500 })

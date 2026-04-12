@@ -9,22 +9,27 @@ const PAGE_SIZE = 20
 interface Props {
   projectId: string
   onRestored: (task: TaskDto) => void
+  onTaskClick: (task: TaskDto) => void
 }
 
-export function ArchivePanel({ projectId, onRestored }: Props) {
+export function ArchivePanel({ projectId, onRestored, onTaskClick }: Props) {
   const [open, setOpen] = useState(false)
   const [search, setSearch] = useState('')
+  const [dateFrom, setDateFrom] = useState('')
+  const [dateTo, setDateTo] = useState('')
   const [page, setPage] = useState(1)
   const [data, setData] = useState<{ tasks: TaskDto[]; total: number } | null>(null)
   const [loading, setLoading] = useState(false)
   const [isPending, startTransition] = useTransition()
 
-  const load = useCallback(async (s: string, p: number) => {
+  const load = useCallback(async (s: string, p: number, from: string, to: string) => {
     setLoading(true)
     try {
       const params = new URLSearchParams()
       if (s) params.set('search', s)
       params.set('page', String(p))
+      if (from) params.set('dateFrom', from)
+      if (to) params.set('dateTo', to)
       const res = await fetch(`/api/archived-tasks/${projectId}?${params}`)
       if (res.ok) setData(await res.json() as { tasks: TaskDto[]; total: number })
     } finally {
@@ -33,23 +38,31 @@ export function ArchivePanel({ projectId, onRestored }: Props) {
   }, [projectId])
 
   useEffect(() => {
-    if (open) void load(search, page)
+    if (open) void load(search, page, dateFrom, dateTo)
   }, [open, page, load])
 
-  // Debounce search
+  // Debounce text search
   useEffect(() => {
     if (!open) return
-    const t = setTimeout(() => { setPage(1); void load(search, 1) }, 300)
+    const t = setTimeout(() => { setPage(1); void load(search, 1, dateFrom, dateTo) }, 300)
     return () => clearTimeout(t)
-    // Intentionally omitting `open` and `load` — we only want this to fire on search changes
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [search])
+
+  // Immediate reload on date change
+  useEffect(() => {
+    if (!open) return
+    setPage(1)
+    void load(search, 1, dateFrom, dateTo)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [dateFrom, dateTo])
 
   function handleRestore(taskId: string) {
     startTransition(async () => {
       const result = await restoreTaskAction(projectId, taskId)
       if (result.task) {
         onRestored(result.task)
-        void load(search, page)
+        void load(search, page, dateFrom, dateTo)
       }
     })
   }
@@ -71,16 +84,40 @@ export function ArchivePanel({ projectId, onRestored }: Props) {
       </button>
 
       {open && (
-        <div className="border-t border-gray-100 max-h-72 flex flex-col">
-          {/* Search */}
-          <div className="px-6 py-3 border-b border-gray-100">
+        <div className="border-t border-gray-100 max-h-80 flex flex-col">
+          {/* Filters */}
+          <div className="px-6 py-3 border-b border-gray-100 flex flex-col gap-2">
             <input
               type="search"
-              placeholder="Search archived tasks..."
+              placeholder="Search title, description, tags, team members…"
               value={search}
               onChange={e => setSearch(e.target.value)}
               className="w-full text-sm border border-gray-200 rounded px-3 py-1.5 focus:outline-none focus:border-blue-400 focus:ring-1 focus:ring-blue-400"
             />
+            <div className="flex items-center gap-2">
+              <span className="text-xs text-gray-400 shrink-0">Archived</span>
+              <input
+                type="date"
+                value={dateFrom}
+                onChange={e => setDateFrom(e.target.value)}
+                className="text-xs border border-gray-200 rounded px-2 py-1 focus:outline-none focus:border-blue-400 text-gray-600"
+              />
+              <span className="text-xs text-gray-400">→</span>
+              <input
+                type="date"
+                value={dateTo}
+                onChange={e => setDateTo(e.target.value)}
+                className="text-xs border border-gray-200 rounded px-2 py-1 focus:outline-none focus:border-blue-400 text-gray-600"
+              />
+              {(dateFrom || dateTo) && (
+                <button
+                  onClick={() => { setDateFrom(''); setDateTo('') }}
+                  className="text-xs text-gray-400 hover:text-gray-600"
+                >
+                  ✕
+                </button>
+              )}
+            </div>
           </div>
 
           {/* List */}
@@ -90,11 +127,16 @@ export function ArchivePanel({ projectId, onRestored }: Props) {
               <p className="text-xs text-gray-400 px-6 py-4">No archived tasks{search ? ' matching your search' : ''}.</p>
             )}
             {!loading && data?.tasks.map(task => (
-              <div key={task.id} className="flex items-center gap-3 px-6 py-2.5 hover:bg-gray-50 group">
+              <div
+                key={task.id}
+                onClick={() => onTaskClick(task)}
+                className="flex items-center gap-3 px-6 py-2.5 hover:bg-gray-50 group cursor-pointer"
+              >
                 <div className="flex-1 min-w-0">
                   <p className="text-sm font-medium text-gray-800 truncate">{task.title}</p>
-                  <div className="flex items-center gap-2 mt-0.5">
+                  <div className="flex flex-wrap items-center gap-2 mt-0.5">
                     {task.doer && <span className="text-xs text-gray-400">{task.doer.displayName}</span>}
+                    {task.validator && <span className="text-xs text-gray-400 italic">{task.validator.displayName}</span>}
                     {task.tags.map(t => (
                       <span key={t} className="text-xs bg-gray-100 text-gray-500 px-1 rounded">{t}</span>
                     ))}
@@ -106,7 +148,7 @@ export function ArchivePanel({ projectId, onRestored }: Props) {
                   </div>
                 </div>
                 <button
-                  onClick={() => handleRestore(task.id)}
+                  onClick={(e) => { e.stopPropagation(); handleRestore(task.id) }}
                   disabled={isPending}
                   className="text-xs text-blue-500 hover:text-blue-700 opacity-0 group-hover:opacity-100 disabled:opacity-50 transition-all shrink-0"
                 >

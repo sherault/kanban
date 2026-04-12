@@ -59,7 +59,13 @@
       "Bash(sed -n '440,455p' /Users/stephane/projects/saas/kanban/apps/api/src/features/task/task.service.ts)",
       "Bash(npx tsc:*)",
       "Bash(npx eslint:*)",
-      "Bash(grep -n \"ApiKeyDto\\\\|ApiKeyCreatedDto\" /Users/stephane/projects/saas/kanban/packages/shared/src/dtos/*.ts)"
+      "Bash(grep -n \"ApiKeyDto\\\\|ApiKeyCreatedDto\" /Users/stephane/projects/saas/kanban/packages/shared/src/dtos/*.ts)",
+      "Bash(npx vitest:*)",
+      "Bash(grep -n \"archived\\\\|archivedAt\" /Users/stephane/projects/saas/kanban/apps/api/src/db/schema/*.ts)",
+      "Bash(sqlite3:*)",
+      "Bash(shasum:*)",
+      "Bash(rtk find:*)",
+      "Bash(rtk git:*)"
     ]
   },
   "enableAllProjectMcpServers": true,
