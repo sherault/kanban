@@ -30,17 +30,25 @@ export default async function BoardLayout({
 
         <nav className="flex-1 p-2 space-y-0.5">
           {projects.map((p) => (
-            <Link
-              key={p.id}
-              href={`/orgs/${orgId}/projects/${p.id}`}
-              className={`flex items-center px-3 py-2 rounded-md text-sm transition-colors truncate ${
-                p.id === projectId
-                  ? 'bg-blue-50 text-blue-700 font-medium'
-                  : 'text-gray-600 hover:bg-gray-100'
-              }`}
-            >
-              {p.name}
-            </Link>
+            <div key={p.id} className="group flex items-center gap-1">
+              <Link
+                href={`/orgs/${orgId}/projects/${p.id}`}
+                className={`flex-1 flex items-center px-3 py-2 rounded-md text-sm transition-colors truncate ${
+                  p.id === projectId
+                    ? 'bg-blue-50 text-blue-700 font-medium'
+                    : 'text-gray-600 hover:bg-gray-100'
+                }`}
+              >
+                {p.name}
+              </Link>
+              <Link
+                href={`/orgs/${orgId}/projects/${p.id}/settings`}
+                className="shrink-0 px-1 text-gray-300 hover:text-gray-600 opacity-0 group-hover:opacity-100 transition-all text-sm"
+                title="Settings"
+              >
+                ⚙️
+              </Link>
+            </div>
           ))}
         </nav>
 

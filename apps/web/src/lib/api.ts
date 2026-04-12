@@ -105,6 +105,19 @@ export const api = {
         { method: "POST", token },
       );
     },
+    updateMemberRole(token: string, orgId: string, userId: string, role: 'member' | 'manager') {
+      return apiFetch<{ success: true }>(`/organizations/${orgId}/members/${userId}`, {
+        method: "PATCH",
+        body: JSON.stringify({ role }),
+        token,
+      });
+    },
+    removeMember(token: string, orgId: string, userId: string) {
+      return apiFetch<{ success: true }>(`/organizations/${orgId}/members/${userId}`, {
+        method: "DELETE",
+        token,
+      });
+    },
   },
 
   projects: {
@@ -117,6 +130,19 @@ export const api = {
       return apiFetch<ProjectDto>(`/organizations/${orgId}/projects`, {
         method: "POST",
         body: JSON.stringify(body),
+        token,
+      });
+    },
+    update(token: string, orgId: string, projectId: string, body: { name: string }) {
+      return apiFetch<ProjectDto>(`/organizations/${orgId}/projects/${projectId}`, {
+        method: "PATCH",
+        body: JSON.stringify(body),
+        token,
+      });
+    },
+    delete(token: string, orgId: string, projectId: string) {
+      return apiFetch<{ success: true }>(`/organizations/${orgId}/projects/${projectId}`, {
+        method: "DELETE",
         token,
       });
     },
@@ -207,10 +233,12 @@ export const api = {
     restore(token: string, projectId: string, taskId: string) {
       return apiFetch<TaskDto>(`/projects/${projectId}/tasks/${taskId}/restore`, { method: 'POST', token })
     },
-    listArchived(token: string, projectId: string, search?: string, page?: number) {
+    listArchived(token: string, projectId: string, opts: { search?: string; page?: number; dateFrom?: string; dateTo?: string } = {}) {
       const params = new URLSearchParams()
-      if (search) params.set('search', search)
-      if (page) params.set('page', String(page))
+      if (opts.search) params.set('search', opts.search)
+      if (opts.page) params.set('page', String(opts.page))
+      if (opts.dateFrom) params.set('dateFrom', opts.dateFrom)
+      if (opts.dateTo) params.set('dateTo', opts.dateTo)
       return apiFetch<{ tasks: TaskDto[]; total: number }>(`/projects/${projectId}/archived-tasks?${params}`, { token })
     },
     getHistory(token: string, projectId: string, taskId: string) {

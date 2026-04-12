@@ -1,7 +1,8 @@
 import { Hono } from 'hono'
 import { zValidator } from '@hono/zod-validator'
 import { z } from 'zod'
-import type { AppDb, HonoEnv } from '../../types.js'
+import type { AppDb, Broadcaster, HonoEnv } from '../../types.js'
+import { noopBroadcaster } from '../../types.js'
 import { authnMiddleware } from '../../middleware/authn.js'
 import { makeAuthz } from '../../middleware/authz.js'
 import { OrganizationService } from './organization.service.js'
@@ -22,9 +23,13 @@ const transferSchema = z.object({
   toUserId: z.string().uuid(),
 })
 
-export function organizationRoutes(db: AppDb): Hono<HonoEnv> {
+const updateMemberRoleSchema = z.object({
+  role: z.enum(['member', 'manager']),
+})
+
+export function organizationRoutes(db: AppDb, broadcast: Broadcaster = noopBroadcaster): Hono<HonoEnv> {
   const router = new Hono<HonoEnv>()
-  const svc = new OrganizationService(db)
+  const svc = new OrganizationService(db, broadcast)
   const invSvc = new InvitationService(db)
   const authz = makeAuthz(db)
 
@@ -71,6 +76,16 @@ export function organizationRoutes(db: AppDb): Hono<HonoEnv> {
     '/:orgId/members',
     authz.requireOrgRole('member', (c) => c.req.param('orgId')),
     (c) => c.json(svc.listMembers(c.req.param('orgId')))
+  )
+
+  router.patch(
+    '/:orgId/members/:userId',
+    authz.requireOrgRole('manager', (c) => c.req.param('orgId')),
+    zValidator('json', updateMemberRoleSchema),
+    (c) => {
+      svc.updateMemberRole(c.req.param('orgId'), c.get('userId'), c.req.param('userId'), c.req.valid('json').role)
+      return c.json({ success: true })
+    }
   )
 
   router.delete(

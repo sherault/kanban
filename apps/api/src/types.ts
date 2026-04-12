@@ -22,6 +22,7 @@ export type WsEvent =
   | { type: 'task.created'; payload: TaskDto }
   | { type: 'task.updated'; payload: TaskDto }
   | { type: 'task.deleted'; payload: { id: string; projectId: string } }
+  | { type: 'member.updated'; payload: { userId: string; role: string } }
 
 /** Function that broadcasts a WsEvent to all subscribers of a room. */
 export type Broadcaster = (room: string, event: WsEvent) => void

@@ -1,5 +1,6 @@
 import { eq, and, ne } from 'drizzle-orm'
-import type { AppDb } from '../../types.js'
+import type { AppDb, Broadcaster } from '../../types.js'
+import { noopBroadcaster } from '../../types.js'
 import type { OrganizationDto, MembershipDto } from '@kanban/shared'
 import { generateId } from '../../lib/id.js'
 import { forbidden, notFound, unprocessable } from '../../lib/errors.js'
@@ -11,7 +12,7 @@ function toOrgDto(row: typeof organizations.$inferSelect): OrganizationDto {
 }
 
 export class OrganizationService {
-  constructor(private readonly db: AppDb) {}
+  constructor(private readonly db: AppDb, private readonly broadcast: Broadcaster = noopBroadcaster) {}
 
   createOrg(userId: string, input: { name: string; website?: string | null | undefined }): OrganizationDto {
     const id = generateId()
@@ -102,6 +103,30 @@ export class OrganizationService {
       role: r.role as Role,
       user: { id: r.userId, email: r.userEmail, displayName: r.userDisplayName },
     }))
+  }
+
+  updateMemberRole(orgId: string, actorId: string, targetUserId: string, role: 'member' | 'manager'): void {
+    const actor = this.db
+      .select({ role: memberships.role })
+      .from(memberships)
+      .where(and(eq(memberships.userId, actorId), eq(memberships.organizationId, orgId)))
+      .get()
+    if (!actor || (actor.role !== 'owner' && actor.role !== 'manager')) throw forbidden()
+
+    const target = this.db
+      .select({ role: memberships.role })
+      .from(memberships)
+      .where(and(eq(memberships.userId, targetUserId), eq(memberships.organizationId, orgId)))
+      .get()
+    if (!target) throw notFound('Member not found')
+    if (target.role === 'owner') throw unprocessable('Cannot change the owner\'s role')
+
+    this.db
+      .update(memberships)
+      .set({ role })
+      .where(and(eq(memberships.userId, targetUserId), eq(memberships.organizationId, orgId)))
+      .run()
+    this.broadcast(`org:${orgId}`, { type: 'member.updated', payload: { userId: targetUserId, role } })
   }
 
   removeMember(orgId: string, targetUserId: string): void {

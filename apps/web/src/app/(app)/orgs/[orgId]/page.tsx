@@ -42,14 +42,22 @@ export default async function OrgPage({ params }: { params: Promise<{ orgId: str
       ) : (
         <div className="grid gap-3 sm:grid-cols-2">
           {projects.map((p) => (
-            <Link
-              key={p.id}
-              href={`/orgs/${orgId}/projects/${p.id}`}
-              className="block bg-white border border-gray-200 rounded-lg p-5 hover:border-blue-400 hover:shadow-sm transition-all"
-            >
-              <div className="font-medium text-gray-900">{p.name}</div>
-              <div className="text-xs text-gray-400 mt-1">{new Date(p.createdAt).toLocaleDateString()}</div>
-            </Link>
+            <div key={p.id} className="relative group">
+              <Link
+                href={`/orgs/${orgId}/projects/${p.id}`}
+                className="block bg-white border border-gray-200 rounded-lg p-5 hover:border-blue-400 hover:shadow-sm transition-all"
+              >
+                <div className="font-medium text-gray-900 pr-8">{p.name}</div>
+                <div className="text-xs text-gray-400 mt-1">{new Date(p.createdAt).toLocaleDateString()}</div>
+              </Link>
+              <Link
+                href={`/orgs/${orgId}/projects/${p.id}/settings`}
+                className="absolute top-4 right-4 text-gray-300 hover:text-gray-600 transition-colors opacity-0 group-hover:opacity-100"
+                title="Project settings"
+              >
+                ⚙️
+              </Link>
+            </div>
           ))}
         </div>
       )}

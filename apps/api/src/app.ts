@@ -26,7 +26,7 @@ export function createApp(
 
   app.get('/health', (c) => c.json({ status: 'ok' }))
   app.route('/auth', identityRoutes(db))
-  app.route('/organizations', organizationRoutes(db))
+  app.route('/organizations', organizationRoutes(db, broadcast))
   app.route('/organizations', projectRoutes(db, broadcast))
   app.route('/projects', taskRoutes(db, broadcast))
   app.route('/invite', invitationRoutes(db))
