@@ -2,6 +2,8 @@
 
 import { useState, useTransition, useEffect, useRef, useCallback } from 'react'
 import type { TaskDto, MembershipDto, TaskHistoryDto, Column } from '@kanban/shared'
+import { ColorPicker } from './ColorPicker'
+import { DescriptionEditor } from './DescriptionEditor'
 import {
   updateTaskAction,
   deleteTaskAction,
@@ -19,6 +21,8 @@ interface Props {
   orgMembers: MembershipDto[]
   projectId: string
   revision: number
+  objectives: string[]
+  allTags: string[]
   onClose: () => void
   onUpdated: (task: TaskDto) => void
   onDeleted: (taskId: string) => void
@@ -121,8 +125,10 @@ function ConflictModal({ field, conflict, onResolve }: {
   )
 }
 
-function TagInput({ tags, onAdd, onRemove }: { tags: string[]; onAdd: (t: string) => void; onRemove: (t: string) => void }) {
+function TagInput({ tags, allTags, onAdd, onRemove }: { tags: string[]; allTags: string[]; onAdd: (t: string) => void; onRemove: (t: string) => void }) {
   const [input, setInput] = useState('')
+  const listId = useRef(`tag-suggestions-${Math.random().toString(36).slice(2)}`).current
+  const suggestions = allTags.filter((t) => !tags.includes(t))
 
   function handleKey(e: React.KeyboardEvent<HTMLInputElement>) {
     if ((e.key === 'Enter' || e.key === ',') && input.trim()) {
@@ -141,12 +147,16 @@ function TagInput({ tags, onAdd, onRemove }: { tags: string[]; onAdd: (t: string
         </span>
       ))}
       <input
+        list={listId}
         value={input}
         onChange={(e) => setInput(e.target.value)}
         onKeyDown={handleKey}
         placeholder={tags.length === 0 ? 'Add tag, press Enter…' : ''}
         className="flex-1 min-w-[80px] text-xs outline-none bg-transparent"
       />
+      <datalist id={listId}>
+        {suggestions.map((t) => <option key={t} value={t} />)}
+      </datalist>
     </div>
   )
 }
@@ -222,6 +232,8 @@ export function TaskDetailSidebar({
   orgMembers,
   projectId,
   revision,
+  objectives,
+  allTags,
   onClose,
   onUpdated,
   onDeleted,
@@ -231,6 +243,23 @@ export function TaskDetailSidebar({
   const [confirmDelete, setConfirmDelete] = useState(false)
   const [history, setHistory] = useState<TaskHistoryDto[] | null>(null)
   const [showHistory, setShowHistory] = useState(false)
+  const [sidebarWidth, setSidebarWidth] = useState(384) // w-96 default
+
+  const onResizeMouseDown = useCallback((e: React.MouseEvent) => {
+    e.preventDefault()
+    const startX = e.clientX
+    const startW = sidebarWidth
+    function onMove(ev: MouseEvent) {
+      const delta = startX - ev.clientX
+      setSidebarWidth(Math.min(800, Math.max(280, startW + delta)))
+    }
+    function onUp() {
+      document.removeEventListener('mousemove', onMove)
+      document.removeEventListener('mouseup', onUp)
+    }
+    document.addEventListener('mousemove', onMove)
+    document.addEventListener('mouseup', onUp)
+  }, [sidebarWidth])
 
   // Controlled conflict-aware fields
   const titleField = useConflictField(task.title)
@@ -338,7 +367,16 @@ export function TaskDetailSidebar({
         />
       )}
 
-      <aside data-sidebar="true" className="w-96 border-l border-gray-200 bg-white flex flex-col h-full overflow-hidden shrink-0">
+      <aside data-sidebar="true" style={{ width: sidebarWidth }} className="border-l border-gray-200 bg-white flex flex-col h-full overflow-hidden shrink-0 relative">
+        {/* Resize handle */}
+        <div
+          onMouseDown={onResizeMouseDown}
+          className="absolute left-0 top-0 bottom-0 w-1 cursor-col-resize hover:bg-blue-400 active:bg-blue-500 transition-colors z-10 group"
+          title="Drag to resize"
+        >
+          <div className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-8 rounded-full bg-gray-300 group-hover:bg-blue-400 transition-colors" />
+        </div>
+
         {/* Header */}
         <div className="flex items-center justify-between px-5 py-3 border-b border-gray-200 shrink-0">
           <span className={`text-xs font-medium px-2 py-0.5 rounded-full capitalize ${COLUMN_BADGE[task.column] ?? 'bg-gray-100 text-gray-700'}`}>
@@ -373,49 +411,36 @@ export function TaskDetailSidebar({
           </div>
 
           {/* Background color */}
-          <div className="flex items-center gap-3">
-            <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Color</label>
-            <input
-              type="color"
-              defaultValue={task.backgroundColor ?? '#ffffff'}
-              onBlur={(e) => {
-                const v = e.target.value === '#ffffff' ? null : e.target.value
-                if (v !== task.backgroundColor) save({ backgroundColor: v })
+          <div>
+            <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">Color</label>
+            <ColorPicker
+              value={task.backgroundColor ?? null}
+              onChange={(color) => {
+                if (color !== task.backgroundColor) save({ backgroundColor: color })
               }}
-              className="h-7 w-10 cursor-pointer rounded border border-gray-200"
             />
-            {task.backgroundColor && (
-              <button
-                onClick={() => save({ backgroundColor: null })}
-                className="text-xs text-gray-400 hover:text-gray-600"
-              >
-                Clear
-              </button>
-            )}
           </div>
 
           {/* Description */}
           <div>
             <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1">Description</label>
-            <textarea
+            <DescriptionEditor
               value={descField.value}
-              onChange={(e) => descField.setValue(e.target.value)}
+              onChange={descField.setValue}
               onFocus={descField.onFocus}
-              onBlur={(e) => {
+              onBlur={(v) => {
                 descField.onBlur()
-                const v = e.target.value || null
-                if (v !== task.description) save({ description: v })
+                const val = v || null
+                if (val !== task.description) save({ description: val })
               }}
-              rows={3}
-              placeholder="Add a description…"
-              className="w-full text-sm text-gray-700 border border-gray-200 rounded px-2 py-1.5 focus:outline-none focus:border-blue-400 focus:ring-1 focus:ring-blue-400 resize-none"
             />
           </div>
 
           {/* Objective */}
           <div>
             <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1">Objective</label>
-            <textarea
+            <input
+              list={`obj-list-${task.id}`}
               value={objField.value}
               onChange={(e) => objField.setValue(e.target.value)}
               onFocus={objField.onFocus}
@@ -424,10 +449,14 @@ export function TaskDetailSidebar({
                 const v = e.target.value || null
                 if (v !== task.objective) save({ objective: v })
               }}
-              rows={2}
               placeholder="Add an objective…"
-              className="w-full text-sm text-gray-700 border border-gray-200 rounded px-2 py-1.5 focus:outline-none focus:border-blue-400 focus:ring-1 focus:ring-blue-400 resize-none"
+              className="w-full text-sm text-gray-700 border border-gray-200 rounded px-2 py-1.5 focus:outline-none focus:border-blue-400 focus:ring-1 focus:ring-blue-400"
             />
+            <datalist id={`obj-list-${task.id}`}>
+              {objectives.filter((o) => o !== task.objective).map((o) => (
+                <option key={o} value={o} />
+              ))}
+            </datalist>
           </div>
 
           {/* Global subject */}
@@ -450,7 +479,7 @@ export function TaskDetailSidebar({
           {/* Tags */}
           <div>
             <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1">Tags</label>
-            <TagInput tags={task.tags} onAdd={handleTagAdd} onRemove={handleTagRemove} />
+            <TagInput tags={task.tags} allTags={allTags} onAdd={handleTagAdd} onRemove={handleTagRemove} />
           </div>
 
           {/* Dates */}
