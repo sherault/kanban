@@ -5,6 +5,7 @@ dist/
 *.db
 *.db-wal
 *.db-shm
+/data/
 coverage/
 .turbo/
 .env

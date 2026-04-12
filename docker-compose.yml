@@ -9,7 +9,7 @@ services:
       REFRESH_SECRET: ${REFRESH_SECRET}
       PORT: 3001
     volumes:
-      - sqlite_data:/data
+      - ./data:/data
     ports:
       - "3001:3001"
     restart: unless-stopped
@@ -25,6 +25,3 @@ services:
     depends_on:
       - api
     restart: unless-stopped
-
-volumes:
-  sqlite_data:
