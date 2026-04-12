@@ -13,6 +13,7 @@ interface Props {
   onToggleCollapse?: () => void
   onTaskClick: (taskId: string) => void
   onNewTask: () => void
+  onTagClick: (tag: string) => void
   selectable?: boolean
   selectedIds?: Set<string>
   onSelectionChange?: (id: string, selected: boolean) => void
@@ -33,6 +34,7 @@ export function BoardColumn({
   onToggleCollapse,
   onTaskClick,
   onNewTask,
+  onTagClick,
   selectable = false,
   selectedIds,
   onSelectionChange,
@@ -82,13 +84,14 @@ export function BoardColumn({
           .sort((a, b) => a.position - b.position)
           .map((task) => (
             <TaskCard
-            key={task.id}
-            task={task}
-            onClick={() => onTaskClick(task.id)}
-            selectable={selectable}
-            selected={selectedIds?.has(task.id) ?? false}
-            onSelectChange={(sel) => onSelectionChange?.(task.id, sel)}
-          />
+              key={task.id}
+              task={task}
+              onClick={() => onTaskClick(task.id)}
+              selectable={selectable}
+              selected={selectedIds?.has(task.id) ?? false}
+              onSelectChange={(sel) => onSelectionChange?.(task.id, sel)}
+              onTagClick={onTagClick}
+            />
           ))}
 
         {(column === Column.IDEAS || column === Column.TODO) && (

@@ -291,21 +291,35 @@ export class TaskService {
     })
   }
 
-  addTag(taskId: string, tag: string): TaskDto {
+  addTag(taskId: string, tag: string, actorId: string): TaskDto {
     const row = this.getRow(taskId)
+    let inserted = false
     try {
       this.db.insert(taskTags).values({ taskId, tag }).run()
+      inserted = true
     } catch {
       // duplicate — no-op
+    }
+    if (inserted) {
+      this.db.insert(taskHistory).values({
+        id: generateId(), taskId, userId: actorId, field: 'tags',
+        oldValue: null, newValue: tag, changedAt: new Date().toISOString(), batchId: null,
+      }).run()
     }
     const dto = assembleTaskDto(this.db, row)
     this.broadcast(`project:${row.projectId}`, { type: 'task.updated', payload: dto })
     return dto
   }
 
-  removeTag(taskId: string, tag: string): TaskDto {
+  removeTag(taskId: string, tag: string, actorId: string): TaskDto {
     const row = this.getRow(taskId)
-    this.db.delete(taskTags).where(and(eq(taskTags.taskId, taskId), eq(taskTags.tag, tag))).run()
+    const changes = this.db.delete(taskTags).where(and(eq(taskTags.taskId, taskId), eq(taskTags.tag, tag))).run()
+    if (changes.changes > 0) {
+      this.db.insert(taskHistory).values({
+        id: generateId(), taskId, userId: actorId, field: 'tags',
+        oldValue: tag, newValue: null, changedAt: new Date().toISOString(), batchId: null,
+      }).run()
+    }
     const dto = assembleTaskDto(this.db, row)
     this.broadcast(`project:${row.projectId}`, { type: 'task.updated', payload: dto })
     return dto
@@ -541,31 +555,50 @@ export class TaskService {
     return dto
   }
 
-  listArchivedTasks(projectId: string, opts: { search?: string; page?: number; limit?: number } = {}): { tasks: TaskDto[]; total: number } {
-    const { search, page = 1, limit = 20 } = opts
-    const offset = (page - 1) * limit
+  listArchivedTasks(
+    projectId: string,
+    opts: { search?: string; page?: number; limit?: number; dateFrom?: string; dateTo?: string } = {}
+  ): { tasks: TaskDto[]; total: number } {
+    const { search, page = 1, limit = 20, dateFrom, dateTo } = opts
 
-    const baseWhere = and(
+    const conditions = [
       eq(tasks.projectId, projectId),
-      isNotNull(tasks.archivedAt)
-    )
+      isNotNull(tasks.archivedAt),
+      ...(dateFrom ? [sql`${tasks.archivedAt} >= ${dateFrom}`] : []),
+      ...(dateTo ? [sql`${tasks.archivedAt} <= ${dateTo}`] : []),
+    ]
+    const baseWhere = and(...conditions)
 
-    const countResult = this.db.select({ count: sql<number>`count(*)` }).from(tasks).where(baseWhere).get()
-    const total = countResult?.count ?? 0
-
-    let rows = this.db.select().from(tasks).where(baseWhere).orderBy(tasks.archivedAt).limit(limit).offset(offset).all()
+    // Fetch all matching rows (date-filtered), assemble DTOs, then text-filter in memory
+    // so we can search tags and user display names without complex SQL joins
+    const allRows = this.db.select().from(tasks).where(baseWhere).orderBy(tasks.archivedAt).all()
+    let allDtos = allRows.map(r => assembleTaskDto(this.db, r))
 
     if (search) {
       const q = search.toLowerCase()
-      rows = rows.filter(r =>
-        r.title.toLowerCase().includes(q) ||
-        (r.description ?? '').toLowerCase().includes(q) ||
-        (r.objective ?? '').toLowerCase().includes(q) ||
-        (r.globalSubject ?? '').toLowerCase().includes(q)
-      )
+      allDtos = allDtos.filter(dto => {
+        const userNames = [
+          dto.doer?.displayName,
+          dto.validator?.displayName,
+          dto.reporter?.displayName,
+          ...(dto.watchers ?? []).map(w => w.displayName),
+          ...(dto.advisors ?? []).map(a => a.displayName),
+        ].filter(Boolean).join(' ').toLowerCase()
+        const tagStr = dto.tags.join(' ').toLowerCase()
+        return (
+          dto.title.toLowerCase().includes(q) ||
+          (dto.description ?? '').toLowerCase().includes(q) ||
+          (dto.objective ?? '').toLowerCase().includes(q) ||
+          (dto.globalSubject ?? '').toLowerCase().includes(q) ||
+          tagStr.includes(q) ||
+          userNames.includes(q)
+        )
+      })
     }
 
-    return { tasks: rows.map(r => assembleTaskDto(this.db, r)), total }
+    const total = allDtos.length
+    const offset = (page - 1) * limit
+    return { tasks: allDtos.slice(offset, offset + limit), total }
   }
 
   importTasks(

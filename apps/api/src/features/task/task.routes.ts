@@ -54,13 +54,17 @@ export function taskRoutes(
     return c.json({ success: true })
   })
 
-  // List archived tasks with pagination + search
+  // List archived tasks with pagination + search + date filter
   router.get('/:projectId/archived-tasks', (c) => {
     const searchRaw = c.req.query('search')
     const page = parseInt(c.req.query('page') ?? '1', 10)
     const limit = parseInt(c.req.query('limit') ?? '20', 10)
-    const opts: { search?: string; page?: number; limit?: number } = { page, limit }
+    const dateFrom = c.req.query('dateFrom')
+    const dateTo = c.req.query('dateTo')
+    const opts: { search?: string; page?: number; limit?: number; dateFrom?: string; dateTo?: string } = { page, limit }
     if (searchRaw !== undefined) opts.search = searchRaw
+    if (dateFrom) opts.dateFrom = dateFrom
+    if (dateTo) opts.dateTo = dateTo
     const result = svc.listArchivedTasks(c.req.param('projectId'), opts)
     return c.json(result)
   })
@@ -120,13 +124,13 @@ export function taskRoutes(
   router.post('/:projectId/tasks/:taskId/tags/:tag', (c) => {
     const task = svc.getTask(c.req.param('taskId'))
     if (!task || task.projectId !== c.req.param('projectId')) throw notFound('Task not found')
-    return c.json(svc.addTag(c.req.param('taskId'), c.req.param('tag')))
+    return c.json(svc.addTag(c.req.param('taskId'), c.req.param('tag'), c.get('userId')))
   })
 
   router.delete('/:projectId/tasks/:taskId/tags/:tag', (c) => {
     const task = svc.getTask(c.req.param('taskId'))
     if (!task || task.projectId !== c.req.param('projectId')) throw notFound('Task not found')
-    return c.json(svc.removeTag(c.req.param('taskId'), c.req.param('tag')))
+    return c.json(svc.removeTag(c.req.param('taskId'), c.req.param('tag'), c.get('userId')))
   })
 
   // Links

@@ -11,9 +11,10 @@ interface Props {
   selectable?: boolean
   selected?: boolean
   onSelectChange?: (selected: boolean) => void
+  onTagClick?: (tag: string) => void
 }
 
-export function TaskCard({ task, onClick, overlay = false, selectable = false, selected = false, onSelectChange }: Props) {
+export function TaskCard({ task, onClick, overlay = false, selectable = false, selected = false, onSelectChange, onTagClick }: Props) {
   const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({
     id: task.id,
   })
@@ -81,7 +82,11 @@ export function TaskCard({ task, onClick, overlay = false, selectable = false, s
       {task.tags.length > 0 && (
         <div className="flex flex-wrap gap-1 mt-2">
           {task.tags.slice(0, 3).map((tag) => (
-            <span key={tag} className="text-xs bg-gray-100 text-gray-600 px-1.5 py-0.5 rounded">
+            <span
+              key={tag}
+              onClick={onTagClick ? (e) => { e.stopPropagation(); onTagClick(tag) } : undefined}
+              className={`text-xs bg-gray-100 text-gray-600 px-1.5 py-0.5 rounded ${onTagClick ? 'hover:bg-blue-100 hover:text-blue-700 cursor-pointer' : ''}`}
+            >
               {tag}
             </span>
           ))}
