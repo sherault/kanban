@@ -147,3 +147,75 @@ describe('POST /auth/logout', () => {
     close()
   })
 })
+
+describe('POST /auth/forgot-password', () => {
+  it('returns 200 for any email (no enumeration)', async () => {
+    const { app, close } = setup()
+    const res = await app.request('/auth/forgot-password', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email: 'anyone@example.com' }),
+    })
+    expect(res.status).toBe(200)
+    close()
+  })
+
+  it('returns 400 for invalid email', async () => {
+    const { app, close } = setup()
+    const res = await app.request('/auth/forgot-password', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email: 'not-an-email' }),
+    })
+    expect(res.status).toBe(400)
+    close()
+  })
+})
+
+describe('POST /auth/reset-password', () => {
+  it('returns 401 for invalid token', async () => {
+    const { app, close } = setup()
+    const res = await app.request('/auth/reset-password', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ token: 'bad-token', password: 'newpass123' }),
+    })
+    expect(res.status).toBe(401)
+    close()
+  })
+
+  it('returns 400 for missing fields', async () => {
+    const { app, close } = setup()
+    const res = await app.request('/auth/reset-password', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ token: 'tok' }),
+    })
+    expect(res.status).toBe(400)
+    close()
+  })
+})
+
+describe('POST /auth/resend-verification-public', () => {
+  it('returns 200 for any email (no enumeration)', async () => {
+    const { app, close } = setup()
+    const res = await app.request('/auth/resend-verification-public', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email: 'anyone@example.com' }),
+    })
+    expect(res.status).toBe(200)
+    close()
+  })
+
+  it('returns 400 for invalid email', async () => {
+    const { app, close } = setup()
+    const res = await app.request('/auth/resend-verification-public', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email: 'bad' }),
+    })
+    expect(res.status).toBe(400)
+    close()
+  })
+})

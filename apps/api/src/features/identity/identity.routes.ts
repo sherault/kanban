@@ -25,6 +25,9 @@ const totpCodeSchema = z.object({
   code: z.string().length(6),
 })
 
+const emailSchema = z.object({ email: z.string().email() })
+const resetPasswordSchema = z.object({ token: z.string().min(1), password: z.string().min(8) })
+
 export function identityRoutes(db: AppDb): Hono<HonoEnv> {
   const router = new Hono<HonoEnv>()
   const svc = new IdentityService(db)
@@ -87,6 +90,24 @@ export function identityRoutes(db: AppDb): Hono<HonoEnv> {
     const token = c.req.query('token')
     if (!token) return c.json({ error: 'Missing token' }, 400)
     await svc.verifyEmail(token)
+    return c.json({ success: true })
+  })
+
+  router.post('/forgot-password', zValidator('json', emailSchema), async (c) => {
+    const { email } = c.req.valid('json')
+    await svc.requestPasswordReset(email)
+    return c.json({ success: true })
+  })
+
+  router.post('/reset-password', zValidator('json', resetPasswordSchema), async (c) => {
+    const { token, password } = c.req.valid('json')
+    await svc.resetPassword(token, password)
+    return c.json({ success: true })
+  })
+
+  router.post('/resend-verification-public', zValidator('json', emailSchema), async (c) => {
+    const { email } = c.req.valid('json')
+    await svc.resendVerificationByEmail(email)
     return c.json({ success: true })
   })
 
