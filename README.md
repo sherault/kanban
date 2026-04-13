@@ -186,7 +186,7 @@ cp .env.example .env
 # Edit .env — set JWT_SECRET and REFRESH_SECRET at minimum (must be ≥ 32 chars)
 # For example using `openssl rand -hex 32` in your terminal
 
-# Start both apps (right now hardcoded for API on :3010, Web on :3009 on the respective package.json)
+# Start both apps (right now hardcoded for API on :3010, Web on :3009)
 pnpm dev
 ```
 
