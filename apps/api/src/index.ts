@@ -5,7 +5,9 @@ import { runMigrations } from "./db/migrate.js";
 import { createApp } from "./app.js";
 import { WsRooms } from "./features/ws/ws-rooms.js";
 import { wsRoutes } from "./features/ws/ws.routes.js";
-import "dotenv/config";
+import { config } from "dotenv";
+
+config({ path: "../../.env" });
 
 runMigrations();
 

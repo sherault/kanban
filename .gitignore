@@ -13,3 +13,4 @@ coverage/
 drizzle/migrations/meta/
 apps/api/tsconfig.tsbuildinfo
 apps/web/tsconfig.tsbuildinfo
+packages/shared/tsconfig.tsbuildinfo
