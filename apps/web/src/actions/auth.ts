@@ -68,6 +68,38 @@ export async function logoutAction(): Promise<void> {
   redirect('/login')
 }
 
+export async function forgotPasswordAction(
+  _prev: Record<string, never>,
+  formData: FormData
+): Promise<Record<string, never>> {
+  const email = formData.get('email') as string
+  await api.auth.forgotPassword({ email }).catch(() => {})
+  redirect('/forgot-password/check-email')
+}
+
+export async function resetPasswordAction(
+  _prev: { error?: string },
+  formData: FormData
+): Promise<{ error?: string }> {
+  const token = formData.get('token') as string
+  const password = formData.get('password') as string
+  try {
+    await api.auth.resetPassword({ token, password })
+  } catch (e) {
+    return { error: e instanceof ApiError ? e.message : 'Reset failed' }
+  }
+  redirect('/login?reset=success')
+}
+
+export async function resendVerificationPublicAction(
+  _prev: Record<string, never>,
+  formData: FormData
+): Promise<Record<string, never>> {
+  const email = formData.get('email') as string
+  await api.auth.resendVerificationPublic({ email }).catch(() => {})
+  redirect('/register/check-email')
+}
+
 export async function acceptInviteAction(
   rawToken: string,
   _prev: { error?: string },
