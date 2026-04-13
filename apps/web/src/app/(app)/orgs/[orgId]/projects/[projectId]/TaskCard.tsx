@@ -87,7 +87,7 @@ export function TaskCard({ task, onClick, overlay = false, selectable = false, s
 
       {task.objective && (
         <div
-          onClick={onObjectiveClick ? (e) => { e.stopPropagation(); onObjectiveClick(task.objective) } : undefined}
+          onClick={onObjectiveClick ? (e) => { e.stopPropagation(); onObjectiveClick(task.objective || '') } : undefined}
           className={`text-xs text-gray-400 italic mt-1.5 line-clamp-1 ${onObjectiveClick ? 'cursor-pointer hover:text-purple-600' : ''}`}
           title={task.objective}
         >
