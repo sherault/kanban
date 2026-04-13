@@ -145,7 +145,7 @@ export class InvitationService {
 
     const accessToken = await signAccessToken({ sub: userId, sessionId })
     return {
-      user: { id: user.id, email: user.email, displayName: user.displayName, createdAt: user.createdAt },
+      user: { id: user.id, email: user.email, displayName: user.displayName, createdAt: user.createdAt, emailVerified: user.emailVerified, totpEnabled: !!user.totpSecret },
       accessToken,
       refreshToken: rawRefreshToken,
     }

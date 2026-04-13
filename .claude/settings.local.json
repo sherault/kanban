@@ -82,7 +82,8 @@
       "Bash(curl -s http://localhost:3001)",
       "Bash(curl -s http://localhost:3002)",
       "Bash(awk '{print $9}')",
-      "Bash(grep -E \"3009|3010|hbci|redwood-broker|pxc-ntfy|gw$\")"
+      "Bash(grep -E \"3009|3010|hbci|redwood-broker|pxc-ntfy|gw$\")",
+      "Bash(rtk wc:*)"
     ]
   },
   "enableAllProjectMcpServers": true,
