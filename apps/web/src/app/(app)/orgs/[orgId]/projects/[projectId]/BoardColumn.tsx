@@ -84,8 +84,6 @@ export function BoardColumn({
         }`}
       >
         {tasks
-          .slice()
-          .sort((a, b) => a.position - b.position)
           .map((task) => (
             <TaskCard
               key={task.id}

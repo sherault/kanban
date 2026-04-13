@@ -229,12 +229,19 @@ export function BoardClient({ initialTasks, orgMembers, projectId, orgId, curren
           {/* Board columns */}
           <div className="flex gap-4 p-6 overflow-x-auto flex-1 items-start">
             {COLUMNS.map(({ id, label }) => {
-              const columnTasks = tasks.filter((t) =>
-                t.column === id
-                && (!activeTag || t.tags.includes(activeTag))
-                && (!activeObjective || t.objective === activeObjective)
-                && (!activeDoerId || t.doer?.id === activeDoerId)
-              )
+              const columnTasks = tasks
+                .filter((t) =>
+                  t.column === id
+                  && (!activeTag || t.tags.includes(activeTag))
+                  && (!activeObjective || t.objective === activeObjective)
+                  && (!activeDoerId || t.doer?.id === activeDoerId)
+                )
+                .sort((a, b) => {
+                  if (!a.endDate && !b.endDate) return 0
+                  if (!a.endDate) return 1
+                  if (!b.endDate) return -1
+                  return a.endDate < b.endDate ? -1 : a.endDate > b.endDate ? 1 : 0
+                })
               return (
                 <BoardColumn
                   key={id}

@@ -69,7 +69,20 @@
       "Bash(pnpm --filter @kanban/web add react-syntax-highlighter)",
       "Bash(pnpm --filter @kanban/web add -D @types/react-syntax-highlighter)",
       "Bash(tty)",
-      "Bash(export GPG_TTY=$\\(tty\\) 2)"
+      "Bash(export GPG_TTY=$\\(tty\\) 2)",
+      "Bash(git checkout:*)",
+      "Bash(rtk vitest:*)",
+      "Bash(find /Users/stephane/projects/saas/kanban/apps/api/node_modules/otplib -name \"package.json\" -exec grep -l '\"type\": \"module\"' {} \\\\;)",
+      "Bash(xargs ls:*)",
+      "Bash(rtk playwright:*)",
+      "Bash(rtk curl:*)",
+      "Bash(pnpm dlx:*)",
+      "Bash(npx --yes playwright --version)",
+      "Bash(curl -s -L http://localhost:3000)",
+      "Bash(curl -s http://localhost:3001)",
+      "Bash(curl -s http://localhost:3002)",
+      "Bash(awk '{print $9}')",
+      "Bash(grep -E \"3009|3010|hbci|redwood-broker|pxc-ntfy|gw$\")"
     ]
   },
   "enableAllProjectMcpServers": true,

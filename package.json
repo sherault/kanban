@@ -9,6 +9,7 @@
     "format": "prettier --write \"**/*.{ts,tsx,js,json,md}\" --ignore-path .gitignore"
   },
   "devDependencies": {
+    "playwright": "^1.59.1",
     "prettier": "^3.3.3",
     "turbo": "^2.1.3",
     "typescript": "^5.5.4"
