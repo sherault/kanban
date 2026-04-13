@@ -37,3 +37,26 @@ export async function sendVerificationEmail(to: string, token: string): Promise<
     `,
   })
 }
+
+export async function sendPasswordResetEmail(to: string, token: string): Promise<void> {
+  const appUrl = process.env['APP_URL'] ?? 'http://localhost:3000'
+  const url = `${appUrl}/reset-password?token=${token}`
+  const transport = createTransport()
+
+  if (!transport) {
+    console.log(`[mailer] Password reset email for ${to}:\n  ${url}`)
+    return
+  }
+
+  await transport.sendMail({
+    from: process.env['SMTP_FROM'] ?? 'noreply@kanban.local',
+    to,
+    subject: 'Reset your password',
+    text: `Reset your password by visiting: ${url}\n\nThis link expires in 1 hour. If you did not request a reset, ignore this email.`,
+    html: `
+      <p>Someone requested a password reset for your account.</p>
+      <p><a href="${url}" style="background:#2563eb;color:#fff;padding:10px 20px;border-radius:6px;text-decoration:none;display:inline-block;">Reset password</a></p>
+      <p style="color:#6b7280;font-size:12px;">Or copy this link: ${url}<br>This link expires in 1 hour. If you did not request a reset, ignore this email.</p>
+    `,
+  })
+}
