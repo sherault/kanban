@@ -12,12 +12,19 @@ export default async function VerifyEmailPage({
     return <Result error="Missing verification token." />
   }
 
+  let success = false
+  let errorMsg = ''
   try {
     await api.auth.verifyEmail(token)
-    return <Result success />
+    success = true
   } catch (e) {
-    const msg = e instanceof ApiError ? e.message : 'Verification failed.'
-    return <Result error={msg} />
+    errorMsg = e instanceof ApiError ? e.message : 'Verification failed.'
+  }
+
+  if (success) {
+    return <Result success />
+  } else {
+    return <Result error={errorMsg} />
   }
 }
 

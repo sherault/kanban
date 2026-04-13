@@ -20,11 +20,11 @@ export interface ParseResult {
 }
 
 export function parseCsvImport(csvText: string): ParseResult {
-  const records = parse(csvText, {
+  const records: Record<string, string>[] = parse(csvText, {
     columns: true,
     skip_empty_lines: true,
     trim: true,
-  }) as Record<string, string>[]
+  })
 
   const valid: CsvTaskRow[] = []
   let skipped = 0

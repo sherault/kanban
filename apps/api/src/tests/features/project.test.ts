@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeAll } from 'vitest'
-import { createTestDb, loginTestUser, createVerifiedUser } from '../../db/test-utils.js'
+import { createTestDb, loginTestUser } from '../../db/test-utils.js'
 import { createApp } from '../../app.js'
 
 beforeAll(() => {

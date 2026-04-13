@@ -52,7 +52,7 @@ export function ColorPicker({ value, onChange }: Props) {
           type="button"
           onClick={() => customRef.current?.click()}
           title="Custom color…"
-          style={isCustom ? { backgroundColor: value! } : undefined}
+          style={isCustom && value ? { backgroundColor: value } : undefined}
           className={`w-6 h-6 rounded border-2 flex items-center justify-center ${
             isCustom
               ? 'border-blue-500'

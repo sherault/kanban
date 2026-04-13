@@ -41,7 +41,7 @@ export function useOrgSocket(
   const wsRef = useRef<WebSocket | null>(null)
   const attemptRef = useRef(0)
 
-  const connect = useCallback(async () => {
+  const connect = useCallback(async function doConnect() {
     if (unmountedRef.current) return
 
     const token = await fetchToken()
@@ -84,9 +84,9 @@ export function useOrgSocket(
 
       const backoff = Math.min(100 * 2 ** attemptRef.current, 30_000)
       attemptRef.current += 1
-      setTimeout(() => void connect(), backoff)
+      setTimeout(() => void doConnect(), backoff)
     }
-  }, [orgId])
+  }, [])
 
   useEffect(() => {
     unmountedRef.current = false

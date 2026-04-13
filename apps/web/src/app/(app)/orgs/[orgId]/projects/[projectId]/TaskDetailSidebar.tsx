@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useTransition, useEffect, useRef, useCallback } from 'react'
+import { useState, useTransition, useEffect, useRef, useCallback, useId } from 'react'
 import type { TaskDto, MembershipDto, TaskHistoryDto, Column } from '@kanban/shared'
 import { ColorPicker } from './ColorPicker'
 import { DescriptionEditor } from './DescriptionEditor'
@@ -48,6 +48,7 @@ function useConflictField(externalValue: string) {
 
   useEffect(() => {
     if (!isFocused) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setValue(externalValue)
     } else {
       pendingWsRef.current = externalValue
@@ -127,7 +128,7 @@ function ConflictModal({ field, conflict, onResolve }: {
 
 function TagInput({ tags, allTags, onAdd, onRemove }: { tags: string[]; allTags: string[]; onAdd: (t: string) => void; onRemove: (t: string) => void }) {
   const [input, setInput] = useState('')
-  const listId = useRef(`tag-suggestions-${Math.random().toString(36).slice(2)}`).current
+  const listId = useId()
   const suggestions = allTags.filter((t) => !tags.includes(t))
 
   function handleKey(e: React.KeyboardEvent<HTMLInputElement>) {

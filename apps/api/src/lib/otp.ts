@@ -7,9 +7,9 @@
  */
 import { createRequire } from 'node:module'
 const _require = createRequire(import.meta.url)
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
+ 
 // Use createRequire so Node resolves the "require" condition in otplib's
 // exports map (→ ./dist/index.cjs) instead of the ESM default.
-const { authenticator } = _require('otplib') as any
+const { authenticator } = _require('otplib')
 
 export { authenticator }

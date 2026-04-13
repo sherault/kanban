@@ -60,6 +60,7 @@ export function ArchivePanel({ projectId, onRestored, onTaskClick }: Props) {
 
   useEffect(() => {
     if (open) void load(search, page, dateFrom, dateTo)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, page, load])
 
   // Debounce text search

@@ -40,7 +40,12 @@ export function identityRoutes(db: AppDb): Hono<HonoEnv> {
   router.post('/login', zValidator('json', loginSchema), async (c) => {
     const body = c.req.valid('json')
     try {
-      const result = await svc.login(body)
+      const payload = {
+        email: body.email,
+        password: body.password,
+        ...(body.totpCode !== undefined && { totpCode: body.totpCode }),
+      }
+      const result = await svc.login(payload)
       setCookie(c, COOKIE_NAME, result.refreshToken, {
         httpOnly: true,
         sameSite: 'Strict',

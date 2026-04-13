@@ -73,7 +73,7 @@ const mdComponents: React.ComponentProps<typeof ReactMarkdown>['components'] = {
           PreTag="div"
           customStyle={{ borderRadius: '0.375rem', fontSize: '0.78rem', margin: '0.5rem 0' }}
         >
-          {String(children).replace(/\n$/, '')}
+          {String(children as string).replace(/\n$/, '')}
         </SyntaxHighlighter>
       )
     }

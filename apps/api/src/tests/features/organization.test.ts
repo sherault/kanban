@@ -94,7 +94,7 @@ describe('DELETE /organizations/:orgId', () => {
   it('deletes the org when owner has another org', async () => {
     const { app, accessToken, close } = await setup()
     const r1 = await app.request('/organizations', { method: 'POST', headers: { ...authHeaders(accessToken), 'Content-Type': 'application/json' }, body: JSON.stringify({ name: 'Org 1' }) })
-    const r2 = await app.request('/organizations', { method: 'POST', headers: { ...authHeaders(accessToken), 'Content-Type': 'application/json' }, body: JSON.stringify({ name: 'Org 2' }) })
+    await app.request('/organizations', { method: 'POST', headers: { ...authHeaders(accessToken), 'Content-Type': 'application/json' }, body: JSON.stringify({ name: 'Org 2' }) })
     const { id: orgId } = (await r1.json()) as { id: string }
 
     const res = await app.request(`/organizations/${orgId}`, {

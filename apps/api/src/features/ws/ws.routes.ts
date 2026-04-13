@@ -67,7 +67,7 @@ export function wsRoutes(
                 .from(memberships)
                 .where(
                   and(
-                    eq(memberships.userId, userId!),
+                    eq(memberships.userId, userId),
                     eq(memberships.organizationId, project.organizationId)
                   )
                 )

@@ -44,7 +44,7 @@ export async function createVerifiedUser(
  * JWT accessToken + raw refresh token by calling the login endpoint.
  */
 export async function loginTestUser(
-  app: { request: (url: string, init?: RequestInit) => Promise<Response> },
+  app: { request: (url: string, init?: RequestInit) => Response | Promise<Response> },
   db: ReturnType<typeof drizzle<typeof schema>>,
   opts: { email: string; password: string; displayName?: string }
 ): Promise<{ accessToken: string; userId: string; cookieHeader: string }> {
