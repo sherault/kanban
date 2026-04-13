@@ -1,9 +1,20 @@
 'use client'
 
-import { useActionState } from 'react'
+import { useActionState, Suspense } from 'react'
 import { useFormStatus } from 'react-dom'
+import { useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import { loginAction } from '../../../actions/auth'
+
+function ResetSuccessBanner() {
+  const params = useSearchParams()
+  if (params.get('reset') !== 'success') return null
+  return (
+    <div className="bg-green-50 border border-green-200 text-green-700 text-sm rounded-md px-3 py-2">
+      Password updated — please sign in with your new password.
+    </div>
+  )
+}
 
 function SubmitButton({ label }: { label: string }) {
   const { pending } = useFormStatus()
@@ -70,6 +81,10 @@ export default function LoginPage() {
               </>
             ) : (
               <>
+                <Suspense fallback={null}>
+                  <ResetSuccessBanner />
+                </Suspense>
+
                 <div>
                   <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-1">
                     Email
@@ -99,6 +114,11 @@ export default function LoginPage() {
                 </div>
 
                 <SubmitButton label="Sign in" />
+                <p className="text-center">
+                  <Link href="/forgot-password" className="text-xs text-gray-500 hover:text-gray-700 hover:underline">
+                    Forgot password?
+                  </Link>
+                </p>
               </>
             )}
           </form>
