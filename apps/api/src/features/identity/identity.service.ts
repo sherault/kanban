@@ -261,58 +261,6 @@ export class IdentityService {
   }
 
 
-  async requestPasswordReset(email: string): Promise<void> {
-    const user = this.db.select().from(users).where(eq(users.email, email)).get()
-    if (!user) return
-
-    this.db.delete(passwordResets).where(eq(passwordResets.userId, user.id)).run()
-
-    const rawToken = generateToken()
-    const hashedToken = hashToken(rawToken)
-    this.db
-      .insert(passwordResets)
-      .values({ id: generateId(), userId: user.id, hashedToken, expiresAt: expiresAtHours(RESET_TTL_HOURS) })
-      .run()
-    void sendPasswordResetEmail(user.email, rawToken).catch((err) => {
-      console.error('[mailer] Failed to send password reset email:', err)
-    })
-  }
-
-  async resetPassword(rawToken: string, newPassword: string): Promise<void> {
-    const hashedToken = hashToken(rawToken)
-    const record = this.db
-      .select()
-      .from(passwordResets)
-      .where(eq(passwordResets.hashedToken, hashedToken))
-      .get()
-    if (!record) throw unauthorized('Invalid or expired reset link')
-    if (new Date(record.expiresAt) < new Date()) {
-      this.db.delete(passwordResets).where(eq(passwordResets.id, record.id)).run()
-      throw unauthorized('Reset link has expired')
-    }
-    const passwordHash = await hashPassword(newPassword)
-    this.db.update(users).set({ passwordHash }).where(eq(users.id, record.userId)).run()
-    this.db.delete(refreshTokens).where(eq(refreshTokens.userId, record.userId)).run()
-    this.db.delete(passwordResets).where(eq(passwordResets.id, record.id)).run()
-  }
-
-  async resendVerificationByEmail(email: string): Promise<void> {
-    const user = this.db.select().from(users).where(eq(users.email, email)).get()
-    if (!user || user.emailVerified) return
-
-    this.db.delete(emailVerifications).where(eq(emailVerifications.userId, user.id)).run()
-
-    const rawToken = generateToken()
-    const hashedToken = hashToken(rawToken)
-    this.db
-      .insert(emailVerifications)
-      .values({ id: generateId(), userId: user.id, hashedToken, expiresAt: expiresAtHours(VERIFY_TTL_HOURS) })
-      .run()
-    void sendVerificationEmail(user.email, rawToken).catch((err) => {
-      console.error('[mailer] Failed to resend verification email:', err)
-    })
-  }
-
   // ── TOTP ─────────────────────────────────────────────────────────────────
 
   async setupTotp(userId: string): Promise<TotpSetupResult> {
