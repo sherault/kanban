@@ -50,3 +50,15 @@ export const emailVerifications = sqliteTable('email_verifications', {
     .notNull()
     .default(sql`(datetime('now'))`),
 })
+
+export const passwordResets = sqliteTable('password_resets', {
+  id: text('id').primaryKey(),
+  userId: text('user_id')
+    .notNull()
+    .references(() => users.id, { onDelete: 'cascade' }),
+  hashedToken: text('hashed_token').notNull().unique(),
+  expiresAt: text('expires_at').notNull(),
+  createdAt: text('created_at')
+    .notNull()
+    .default(sql`(datetime('now'))`),
+})
