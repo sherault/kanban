@@ -2,6 +2,8 @@
 
 A self-hosted, real-time project management board with built-in MCP server — so AI assistants like Claude can read and write your tasks directly.
 
+> **Built with AI tools:** This project was developed using [Claude Code](https://claude.ai/code), [RTK-AI](https://github.com/rtk-ai/rtk), and [code-review-graph](https://github.com/tirth8205/code-review-graph/).
+
 ---
 
 ## Table of Contents
@@ -175,15 +177,16 @@ Set up 2FA, generate API keys, copy the MCP config snippet for Claude.
 
 ```bash
 # Clone and install
-git clone <repo-url>
+git clone https://github.com/sherault/kanban
 cd kanban
 pnpm install
 
 # Copy and configure environment
 cp .env.example .env
-# Edit .env — set JWT_SECRET at minimum (must be ≥ 32 chars)
+# Edit .env — set JWT_SECRET and REFRESH_SECRET at minimum (must be ≥ 32 chars)
+# For example using `openssl rand -hex 32` in your terminal
 
-# Start both apps (API on :3010, Web on :3009)
+# Start both apps (right now hardcoded for API on :3010, Web on :3009 on the respective package.json)
 pnpm dev
 ```
 
