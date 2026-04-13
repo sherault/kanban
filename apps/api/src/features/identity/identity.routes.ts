@@ -59,7 +59,7 @@ export function identityRoutes(db: AppDb): Hono<HonoEnv> {
       return c.json({ user: result.user, accessToken: result.accessToken })
     } catch (err) {
       if (err instanceof TotpRequiredError) {
-        return c.json({ totpRequired: true }, 401)
+        return c.json({ totpRequired: true }, 200)
       }
       throw err
     }
