@@ -1,6 +1,7 @@
 {
   "name": "kanban",
   "private": true,
+  "type": "module",
   "scripts": {
     "dev": "turbo dev",
     "build": "turbo build",
