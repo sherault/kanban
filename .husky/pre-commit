@@ -1,0 +1,4 @@
+npx lint-staged
+pnpm typecheck
+pnpm test
+pnpm build
