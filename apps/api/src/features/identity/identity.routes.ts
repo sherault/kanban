@@ -4,6 +4,7 @@ import { z } from 'zod'
 import { setCookie, getCookie, deleteCookie } from 'hono/cookie'
 import type { AppDb, HonoEnv } from '../../types.js'
 import { authnMiddleware } from '../../middleware/authn.js'
+import { rateLimit } from '../../middleware/rate-limit.js'
 import { IdentityService, TotpRequiredError } from './identity.service.js'
 
 const COOKIE_NAME = 'refresh_token'
@@ -33,14 +34,16 @@ export function identityRoutes(db: AppDb): Hono<HonoEnv> {
   const svc = new IdentityService(db)
 
   // ── Public ─────────────────────────────────────────────────────────────────
+  
+  const authRateLimit = rateLimit(10, 15 * 60 * 1000) // 10 attempts per 15 minutes
 
-  router.post('/register', zValidator('json', registerSchema), async (c) => {
+  router.post('/register', authRateLimit, zValidator('json', registerSchema), async (c) => {
     const body = c.req.valid('json')
     const user = await svc.register(body)
     return c.json({ user }, 201)
   })
 
-  router.post('/login', zValidator('json', loginSchema), async (c) => {
+  router.post('/login', authRateLimit, zValidator('json', loginSchema), async (c) => {
     const body = c.req.valid('json')
     try {
       const payload = {
@@ -93,7 +96,7 @@ export function identityRoutes(db: AppDb): Hono<HonoEnv> {
     return c.json({ success: true })
   })
 
-  router.post('/forgot-password', zValidator('json', emailSchema), async (c) => {
+  router.post('/forgot-password', authRateLimit, zValidator('json', emailSchema), async (c) => {
     const { email } = c.req.valid('json')
     await svc.requestPasswordReset(email)
     return c.json({ success: true })

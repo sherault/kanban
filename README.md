@@ -30,6 +30,8 @@ A self-hosted, real-time project management board with built-in MCP server — s
 - **Two-factor authentication (TOTP)** — Google Authenticator, Authy, 1Password, any TOTP app
 - **Two-step login** — email/password then TOTP code when 2FA is enabled
 - **JWT access tokens** (short-lived) + **HTTP-only refresh token cookies** (rotated on each use)
+- **Rate Limiting** — brute-force protection on sensitive routes (login, register, forgot-password)
+- **Account Lockout** — accounts are temporarily locked after 5 failed attempts
 - **API keys** — long-lived bearer tokens for MCP / programmatic access
 
 ### Organizations & Members
@@ -275,8 +277,9 @@ The web layer is a pure consumer of the API. It uses `API_URL` for internal call
 | `REFRESH_SECRET` | Yes | Secret for refresh tokens (≥ 32 chars) |
 | `DATABASE_URL` | No | Path to SQLite file (default: `./data/kanban.db`) |
 | `PORT` | No | Internal API port (default: `3001`) |
-| `APP_URL` | No | Public URL of the frontend (for email links) |
+| `APP_URL` | No | Public URL of the frontend (for email links, CSRF, and CORS) |
 | `API_URL` | No | API URL for server-to-server calls (Internal Docker: `http://api:3001`) |
+| `ENABLE_HSTS` | No | Set to `true` to force HTTPS HSTS (default: true if production, false otherwise) |
 | `NEXT_PUBLIC_WS_URL` | Yes | WebSocket URL for the browser (`ws://localhost:3010`) |
 
 ---

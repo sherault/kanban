@@ -43,6 +43,8 @@ interface TotpSetupResult {
 const REFRESH_TTL_DAYS = 7
 const VERIFY_TTL_HOURS = 24
 const RESET_TTL_HOURS = 1
+const MAX_FAILED_ATTEMPTS = 5
+const LOCKOUT_DURATION_MINUTES = 15
 
 function expiresAt(days: number): string {
   const d = new Date()
@@ -53,6 +55,12 @@ function expiresAt(days: number): string {
 function expiresAtHours(hours: number): string {
   const d = new Date()
   d.setHours(d.getHours() + hours)
+  return d.toISOString()
+}
+
+function expiresAtMinutes(minutes: number): string {
+  const d = new Date()
+  d.setMinutes(d.getMinutes() + minutes)
   return d.toISOString()
 }
 
@@ -190,8 +198,31 @@ export class IdentityService {
     const user = this.db.select().from(users).where(eq(users.email, input.email)).get()
     if (!user) throw unauthorized('Invalid credentials')
 
+    // Check lockout
+    if (user.lockoutUntil && new Date(user.lockoutUntil) > new Date()) {
+      throw forbidden(`Account is locked. Please try again after ${new Date(user.lockoutUntil).toLocaleTimeString()}`)
+    }
+
     const valid = await verifyPassword(user.passwordHash, input.password)
-    if (!valid) throw unauthorized('Invalid credentials')
+    
+    if (!valid) {
+      const attempts = user.failedLoginAttempts + 1
+      const lockoutUntil = attempts >= MAX_FAILED_ATTEMPTS ? expiresAtMinutes(LOCKOUT_DURATION_MINUTES) : null
+      
+      this.db
+        .update(users)
+        .set({ 
+          failedLoginAttempts: attempts,
+          lockoutUntil
+        })
+        .where(eq(users.id, user.id))
+        .run()
+
+      if (lockoutUntil) {
+        throw forbidden(`Account locked due to too many failed attempts. Try again in ${LOCKOUT_DURATION_MINUTES} minutes.`)
+      }
+      throw unauthorized('Invalid credentials')
+    }
 
     if (!user.emailVerified) {
       throw forbidden('Please verify your email before signing in')
@@ -202,7 +233,19 @@ export class IdentityService {
         throw new TotpRequiredError()
       }
       const isValid = authenticator.verify({ token: input.totpCode, secret: user.totpSecret })
-      if (!isValid) throw unauthorized('Invalid authenticator code')
+      if (!isValid) {
+        // We could also count TOTP failures as failed attempts
+        throw unauthorized('Invalid authenticator code')
+      }
+    }
+
+    // Reset failed attempts on success
+    if (user.failedLoginAttempts > 0 || user.lockoutUntil) {
+      this.db
+        .update(users)
+        .set({ failedLoginAttempts: 0, lockoutUntil: null })
+        .where(eq(users.id, user.id))
+        .run()
     }
 
     const sessionId = generateId()

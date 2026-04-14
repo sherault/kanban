@@ -1,4 +1,7 @@
 import { Hono } from 'hono'
+import { cors } from 'hono/cors'
+import { csrf } from 'hono/csrf'
+import { secureHeaders } from 'hono/secure-headers'
 import { HTTPException } from 'hono/http-exception'
 import type { AppDb, Broadcaster, HonoEnv } from './types.js'
 import { noopBroadcaster } from './types.js'
@@ -15,6 +18,21 @@ export function createApp(
   broadcast: Broadcaster = noopBroadcaster
 ): Hono<HonoEnv> {
   const app = new Hono<HonoEnv>()
+  
+  const frontendUrl = process.env['APP_URL'] ?? 'http://localhost:3000'
+  const isProd = process.env['NODE_ENV'] === 'production'
+  const hstsEnabled = process.env['ENABLE_HSTS'] === 'true' || (isProd && process.env['ENABLE_HSTS'] !== 'false')
+
+  app.use('*', secureHeaders({
+    strictTransportSecurity: hstsEnabled ? 'max-age=31536000; includeSubDomains; preload' : false,
+  }))
+  app.use('*', cors({
+    origin: frontendUrl,
+    credentials: true,
+  }))
+  app.use('*', csrf({
+    origin: frontendUrl,
+  }))
 
   app.onError((err, c) => {
     if (err instanceof HTTPException) {

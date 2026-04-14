@@ -9,10 +9,13 @@ export const users = sqliteTable('users', {
   emailVerified: integer('email_verified', { mode: 'boolean' }).notNull().default(false),
   totpSecret: text('totp_secret'),
   totpEnabled: integer('totp_enabled', { mode: 'boolean' }).notNull().default(false),
+  failedLoginAttempts: integer('failed_login_attempts').notNull().default(0),
+  lockoutUntil: text('lockout_until'),
   createdAt: text('created_at')
     .notNull()
     .default(sql`(datetime('now'))`),
 })
+
 
 export const refreshTokens = sqliteTable('refresh_tokens', {
   id: text('id').primaryKey(),

@@ -1,0 +1,2 @@
+ALTER TABLE `users` ADD `failed_login_attempts` integer NOT NULL DEFAULT 0;
+ALTER TABLE `users` ADD `lockout_until` text;
