@@ -581,8 +581,8 @@ export class TaskService {
           dto.doer?.displayName,
           dto.validator?.displayName,
           dto.reporter?.displayName,
-          ...(dto.watchers ?? []).map(w => w.displayName),
-          ...(dto.advisors ?? []).map(a => a.displayName),
+          ...(dto.watchers ?? []).map((w: { displayName: string }) => w.displayName),
+          ...(dto.advisors ?? []).map((a: { displayName: string }) => a.displayName),
         ].filter(Boolean).join(' ').toLowerCase()
         const tagStr = dto.tags.join(' ').toLowerCase()
         return (

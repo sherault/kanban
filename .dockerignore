@@ -1,6 +1,14 @@
-node_modules
-**/.next
-**/dist
-**/*.log
+# Dependencies
+**/node_modules
+**/.pnpm-store
+
+# Only ignore actual local build artifacts if they are huge, 
+# but let's be safe and let everything else pass
 .git
-.env*
+.github
+**/.next
+**/.turbo
+**/.playwright
+**/test-results
+**/coverage
+node_modules

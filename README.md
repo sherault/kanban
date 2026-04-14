@@ -12,6 +12,7 @@ A self-hosted, real-time project management board with built-in MCP server — s
 - [Screenshots](#screenshots)
 - [Tech Stack](#tech-stack)
 - [Getting Started](#getting-started)
+  - [Environment Configuration](#environment-configuration)
   - [Local Development](#local-development)
   - [Docker](#docker)
 - [Demo Data](#demo-data)
@@ -171,6 +172,19 @@ Set up 2FA, generate API keys, copy the MCP config snippet for Claude.
 
 ## Getting Started
 
+### Environment Configuration
+
+The application uses an agnostic approach to configuration. Copy `.env.example` to `.env` and configure your secrets.
+
+The core of the "Plug & Play" setup is the URL configuration:
+- `API_URL`: Base URL for the API (server-side).
+- `NEXT_PUBLIC_WS_URL`: WebSocket URL for the browser.
+
+#### Zero-Config Switching
+The project is designed so you **never** have to change your `.env` when switching between Docker and Local development:
+1.  Set your `.env` for **Local Dev** (`localhost`, relative paths).
+2.  `docker-compose.yml` automatically **overrides** these values with specific container-internal addresses (`api:3001`, absolute paths) when running in Docker.
+
 ### Local Development
 
 **Prerequisites:** Node.js ≥ 20, pnpm ≥ 9
@@ -181,49 +195,38 @@ git clone https://github.com/sherault/kanban
 cd kanban
 pnpm install
 
-# Copy and configure environment
+# Configure environment
 cp .env.example .env
-# Edit .env — set JWT_SECRET and REFRESH_SECRET at minimum (must be ≥ 32 chars)
-# For example using `openssl rand -hex 32` in your terminal
+# Edit .env — set JWT_SECRET and REFRESH_SECRET (must be ≥ 32 chars)
 
-# Start both apps (right now hardcoded for API on :3010, Web on :3009)
+# Start all apps via Turborepo
 pnpm dev
 ```
 
 Open [http://localhost:3009](http://localhost:3009) in your browser.
 
-The database file is created automatically at `apps/api/kanban.db` on first start. Migrations run automatically on startup.
-
-> **Email verification in dev:** If no `SMTP_HOST` is set, verification links are printed to the API console instead of sent by email. Check the terminal after registering.
-
 ### Docker
 
-```bash
-# Copy env and set your secrets
-cp .env.example .env
+Running in Docker is the recommended way for production-like environments.
 
+```bash
 # Build and start
-docker compose up -d
+docker compose up -d --build
 
 # View logs
 docker compose logs -f
 ```
 
 - Web: [http://localhost:3009](http://localhost:3009)
-- API: [http://localhost:3010](http://localhost:3010)
+- API: [http://localhost:3010](http://localhost:3010) (exposed for Browser/MCP)
 
-The SQLite database is persisted to `./data/kanban.db` on the host (bind mount).
-
-To stop:
-```bash
-docker compose down
-```
+The SQLite database is persisted to `./data/kanban.db` on the host.
 
 ---
 
 ## Demo Data
 
-A seed script creates three demo users, one organization, two projects, and a realistic set of tasks across all columns — including tags, assignees, linked tasks, and archived tasks.
+A seed script creates three demo users, one organization, two projects, and a realistic set of tasks across all columns.
 
 **Requirements:** both `pnpm dev` servers must be running.
 
@@ -231,36 +234,15 @@ A seed script creates three demo users, one organization, two projects, and a re
 node scripts/seed.mjs
 ```
 
-This creates:
-
-| Name | Email | Password |
-|---|---|---|
-| Alice Martin | alice@acmecorp.io | demo1234 |
-| Bob Chen | bob@acmecorp.io | demo1234 |
-| Carol Singh | carol@acmecorp.io | demo1234 |
-
-**Organization:** Acme Corp (all three members)
-
-**Projects:**
-- **Website Redesign** — 10 tasks across all columns (3 archived), tagged, colour-coded, linked
-- **Mobile App v2** — 5 tasks across all columns
-
-Log in as Alice to see the full board. Bob is assigned the "Design system tokens" task, Carol is on the "SEO audit" task.
+User accounts: `alice@acmecorp.io`, `bob@acmecorp.io`, `carol@acmecorp.io`. Password: `demo1234`.
 
 ---
 
 ## MCP Integration (Claude / AI)
 
-Connect Claude (or any MCP-compatible AI) to your board so it can read tasks, create new ones, move them between columns, and update details — all from a conversation.
+Connect Claude to your board from the **Profile** page by generating an API key.
 
-### Setup
-
-1. Go to your **Profile** page
-2. Under **MCP API Keys**, enter a label and click **Generate key**
-3. Copy the raw key (shown only once)
-4. Add the config to your Claude desktop / CLI config:
-
-**Streamable HTTP (recommended)**
+**Config Snippet:**
 ```json
 {
   "mcpServers": {
@@ -273,107 +255,36 @@ Connect Claude (or any MCP-compatible AI) to your board so it can read tasks, cr
 }
 ```
 
-**Legacy SSE (older clients)**
-```json
-{
-  "mcpServers": {
-    "kanban": {
-      "type": "sse",
-      "url": "http://localhost:3010/mcp/sse",
-      "headers": { "Authorization": "Bearer <your-key>" }
-    }
-  }
-}
-```
-
-### What Claude can do
-
-Once connected, you can ask things like:
-
-> *"What tasks are currently in Doing?"*
-> *"Create a task in To Do: 'Write release notes', due April 30th"*
-> *"Move the SEO audit task to Done"*
-> *"List all tasks tagged 'bug'"*
-
-All changes appear on the board in real-time for all connected users.
-
 ---
 
 ## Architecture
 
-```
-kanban/
-├── apps/
-│   ├── api/          # Hono API — all domain logic, DB, WebSockets, MCP
-│   │   ├── src/
-│   │   │   ├── features/   # identity, org, project, task, mcp, ws
-│   │   │   ├── db/         # Drizzle schema + migrations
-│   │   │   └── lib/        # password, jwt, mailer, otp, errors
-│   │   └── drizzle/
-│   │       └── migrations/  # committed SQL migration files
-│   └── web/          # Next.js 14 App Router — BFF, no direct DB access
-│       └── src/
-│           ├── app/
-│           │   ├── (app)/   # authenticated routes
-│           │   └── (auth)/  # login, register, verify-email
-│           ├── actions/     # Server Actions (form mutations)
-│           └── hooks/       # useProjectSocket (WebSocket)
-└── packages/
-    └── shared/       # TypeScript DTOs and enums only
-```
+- **`apps/api`**: Hono API. Stateless domain logic and SQLite.
+- **`apps/web`**: Next.js 14. Pure BFF, no direct DB access. Handles SSR and Server Actions.
+- **`packages/shared`**: Shared DTO types between front and back.
 
-**Key design decisions:**
-- The web layer is a pure BFF — all data lives in the API, no direct DB access from Next.js
-- ORM types never leave `apps/api`; only DTOs from `packages/shared` cross the boundary
-- SQLite makes the project self-contained and trivially deployable; swapping to PostgreSQL requires only changing `DATABASE_URL` and the Drizzle driver
-- Fractional indexing (`position: real`) for task ordering — drag-and-drop never renumbers the entire column
-- Refresh token rotation on every use — reuse of an old token invalidates the session
+The web layer is a pure consumer of the API. It uses `API_URL` for internal calls and `NEXT_PUBLIC_API_URL` for client-side hooks.
 
 ---
 
 ## Environment Variables
 
-Copy `.env.example` to `.env` and configure:
-
 | Variable | Required | Description |
 |---|---|---|
 | `JWT_SECRET` | Yes | Secret for signing access tokens (≥ 32 chars) |
 | `REFRESH_SECRET` | Yes | Secret for refresh tokens (≥ 32 chars) |
-| `DATABASE_URL` | No | Path to SQLite file (default: `kanban.db`) |
-| `PORT` | No | API port (default: `3010`) |
-| `APP_URL` | No | Public URL for email links (default: `http://localhost:3009`) |
-| `SMTP_HOST` | No | SMTP server hostname — omit to log links to console |
-| `SMTP_PORT` | No | SMTP port (default: `587`) |
-| `SMTP_SECURE` | No | `true` for TLS on port 465 |
-| `SMTP_USER` | No | SMTP username |
-| `SMTP_PASS` | No | SMTP password |
-| `SMTP_FROM` | No | From address (default: `noreply@kanban.local`) |
-| `NEXT_PUBLIC_API_URL` | Yes (web) | API base URL visible to the browser |
-| `NEXT_PUBLIC_WS_URL` | Yes (web) | WebSocket base URL visible to the browser |
+| `DATABASE_URL` | No | Path to SQLite file (default: `./data/kanban.db`) |
+| `PORT` | No | Internal API port (default: `3001`) |
+| `APP_URL` | No | Public URL of the frontend (for email links) |
+| `API_URL` | No | API URL for server-to-server calls (Internal Docker: `http://api:3001`) |
+| `NEXT_PUBLIC_WS_URL` | Yes | WebSocket URL for the browser (`ws://localhost:3010`) |
 
 ---
 
 ## Running Tests
 
-Tests live in `apps/api` only. Each test spins up an in-memory SQLite database — no external services needed.
+Tests in `apps/api` use an in-memory database.
 
 ```bash
-# Run all tests
 pnpm test
-
-# Watch mode
-cd apps/api && pnpm test --watch
-
-# Coverage
-cd apps/api && pnpm test --coverage
 ```
-
-Test coverage includes:
-- Auth flows (register, login, refresh, logout, TOTP, email verification)
-- Organization and member management
-- Project CRUD
-- Task CRUD, move, reorder, tags, links, watchers, advisors, history
-- CSV import
-- API key management
-- WebSocket room management
-- Invitation flow
