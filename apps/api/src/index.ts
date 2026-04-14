@@ -17,7 +17,7 @@ async function start() {
   
   try {
     console.log("Running database migrations...");
-    await runMigrations();
+    runMigrations();
     console.log("Migrations check completed.");
   } catch (error) {
     console.error("Migration failed:", error);
