@@ -17,9 +17,11 @@ export async function proxy(request: NextRequest) {
         headers: { Cookie: `refresh_token=${refreshToken}` },
       });
       if (res.ok) {
-        const { accessToken: newToken } = (await res.json()) as {
-          accessToken: string;
-        };
+        const { accessToken: newToken, refreshToken: newRefreshToken } =
+          (await res.json()) as {
+            accessToken: string;
+            refreshToken?: string;
+          };
         const response = NextResponse.next();
         response.cookies.set("access_token", newToken, {
           httpOnly: true,
@@ -28,6 +30,15 @@ export async function proxy(request: NextRequest) {
           maxAge: 15 * 60,
           path: "/",
         });
+        if (newRefreshToken) {
+          response.cookies.set("refresh_token", newRefreshToken, {
+            httpOnly: true,
+            sameSite: "lax",
+            secure,
+            maxAge: 7 * 24 * 60 * 60, // 7 days
+            path: "/",
+          });
+        }
         return response;
       }
     } catch {
@@ -41,5 +52,5 @@ export async function proxy(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ["/orgs/:path*", "/profile/:path*"],
+  matcher: ["/orgs/:path*", "/profile/:path*", "/api/:path*"],
 };

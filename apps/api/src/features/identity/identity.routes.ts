@@ -92,7 +92,10 @@ export function identityRoutes(db: AppDb): Hono<HonoEnv> {
       path: "/",
       maxAge: COOKIE_MAX_AGE,
     });
-    return c.json({ accessToken: result.accessToken });
+    return c.json({
+      accessToken: result.accessToken,
+      refreshToken: result.newRefreshToken,
+    });
   });
 
   router.post("/logout", async (c) => {
