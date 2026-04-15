@@ -41,7 +41,11 @@ async function apiFetch<T>(
     ...(refreshToken ? { Cookie: `refresh_token=${refreshToken}` } : {}),
   };
 
-  const res = await fetch(`${API_URL}${path}`, { ...init, headers });
+  const res = await fetch(`${API_URL}${path}`, {
+    ...init,
+    headers,
+    cache: "no-store",
+  });
 
   if (!res.ok) {
     const payload = (await res
@@ -63,13 +67,17 @@ export const api = {
       });
     },
     login(body: { email: string; password: string; totpCode?: string }) {
-      return apiFetch<{ user: UserDto; accessToken: string } | { totpRequired: true }>("/auth/login", {
+      return apiFetch<
+        { user: UserDto; accessToken: string } | { totpRequired: true }
+      >("/auth/login", {
         method: "POST",
         body: JSON.stringify(body),
       });
     },
     verifyEmail(token: string) {
-      return apiFetch<{ success: true }>(`/auth/verify-email?token=${encodeURIComponent(token)}`);
+      return apiFetch<{ success: true }>(
+        `/auth/verify-email?token=${encodeURIComponent(token)}`,
+      );
     },
     resendVerification(token: string) {
       return apiFetch<{ success: true }>("/auth/resend-verification", {
@@ -99,10 +107,13 @@ export const api = {
       return apiFetch<UserDto>("/auth/me", { token });
     },
     setupTotp(token: string) {
-      return apiFetch<{ secret: string; uri: string; qrCode: string }>("/auth/totp/setup", {
-        method: "POST",
-        token,
-      });
+      return apiFetch<{ secret: string; uri: string; qrCode: string }>(
+        "/auth/totp/setup",
+        {
+          method: "POST",
+          token,
+        },
+      );
     },
     enableTotp(token: string, code: string) {
       return apiFetch<{ success: true }>("/auth/totp/enable", {
@@ -155,18 +166,29 @@ export const api = {
         { method: "POST", token },
       );
     },
-    updateMemberRole(token: string, orgId: string, userId: string, role: 'member' | 'manager') {
-      return apiFetch<{ success: true }>(`/organizations/${orgId}/members/${userId}`, {
-        method: "PATCH",
-        body: JSON.stringify({ role }),
-        token,
-      });
+    updateMemberRole(
+      token: string,
+      orgId: string,
+      userId: string,
+      role: "member" | "manager",
+    ) {
+      return apiFetch<{ success: true }>(
+        `/organizations/${orgId}/members/${userId}`,
+        {
+          method: "PATCH",
+          body: JSON.stringify({ role }),
+          token,
+        },
+      );
     },
     removeMember(token: string, orgId: string, userId: string) {
-      return apiFetch<{ success: true }>(`/organizations/${orgId}/members/${userId}`, {
-        method: "DELETE",
-        token,
-      });
+      return apiFetch<{ success: true }>(
+        `/organizations/${orgId}/members/${userId}`,
+        {
+          method: "DELETE",
+          token,
+        },
+      );
     },
     transferOwnership(token: string, orgId: string, toUserId: string) {
       return apiFetch<{ success: true }>(`/organizations/${orgId}/transfer`, {
@@ -196,18 +218,29 @@ export const api = {
         token,
       });
     },
-    update(token: string, orgId: string, projectId: string, body: { name: string }) {
-      return apiFetch<ProjectDto>(`/organizations/${orgId}/projects/${projectId}`, {
-        method: "PATCH",
-        body: JSON.stringify(body),
-        token,
-      });
+    update(
+      token: string,
+      orgId: string,
+      projectId: string,
+      body: { name: string },
+    ) {
+      return apiFetch<ProjectDto>(
+        `/organizations/${orgId}/projects/${projectId}`,
+        {
+          method: "PATCH",
+          body: JSON.stringify(body),
+          token,
+        },
+      );
     },
     delete(token: string, orgId: string, projectId: string) {
-      return apiFetch<{ success: true }>(`/organizations/${orgId}/projects/${projectId}`, {
-        method: "DELETE",
-        token,
-      });
+      return apiFetch<{ success: true }>(
+        `/organizations/${orgId}/projects/${projectId}`,
+        {
+          method: "DELETE",
+          token,
+        },
+      );
     },
   },
 
@@ -289,20 +322,40 @@ export const api = {
       );
     },
     archive(token: string, projectId: string, taskIds: string[]) {
-      return apiFetch<{ success: true }>(`/projects/${projectId}/tasks/archive`, {
-        method: 'POST', token, body: JSON.stringify({ taskIds }),
-      })
+      return apiFetch<{ success: true }>(
+        `/projects/${projectId}/tasks/archive`,
+        {
+          method: "POST",
+          token,
+          body: JSON.stringify({ taskIds }),
+        },
+      );
     },
     restore(token: string, projectId: string, taskId: string) {
-      return apiFetch<TaskDto>(`/projects/${projectId}/tasks/${taskId}/restore`, { method: 'POST', token })
+      return apiFetch<TaskDto>(
+        `/projects/${projectId}/tasks/${taskId}/restore`,
+        { method: "POST", token },
+      );
     },
-    listArchived(token: string, projectId: string, opts: { search?: string; page?: number; dateFrom?: string; dateTo?: string } = {}) {
-      const params = new URLSearchParams()
-      if (opts.search) params.set('search', opts.search)
-      if (opts.page) params.set('page', String(opts.page))
-      if (opts.dateFrom) params.set('dateFrom', opts.dateFrom)
-      if (opts.dateTo) params.set('dateTo', opts.dateTo)
-      return apiFetch<{ tasks: TaskDto[]; total: number }>(`/projects/${projectId}/archived-tasks?${params}`, { token })
+    listArchived(
+      token: string,
+      projectId: string,
+      opts: {
+        search?: string;
+        page?: number;
+        dateFrom?: string;
+        dateTo?: string;
+      } = {},
+    ) {
+      const params = new URLSearchParams();
+      if (opts.search) params.set("search", opts.search);
+      if (opts.page) params.set("page", String(opts.page));
+      if (opts.dateFrom) params.set("dateFrom", opts.dateFrom);
+      if (opts.dateTo) params.set("dateTo", opts.dateTo);
+      return apiFetch<{ tasks: TaskDto[]; total: number }>(
+        `/projects/${projectId}/archived-tasks?${params}`,
+        { token },
+      );
     },
     getHistory(token: string, projectId: string, taskId: string) {
       return apiFetch<TaskHistoryDto[]>(
