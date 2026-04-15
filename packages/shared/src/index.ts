@@ -4,3 +4,5 @@ export * from "./dtos/identity.js";
 export * from "./dtos/organization.js";
 export * from "./dtos/project.js";
 export * from "./dtos/board.js";
+export * from "./constants/auth.js";
+export * from "./utils/logger.js";

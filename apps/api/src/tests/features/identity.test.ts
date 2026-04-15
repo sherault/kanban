@@ -1,4 +1,5 @@
 import { describe, it, expect, beforeAll } from "vitest";
+import { KB_REFRESH_TOKEN_COOKIE } from "@kanban/shared";
 import {
   createTestDb,
   createVerifiedUser,
@@ -106,7 +107,7 @@ describe("POST /auth/login", () => {
     expect(typeof body.accessToken).toBe("string");
     expect(body.user.email).toBe("alice@example.com");
     const setCookie = res.headers.get("set-cookie") ?? "";
-    expect(setCookie).toMatch(/refresh_token=/);
+    expect(setCookie).toMatch(new RegExp(`${KB_REFRESH_TOKEN_COOKIE}=`));
     expect(setCookie).toMatch(/HttpOnly/);
     close();
   });
@@ -158,12 +159,14 @@ describe("POST /auth/refresh", () => {
       password: "password123",
       displayName: "Alice",
     });
-    const match = /refresh_token=([^;]+)/.exec(cookieHeader);
+    const match = new RegExp(`${KB_REFRESH_TOKEN_COOKIE}=([^;]+)`).exec(
+      cookieHeader,
+    );
     const rawToken = match?.[1] ?? "";
 
     const res = await app.request("/auth/refresh", {
       method: "POST",
-      headers: { Cookie: `refresh_token=${rawToken}` },
+      headers: { Cookie: `${KB_REFRESH_TOKEN_COOKIE}=${rawToken}` },
     });
     expect(res.status).toBe(200);
     const body = (await res.json()) as { accessToken: string };

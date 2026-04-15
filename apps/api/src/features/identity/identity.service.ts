@@ -72,6 +72,12 @@ function expiresAtMinutes(minutes: number): string {
   return d.toISOString();
 }
 
+function expiresAtSeconds(seconds: number): string {
+  const d = new Date();
+  d.setSeconds(d.getSeconds() + seconds);
+  return d.toISOString();
+}
+
 function toUserDto(row: typeof users.$inferSelect): UserDto {
   return {
     id: row.id,
@@ -362,6 +368,7 @@ export class IdentityService {
     if (!record) throw unauthorized("Invalid refresh token");
 
     if (new Date(record.expiresAt) < new Date()) {
+      // Token is truly expired — no grace period
       this.db
         .delete(refreshTokens)
         .where(eq(refreshTokens.id, record.id))
@@ -369,7 +376,14 @@ export class IdentityService {
       throw unauthorized("Refresh token expired");
     }
 
-    this.db.delete(refreshTokens).where(eq(refreshTokens.id, record.id)).run();
+    // Mark current token as "about to expire" instead of deleting immediately.
+    // This allows concurrent requests (race conditions) to succeed during a 30s window.
+    this.db
+      .update(refreshTokens)
+      .set({ expiresAt: expiresAtSeconds(10) }) // 10s is plenty for a race condition
+      .where(eq(refreshTokens.id, record.id))
+      .run();
+
     const newSessionId = generateId();
     const newRawToken = generateToken();
     const newHashedToken = hashToken(newRawToken);

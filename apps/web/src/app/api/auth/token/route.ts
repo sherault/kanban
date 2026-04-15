@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { headers } from "next/headers";
 import { getAccessToken } from "@/lib/session";
+import { KB_ACCESS_TOKEN_HEADER } from "@kanban/shared";
 
 /**
  * GET /api/auth/token
@@ -11,12 +12,14 @@ import { getAccessToken } from "@/lib/session";
  * This endpoint is same-origin only — no CORS headers intentionally.
  */
 export async function GET(): Promise<NextResponse> {
-  const token = await getAccessToken();
+  const headersList = await headers();
+  const headerToken = headersList.get(KB_ACCESS_TOKEN_HEADER);
+  const token = headerToken || (await getAccessToken());
+
   if (!token) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const headersList = await headers();
   const host = headersList.get("host");
   const protocol = headersList.get("x-forwarded-proto") || "http";
   const wsProtocol = protocol === "https" ? "wss" : "ws";

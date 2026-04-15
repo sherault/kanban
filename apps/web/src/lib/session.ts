@@ -1,9 +1,16 @@
 import { cookies } from "next/headers";
 
-const ACCESS_COOKIE = "access_token";
-const REFRESH_COOKIE = "refresh_token";
-const USER_NAME_COOKIE = "user_name";
-const USER_ID_COOKIE = "user_id";
+import {
+  KB_ACCESS_TOKEN_COOKIE,
+  KB_REFRESH_TOKEN_COOKIE,
+  KB_USER_NAME_COOKIE,
+  KB_USER_ID_COOKIE,
+} from "@kanban/shared";
+
+const ACCESS_COOKIE = KB_ACCESS_TOKEN_COOKIE;
+const REFRESH_COOKIE = KB_REFRESH_TOKEN_COOKIE;
+const USER_NAME_COOKIE = KB_USER_NAME_COOKIE;
+const USER_ID_COOKIE = KB_USER_ID_COOKIE;
 
 const secure = process.env["NODE_ENV"] === "production";
 
@@ -83,6 +90,8 @@ export function extractRefreshToken(
   setCookieHeader: string | null,
 ): string | undefined {
   if (!setCookieHeader) return undefined;
-  const match = setCookieHeader.match(/refresh_token=([^;]+)/);
+  const match = setCookieHeader.match(
+    new RegExp(`${KB_REFRESH_TOKEN_COOKIE}=([^;]+)`),
+  );
   return match?.[1] ?? undefined;
 }

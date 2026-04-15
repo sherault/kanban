@@ -5,8 +5,9 @@ import { setCookie } from "hono/cookie";
 import type { AppDb, HonoEnv } from "../../types.js";
 import { InvitationService } from "./invitation.service.js";
 import { notFound } from "../../lib/errors.js";
+import { KB_REFRESH_TOKEN_COOKIE } from "@kanban/shared";
 
-const COOKIE_NAME = "refresh_token";
+const COOKIE_NAME = KB_REFRESH_TOKEN_COOKIE;
 const COOKIE_MAX_AGE = 7 * 24 * 60 * 60;
 
 const acceptSchema = z.object({

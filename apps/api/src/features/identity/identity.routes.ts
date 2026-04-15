@@ -5,9 +5,10 @@ import { setCookie, getCookie, deleteCookie } from "hono/cookie";
 import type { AppDb, HonoEnv } from "../../types.js";
 import { authnMiddleware } from "../../middleware/authn.js";
 import { rateLimit } from "../../middleware/rate-limit.js";
+import { KB_REFRESH_TOKEN_COOKIE } from "@kanban/shared";
 import { IdentityService, TotpRequiredError } from "./identity.service.js";
 
-const COOKIE_NAME = "refresh_token";
+const COOKIE_NAME = KB_REFRESH_TOKEN_COOKIE;
 const COOKIE_MAX_AGE = 7 * 24 * 60 * 60; // 7 days in seconds
 
 const registerSchema = z.object({

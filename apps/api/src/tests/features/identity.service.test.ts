@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeAll } from "vitest";
+import { describe, it, expect, beforeAll, vi } from "vitest";
 import { createTestDb, createVerifiedUser } from "../../db/test-utils.js";
 import { IdentityService } from "../../features/identity/identity.service.js";
 import { eq } from "drizzle-orm";
@@ -108,6 +108,7 @@ describe("IdentityService.refresh", () => {
   });
 
   it("invalidates the old refresh token after rotation", async () => {
+    vi.useFakeTimers();
     const { db, close } = createTestDb();
     const svc = new IdentityService(db);
     await createVerifiedUser(db, {
@@ -120,8 +121,13 @@ describe("IdentityService.refresh", () => {
       password: "pw",
     });
     await svc.refresh(rt1);
+
+    // Jump forward 11s to exceed the 10s grace period
+    vi.advanceTimersByTime(11000);
+
     await expect(svc.refresh(rt1)).rejects.toMatchObject({ status: 401 });
     close();
+    vi.useRealTimers();
   });
 });
 

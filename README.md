@@ -322,16 +322,17 @@ The web layer is a pure consumer of the API. It uses `API_URL` for internal call
 
 ## Environment Variables
 
-| Variable         | Required | Description                                                                      |
-| ---------------- | -------- | -------------------------------------------------------------------------------- |
-| `JWT_SECRET`     | Yes      | Secret for signing access tokens (≥ 32 chars)                                    |
-| `REFRESH_SECRET` | Yes      | Secret for refresh tokens (≥ 32 chars)                                           |
-| `DATABASE_URL`   | No       | Path to SQLite file (default: `./data/kanban.db`)                                |
-| `PORT`           | No       | Internal API port (default: `3001`)                                              |
-| `APP_URL`        | No       | Public URL of the frontend (for email links, CSRF, and CORS)                     |
-| `API_URL`        | No       | API URL for server-to-server calls (Internal Docker: `http://api:3001`)          |
-| `ENABLE_HSTS`    | No       | Set to `true` to force HTTPS HSTS (default: true if production, false otherwise) |
-| `WS_URL`         | Yes      | WebSocket URL for the browser (`ws://localhost:3010`)                            |
+| Variable         | Required | Description                                                                                    |
+| ---------------- | -------- | ---------------------------------------------------------------------------------------------- |
+| `JWT_SECRET`     | Yes      | Secret for signing access tokens (≥ 32 chars)                                                  |
+| `REFRESH_SECRET` | Yes      | Secret for refresh tokens (≥ 32 chars)                                                         |
+| `DATABASE_URL`   | No       | Path to SQLite file (default: `./data/kanban.db`)                                              |
+| `PORT`           | No       | Internal API port (default: `3001`)                                                            |
+| `APP_URL`        | No       | Public URL of the frontend (for email links, CSRF, and CORS)                                   |
+| `API_URL`        | No       | API URL for server-to-server calls (Internal Docker: `http://api:3001`)                        |
+| `LOG_LEVEL`      | No       | Log level: `debug`, `info`, `warn`, `error`, `none` (default: `debug` in dev, `error` in prod) |
+| `ENABLE_HSTS`    | No       | Set to `true` to force HTTPS HSTS (default: true if production, false otherwise)               |
+| `WS_URL`         | Yes      | WebSocket URL for the browser (`ws://localhost:3010`)                                          |
 
 ---
 

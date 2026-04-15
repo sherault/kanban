@@ -10,6 +10,7 @@ import type {
   ApiKeyCreatedDto,
   Column,
 } from "@kanban/shared";
+import { KB_REFRESH_TOKEN_COOKIE } from "@kanban/shared";
 
 const API_URL = process.env["API_URL"] ?? "http://localhost:3010";
 
@@ -38,7 +39,9 @@ async function apiFetch<T>(
       ? { "Content-Type": "application/json" }
       : {}),
     ...(token ? { Authorization: `Bearer ${token}` } : {}),
-    ...(refreshToken ? { Cookie: `refresh_token=${refreshToken}` } : {}),
+    ...(refreshToken
+      ? { Cookie: `${KB_REFRESH_TOKEN_COOKIE}=${refreshToken}` }
+      : {}),
   };
 
   const res = await fetch(`${API_URL}${path}`, {
