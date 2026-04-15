@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { headers } from "next/headers";
 import { getAccessToken } from "@/lib/session";
 
 /**
@@ -14,8 +15,21 @@ export async function GET(): Promise<NextResponse> {
   if (!token) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
+
+  const headersList = await headers();
+  const host = headersList.get("host");
+  const protocol = headersList.get("x-forwarded-proto") || "http";
+  const wsProtocol = protocol === "https" ? "wss" : "ws";
+  const isDev = process.env.NODE_ENV === "development";
+
+  const wsUrl =
+    process.env["WS_URL"] ||
+    (isDev && host?.includes("localhost")
+      ? "ws://localhost:3010"
+      : `${wsProtocol}://${host}`);
+
   return NextResponse.json({
     token,
-    wsUrl: process.env["WS_URL"] || "ws://localhost:3010",
+    wsUrl,
   });
 }

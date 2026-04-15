@@ -1,31 +1,33 @@
-'use client'
+"use client";
 
-import { useActionState } from 'react'
-import { useFormStatus } from 'react-dom'
-import Link from 'next/link'
-import { registerAction } from '../../../actions/auth'
+import { useActionState } from "react";
+import { useFormStatus } from "react-dom";
+import Link from "next/link";
+import { registerAction } from "../../../actions/auth";
 
 function SubmitButton() {
-  const { pending } = useFormStatus()
+  const { pending } = useFormStatus();
   return (
     <button
       type="submit"
       disabled={pending}
       className="w-full bg-blue-600 text-white py-2 px-4 rounded-md text-sm font-medium hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
     >
-      {pending ? 'Creating account…' : 'Create account'}
+      {pending ? "Creating account…" : "Create account"}
     </button>
-  )
+  );
 }
 
 export default function RegisterPage() {
-  const [state, formAction] = useActionState(registerAction, {})
+  const [state, formAction] = useActionState(registerAction, {});
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-50">
       <div className="w-full max-w-sm">
         <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-8">
-          <h1 className="text-2xl font-bold text-gray-900 mb-6">Create account</h1>
+          <h1 className="text-2xl font-bold text-gray-900 mb-6">
+            Create account
+          </h1>
 
           <form action={formAction} className="space-y-4">
             {state.error && (
@@ -35,7 +37,10 @@ export default function RegisterPage() {
             )}
 
             <div>
-              <label htmlFor="displayName" className="block text-sm font-medium text-gray-700 mb-1">
+              <label
+                htmlFor="displayName"
+                className="block text-sm font-medium text-gray-700 mb-1"
+              >
                 Display name
               </label>
               <input
@@ -51,7 +56,10 @@ export default function RegisterPage() {
             </div>
 
             <div>
-              <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-1">
+              <label
+                htmlFor="email"
+                className="block text-sm font-medium text-gray-700 mb-1"
+              >
                 Email
               </label>
               <input
@@ -65,7 +73,10 @@ export default function RegisterPage() {
             </div>
 
             <div>
-              <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-1">
+              <label
+                htmlFor="password"
+                className="block text-sm font-medium text-gray-700 mb-1"
+              >
                 Password
               </label>
               <input
@@ -83,13 +94,16 @@ export default function RegisterPage() {
           </form>
 
           <p className="mt-4 text-center text-sm text-gray-500">
-            Already have an account?{' '}
-            <Link href="/login" className="text-blue-600 hover:underline font-medium">
+            Already have an account?{" "}
+            <Link
+              href="/login"
+              className="text-blue-600 hover:underline font-medium"
+            >
               Sign in
             </Link>
           </p>
         </div>
       </div>
     </div>
-  )
+  );
 }

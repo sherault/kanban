@@ -93,6 +93,7 @@ kanban/
 ## Task 1: Monorepo Root
 
 **Files:**
+
 - Create: `package.json`
 - Create: `pnpm-workspace.yaml`
 - Create: `turbo.json`
@@ -227,6 +228,7 @@ git commit -m "chore: initialize monorepo root (pnpm + turborepo)"
 ## Task 2: `packages/eslint-config`
 
 **Files:**
+
 - Create: `packages/eslint-config/package.json`
 - Create: `packages/eslint-config/index.js`
 - Create: `packages/eslint-config/.prettierrc`
@@ -257,9 +259,9 @@ git commit -m "chore: initialize monorepo root (pnpm + turborepo)"
 - [ ] **Step 2: Create `packages/eslint-config/index.js`**
 
 ```js
-import js from '@eslint/js'
-import tseslint from 'typescript-eslint'
-import prettier from 'eslint-config-prettier'
+import js from "@eslint/js";
+import tseslint from "typescript-eslint";
+import prettier from "eslint-config-prettier";
 
 export default tseslint.config(
   js.configs.recommended,
@@ -267,13 +269,19 @@ export default tseslint.config(
   prettier,
   {
     rules: {
-      '@typescript-eslint/no-unused-vars': ['error', { argsIgnorePattern: '^_' }],
-      '@typescript-eslint/no-explicit-any': 'error',
-      '@typescript-eslint/no-floating-promises': 'error',
-      '@typescript-eslint/consistent-type-imports': ['error', { prefer: 'type-imports' }],
+      "@typescript-eslint/no-unused-vars": [
+        "error",
+        { argsIgnorePattern: "^_" },
+      ],
+      "@typescript-eslint/no-explicit-any": "error",
+      "@typescript-eslint/no-floating-promises": "error",
+      "@typescript-eslint/consistent-type-imports": [
+        "error",
+        { prefer: "type-imports" },
+      ],
     },
-  }
-)
+  },
+);
 ```
 
 - [ ] **Step 3: Create `packages/eslint-config/.prettierrc`**
@@ -306,6 +314,7 @@ git commit -m "chore: add shared eslint-config package"
 ## Task 3: `packages/shared` — Enums
 
 **Files:**
+
 - Create: `packages/shared/package.json`
 - Create: `packages/shared/tsconfig.json`
 - Create: `packages/shared/src/enums/roles.ts`
@@ -353,25 +362,25 @@ git commit -m "chore: add shared eslint-config package"
 
 ```typescript
 export const Role = {
-  OWNER: 'owner',
-  MANAGER: 'manager',
-  MEMBER: 'member',
-} as const
+  OWNER: "owner",
+  MANAGER: "manager",
+  MEMBER: "member",
+} as const;
 
-export type Role = (typeof Role)[keyof typeof Role]
+export type Role = (typeof Role)[keyof typeof Role];
 ```
 
 - [ ] **Step 4: Create `packages/shared/src/enums/columns.ts`**
 
 ```typescript
 export const Column = {
-  IDEAS: 'ideas',
-  TODO: 'todo',
-  DOING: 'doing',
-  DONE: 'done',
-} as const
+  IDEAS: "ideas",
+  TODO: "todo",
+  DOING: "doing",
+  DONE: "done",
+} as const;
 
-export type Column = (typeof Column)[keyof typeof Column]
+export type Column = (typeof Column)[keyof typeof Column];
 ```
 
 - [ ] **Step 5: Commit**
@@ -386,6 +395,7 @@ git commit -m "feat(shared): add Role and Column enums"
 ## Task 4: `packages/shared` — DTOs
 
 **Files:**
+
 - Create: `packages/shared/src/dtos/identity.ts`
 - Create: `packages/shared/src/dtos/organization.ts`
 - Create: `packages/shared/src/dtos/project.ts`
@@ -396,49 +406,49 @@ git commit -m "feat(shared): add Role and Column enums"
 
 ```typescript
 export interface UserDto {
-  id: string
-  email: string
-  displayName: string
-  createdAt: string
+  id: string;
+  email: string;
+  displayName: string;
+  createdAt: string;
 }
 
 export interface ApiKeyDto {
-  id: string
-  label: string
-  lastUsedAt: string | null
-  createdAt: string
+  id: string;
+  label: string;
+  lastUsedAt: string | null;
+  createdAt: string;
 }
 
 // Returned only at creation — raw key never stored
 export interface ApiKeyCreatedDto extends ApiKeyDto {
-  rawKey: string
+  rawKey: string;
 }
 ```
 
 - [ ] **Step 2: Create `packages/shared/src/dtos/organization.ts`**
 
 ```typescript
-import type { Role } from '../enums/roles.js'
+import type { Role } from "../enums/roles.js";
 
 export interface OrganizationDto {
-  id: string
-  name: string
-  website: string | null
-  createdAt: string
+  id: string;
+  name: string;
+  website: string | null;
+  createdAt: string;
 }
 
 export interface MembershipDto {
-  userId: string
-  organizationId: string
-  role: Role
-  user: Pick<import('./identity.js').UserDto, 'id' | 'displayName' | 'email'>
+  userId: string;
+  organizationId: string;
+  role: Role;
+  user: Pick<import("./identity.js").UserDto, "id" | "displayName" | "email">;
 }
 
 export interface InvitationTokenDto {
-  id: string
-  organizationId: string
-  expiresAt: string
-  createdAt: string
+  id: string;
+  organizationId: string;
+  expiresAt: string;
+  createdAt: string;
 }
 ```
 
@@ -446,68 +456,68 @@ export interface InvitationTokenDto {
 
 ```typescript
 export interface ProjectDto {
-  id: string
-  organizationId: string
-  name: string
-  createdAt: string
+  id: string;
+  organizationId: string;
+  name: string;
+  createdAt: string;
 }
 ```
 
 - [ ] **Step 4: Create `packages/shared/src/dtos/board.ts`**
 
 ```typescript
-import type { Column } from '../enums/columns.js'
-import type { UserDto } from './identity.js'
+import type { Column } from "../enums/columns.js";
+import type { UserDto } from "./identity.js";
 
 export interface TaskDto {
-  id: string
-  projectId: string
-  column: Column
-  title: string
-  description: string | null
-  objective: string | null
-  startDate: string
-  endDate: string
-  backgroundColor: string | null
-  globalSubject: string | null
-  position: number
-  reporter: Pick<UserDto, 'id' | 'displayName'>
-  doer: Pick<UserDto, 'id' | 'displayName'> | null
-  validator: Pick<UserDto, 'id' | 'displayName'> | null
-  watchers: Array<Pick<UserDto, 'id' | 'displayName'>>
-  advisors: Array<Pick<UserDto, 'id' | 'displayName'>>
-  tags: string[]
-  linkedTaskIds: string[]
-  createdAt: string
-  updatedAt: string
+  id: string;
+  projectId: string;
+  column: Column;
+  title: string;
+  description: string | null;
+  objective: string | null;
+  startDate: string;
+  endDate: string;
+  backgroundColor: string | null;
+  globalSubject: string | null;
+  position: number;
+  reporter: Pick<UserDto, "id" | "displayName">;
+  doer: Pick<UserDto, "id" | "displayName"> | null;
+  validator: Pick<UserDto, "id" | "displayName"> | null;
+  watchers: Array<Pick<UserDto, "id" | "displayName">>;
+  advisors: Array<Pick<UserDto, "id" | "displayName">>;
+  tags: string[];
+  linkedTaskIds: string[];
+  createdAt: string;
+  updatedAt: string;
 }
 
 export interface TaskHistoryDto {
-  id: string
-  taskId: string
-  actor: Pick<UserDto, 'id' | 'displayName'>
-  field: string
-  oldValue: string | null
-  newValue: string | null
-  changedAt: string
-  batchId: string | null
+  id: string;
+  taskId: string;
+  actor: Pick<UserDto, "id" | "displayName">;
+  field: string;
+  oldValue: string | null;
+  newValue: string | null;
+  changedAt: string;
+  batchId: string | null;
 }
 
 export interface TaskLinkDto {
-  taskId: string
-  linkedTaskId: string
+  taskId: string;
+  linkedTaskId: string;
 }
 ```
 
 - [ ] **Step 5: Create `packages/shared/src/index.ts`**
 
 ```typescript
-export * from './enums/roles.js'
-export * from './enums/columns.js'
-export * from './dtos/identity.js'
-export * from './dtos/organization.js'
-export * from './dtos/project.js'
-export * from './dtos/board.js'
+export * from "./enums/roles.js";
+export * from "./enums/columns.js";
+export * from "./dtos/identity.js";
+export * from "./dtos/organization.js";
+export * from "./dtos/project.js";
+export * from "./dtos/board.js";
 ```
 
 - [ ] **Step 6: Build shared package**
@@ -530,6 +540,7 @@ git commit -m "feat(shared): add DTOs for all domain entities"
 ## Task 5: `apps/api` — Hono Skeleton + Vitest
 
 **Files:**
+
 - Create: `apps/api/package.json`
 - Create: `apps/api/tsconfig.json`
 - Create: `apps/api/vitest.config.ts`
@@ -590,38 +601,38 @@ git commit -m "feat(shared): add DTOs for all domain entities"
 - [ ] **Step 3: Create `apps/api/vitest.config.ts`**
 
 ```typescript
-import { defineConfig } from 'vitest/config'
+import { defineConfig } from "vitest/config";
 
 export default defineConfig({
   test: {
     globals: true,
-    environment: 'node',
-    include: ['src/tests/**/*.test.ts'],
+    environment: "node",
+    include: ["src/tests/**/*.test.ts"],
     coverage: {
-      provider: 'v8',
-      reporter: ['text', 'lcov'],
+      provider: "v8",
+      reporter: ["text", "lcov"],
     },
   },
-})
+});
 ```
 
 - [ ] **Step 4: Create `apps/api/eslint.config.js`**
 
 ```js
-import baseConfig from '@kanban/eslint-config'
+import baseConfig from "@kanban/eslint-config";
 
 export default [
   ...baseConfig,
   {
     languageOptions: {
       parserOptions: {
-        project: './tsconfig.json',
+        project: "./tsconfig.json",
         tsconfigRootDir: import.meta.dirname,
       },
     },
-    ignores: ['dist/**', 'drizzle/**'],
+    ignores: ["dist/**", "drizzle/**"],
   },
-]
+];
 ```
 
 - [ ] **Step 5: Write the failing health test**
@@ -629,17 +640,17 @@ export default [
 Create `apps/api/src/tests/health.test.ts`:
 
 ```typescript
-import { describe, it, expect } from 'vitest'
-import { app } from '../app.js'
+import { describe, it, expect } from "vitest";
+import { app } from "../app.js";
 
-describe('GET /health', () => {
-  it('returns 200 with status ok', async () => {
-    const res = await app.request('/health')
-    expect(res.status).toBe(200)
-    const body = await res.json()
-    expect(body).toEqual({ status: 'ok' })
-  })
-})
+describe("GET /health", () => {
+  it("returns 200 with status ok", async () => {
+    const res = await app.request("/health");
+    expect(res.status).toBe(200);
+    const body = await res.json();
+    expect(body).toEqual({ status: "ok" });
+  });
+});
 ```
 
 - [ ] **Step 6: Run test to verify it fails**
@@ -653,24 +664,24 @@ Expected: FAIL — `Cannot find module '../app.js'`
 - [ ] **Step 7: Create `apps/api/src/app.ts`**
 
 ```typescript
-import { Hono } from 'hono'
+import { Hono } from "hono";
 
-export const app = new Hono()
+export const app = new Hono();
 
-app.get('/health', (c) => c.json({ status: 'ok' }))
+app.get("/health", (c) => c.json({ status: "ok" }));
 ```
 
 - [ ] **Step 8: Create `apps/api/src/index.ts`**
 
 ```typescript
-import { serve } from '@hono/node-server'
-import { app } from './app.js'
+import { serve } from "@hono/node-server";
+import { app } from "./app.js";
 
-const port = Number(process.env['PORT'] ?? 3001)
+const port = Number(process.env["PORT"] ?? 3001);
 
 serve({ fetch: app.fetch, port }, () => {
-  console.log(`API running on http://localhost:${port}`)
-})
+  console.log(`API running on http://localhost:${port}`);
+});
 ```
 
 - [ ] **Step 9: Run test to verify it passes**
@@ -699,6 +710,7 @@ git commit -m "feat(api): add Hono skeleton with /health endpoint and Vitest"
 ## Task 6: `apps/web` — Next.js Skeleton
 
 **Files:**
+
 - Create: `apps/web/package.json`
 - Create: `apps/web/tsconfig.json`
 - Create: `apps/web/next.config.ts`
@@ -772,29 +784,29 @@ git commit -m "feat(api): add Hono skeleton with /health endpoint and Vitest"
 - [ ] **Step 3: Create `apps/web/next.config.ts`**
 
 ```typescript
-import type { NextConfig } from 'next'
+import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
   reactStrictMode: true,
-}
+};
 
-export default nextConfig
+export default nextConfig;
 ```
 
 - [ ] **Step 4: Create `apps/web/tailwind.config.ts`**
 
 ```typescript
-import type { Config } from 'tailwindcss'
+import type { Config } from "tailwindcss";
 
 const config: Config = {
-  content: ['./src/**/*.{ts,tsx}'],
+  content: ["./src/**/*.{ts,tsx}"],
   theme: {
     extend: {},
   },
   plugins: [],
-}
+};
 
-export default config
+export default config;
 ```
 
 - [ ] **Step 5: Create `apps/web/postcss.config.js`**
@@ -805,26 +817,26 @@ module.exports = {
     tailwindcss: {},
     autoprefixer: {},
   },
-}
+};
 ```
 
 - [ ] **Step 6: Create `apps/web/eslint.config.js`**
 
 ```js
-import baseConfig from '@kanban/eslint-config'
+import baseConfig from "@kanban/eslint-config";
 
 export default [
   ...baseConfig,
   {
     languageOptions: {
       parserOptions: {
-        project: './tsconfig.json',
+        project: "./tsconfig.json",
         tsconfigRootDir: import.meta.dirname,
       },
     },
-    ignores: ['.next/**', 'postcss.config.js'],
+    ignores: [".next/**", "postcss.config.js"],
   },
-]
+];
 ```
 
 - [ ] **Step 7: Create `apps/web/src/app/globals.css`**
@@ -838,20 +850,24 @@ export default [
 - [ ] **Step 8: Create `apps/web/src/app/layout.tsx`**
 
 ```tsx
-import type { Metadata } from 'next'
-import './globals.css'
+import type { Metadata } from "next";
+import "./globals.css";
 
 export const metadata: Metadata = {
-  title: 'Kanban',
-  description: 'Multi-tenant Kanban board',
-}
+  title: "Kanban",
+  description: "Multi-tenant Kanban board",
+};
 
-export default function RootLayout({ children }: { children: React.ReactNode }) {
+export default function RootLayout({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
   return (
     <html lang="en">
       <body>{children}</body>
     </html>
-  )
+  );
 }
 ```
 
@@ -861,9 +877,11 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
 export default function Home() {
   return (
     <main className="flex min-h-screen items-center justify-center bg-gray-50">
-      <h1 className="text-2xl font-semibold text-gray-700">Kanban is coming.</h1>
+      <h1 className="text-2xl font-semibold text-gray-700">
+        Kanban is coming.
+      </h1>
     </main>
-  )
+  );
 }
 ```
 
@@ -887,64 +905,65 @@ git commit -m "feat(web): add Next.js skeleton with Tailwind"
 ## Task 7: DB Schema — Identity
 
 **Files:**
+
 - Create: `apps/api/drizzle.config.ts`
 - Create: `apps/api/src/db/schema/identity.ts`
 
 - [ ] **Step 1: Create `apps/api/drizzle.config.ts`**
 
 ```typescript
-import { defineConfig } from 'drizzle-kit'
+import { defineConfig } from "drizzle-kit";
 
 export default defineConfig({
-  schema: './src/db/schema/index.ts',
-  out: './drizzle/migrations',
-  dialect: 'sqlite',
+  schema: "./src/db/schema/index.ts",
+  out: "./drizzle/migrations",
+  dialect: "sqlite",
   dbCredentials: {
-    url: process.env['DATABASE_URL'] ?? './kanban.db',
+    url: process.env["DATABASE_URL"] ?? "./kanban.db",
   },
-})
+});
 ```
 
 - [ ] **Step 2: Create `apps/api/src/db/schema/identity.ts`**
 
 ```typescript
-import { sqliteTable, text } from 'drizzle-orm/sqlite-core'
-import { sql } from 'drizzle-orm'
+import { sqliteTable, text } from "drizzle-orm/sqlite-core";
+import { sql } from "drizzle-orm";
 
-export const users = sqliteTable('users', {
-  id: text('id').primaryKey(),
-  email: text('email').notNull().unique(),
-  passwordHash: text('password_hash').notNull(),
-  displayName: text('display_name').notNull(),
-  createdAt: text('created_at')
+export const users = sqliteTable("users", {
+  id: text("id").primaryKey(),
+  email: text("email").notNull().unique(),
+  passwordHash: text("password_hash").notNull(),
+  displayName: text("display_name").notNull(),
+  createdAt: text("created_at")
     .notNull()
     .default(sql`(datetime('now'))`),
-})
+});
 
-export const refreshTokens = sqliteTable('refresh_tokens', {
-  id: text('id').primaryKey(),
-  userId: text('user_id')
+export const refreshTokens = sqliteTable("refresh_tokens", {
+  id: text("id").primaryKey(),
+  userId: text("user_id")
     .notNull()
-    .references(() => users.id, { onDelete: 'cascade' }),
-  hashedToken: text('hashed_token').notNull().unique(),
-  expiresAt: text('expires_at').notNull(),
-  createdAt: text('created_at')
+    .references(() => users.id, { onDelete: "cascade" }),
+  hashedToken: text("hashed_token").notNull().unique(),
+  expiresAt: text("expires_at").notNull(),
+  createdAt: text("created_at")
     .notNull()
     .default(sql`(datetime('now'))`),
-})
+});
 
-export const apiKeys = sqliteTable('api_keys', {
-  id: text('id').primaryKey(),
-  userId: text('user_id')
+export const apiKeys = sqliteTable("api_keys", {
+  id: text("id").primaryKey(),
+  userId: text("user_id")
     .notNull()
-    .references(() => users.id, { onDelete: 'cascade' }),
-  hashedKey: text('hashed_key').notNull().unique(),
-  label: text('label').notNull(),
-  lastUsedAt: text('last_used_at'),
-  createdAt: text('created_at')
+    .references(() => users.id, { onDelete: "cascade" }),
+  hashedKey: text("hashed_key").notNull().unique(),
+  label: text("label").notNull(),
+  lastUsedAt: text("last_used_at"),
+  createdAt: text("created_at")
     .notNull()
     .default(sql`(datetime('now'))`),
-})
+});
 ```
 
 - [ ] **Step 3: Commit**
@@ -959,77 +978,78 @@ git commit -m "feat(api/db): add identity schema (users, refresh_tokens, api_key
 ## Task 8: DB Schema — Organization & Project
 
 **Files:**
+
 - Create: `apps/api/src/db/schema/organization.ts`
 - Create: `apps/api/src/db/schema/project.ts`
 
 - [ ] **Step 1: Create `apps/api/src/db/schema/organization.ts`**
 
 ```typescript
-import { sqliteTable, text, primaryKey } from 'drizzle-orm/sqlite-core'
-import { sql } from 'drizzle-orm'
-import { users } from './identity.js'
+import { sqliteTable, text, primaryKey } from "drizzle-orm/sqlite-core";
+import { sql } from "drizzle-orm";
+import { users } from "./identity.js";
 
-export const organizations = sqliteTable('organizations', {
-  id: text('id').primaryKey(),
-  name: text('name').notNull(),
-  website: text('website'),
-  createdAt: text('created_at')
+export const organizations = sqliteTable("organizations", {
+  id: text("id").primaryKey(),
+  name: text("name").notNull(),
+  website: text("website"),
+  createdAt: text("created_at")
     .notNull()
     .default(sql`(datetime('now'))`),
-})
+});
 
 export const memberships = sqliteTable(
-  'memberships',
+  "memberships",
   {
-    userId: text('user_id')
+    userId: text("user_id")
       .notNull()
-      .references(() => users.id, { onDelete: 'cascade' }),
-    organizationId: text('organization_id')
+      .references(() => users.id, { onDelete: "cascade" }),
+    organizationId: text("organization_id")
       .notNull()
-      .references(() => organizations.id, { onDelete: 'cascade' }),
-    role: text('role', { enum: ['owner', 'manager', 'member'] })
+      .references(() => organizations.id, { onDelete: "cascade" }),
+    role: text("role", { enum: ["owner", "manager", "member"] })
       .notNull()
-      .default('member'),
+      .default("member"),
   },
   (table) => ({
     pk: primaryKey({ columns: [table.userId, table.organizationId] }),
-  })
-)
+  }),
+);
 
-export const invitationTokens = sqliteTable('invitation_tokens', {
-  id: text('id').primaryKey(),
-  organizationId: text('organization_id')
+export const invitationTokens = sqliteTable("invitation_tokens", {
+  id: text("id").primaryKey(),
+  organizationId: text("organization_id")
     .notNull()
-    .references(() => organizations.id, { onDelete: 'cascade' }),
-  createdBy: text('created_by')
+    .references(() => organizations.id, { onDelete: "cascade" }),
+  createdBy: text("created_by")
     .notNull()
     .references(() => users.id),
-  hashedToken: text('hashed_token').notNull().unique(),
-  expiresAt: text('expires_at').notNull(),
-  usedAt: text('used_at'),
-  createdAt: text('created_at')
+  hashedToken: text("hashed_token").notNull().unique(),
+  expiresAt: text("expires_at").notNull(),
+  usedAt: text("used_at"),
+  createdAt: text("created_at")
     .notNull()
     .default(sql`(datetime('now'))`),
-})
+});
 ```
 
 - [ ] **Step 2: Create `apps/api/src/db/schema/project.ts`**
 
 ```typescript
-import { sqliteTable, text } from 'drizzle-orm/sqlite-core'
-import { sql } from 'drizzle-orm'
-import { organizations } from './organization.js'
+import { sqliteTable, text } from "drizzle-orm/sqlite-core";
+import { sql } from "drizzle-orm";
+import { organizations } from "./organization.js";
 
-export const projects = sqliteTable('projects', {
-  id: text('id').primaryKey(),
-  organizationId: text('organization_id')
+export const projects = sqliteTable("projects", {
+  id: text("id").primaryKey(),
+  organizationId: text("organization_id")
     .notNull()
-    .references(() => organizations.id, { onDelete: 'cascade' }),
-  name: text('name').notNull(),
-  createdAt: text('created_at')
+    .references(() => organizations.id, { onDelete: "cascade" }),
+  name: text("name").notNull(),
+  createdAt: text("created_at")
     .notNull()
     .default(sql`(datetime('now'))`),
-})
+});
 ```
 
 - [ ] **Step 3: Commit**
@@ -1044,131 +1064,132 @@ git commit -m "feat(api/db): add organization, membership, invitation_tokens, pr
 ## Task 9: DB Schema — Board
 
 **Files:**
+
 - Create: `apps/api/src/db/schema/board.ts`
 - Create: `apps/api/src/db/schema/index.ts`
 
 - [ ] **Step 1: Create `apps/api/src/db/schema/board.ts`**
 
 ```typescript
-import { sqliteTable, text, real, primaryKey } from 'drizzle-orm/sqlite-core'
-import { sql } from 'drizzle-orm'
-import { users } from './identity.js'
-import { projects } from './project.js'
+import { sqliteTable, text, real, primaryKey } from "drizzle-orm/sqlite-core";
+import { sql } from "drizzle-orm";
+import { users } from "./identity.js";
+import { projects } from "./project.js";
 
-export const tasks = sqliteTable('tasks', {
-  id: text('id').primaryKey(),
-  projectId: text('project_id')
+export const tasks = sqliteTable("tasks", {
+  id: text("id").primaryKey(),
+  projectId: text("project_id")
     .notNull()
-    .references(() => projects.id, { onDelete: 'cascade' }),
-  column: text('column', { enum: ['ideas', 'todo', 'doing', 'done'] })
+    .references(() => projects.id, { onDelete: "cascade" }),
+  column: text("column", { enum: ["ideas", "todo", "doing", "done"] })
     .notNull()
-    .default('todo'),
-  title: text('title').notNull(),
-  description: text('description'),
-  objective: text('objective'),
-  startDate: text('start_date').notNull(),
-  endDate: text('end_date').notNull(),
-  backgroundColor: text('background_color'),
-  globalSubject: text('global_subject'),
-  reporterId: text('reporter_id')
+    .default("todo"),
+  title: text("title").notNull(),
+  description: text("description"),
+  objective: text("objective"),
+  startDate: text("start_date").notNull(),
+  endDate: text("end_date").notNull(),
+  backgroundColor: text("background_color"),
+  globalSubject: text("global_subject"),
+  reporterId: text("reporter_id")
     .notNull()
     .references(() => users.id),
-  doerId: text('doer_id').references(() => users.id),
-  validatorId: text('validator_id').references(() => users.id),
+  doerId: text("doer_id").references(() => users.id),
+  validatorId: text("validator_id").references(() => users.id),
   // Fractional indexing: new task = max(position)+1, insert between a and b = (a+b)/2
-  position: real('position').notNull().default(0),
-  createdAt: text('created_at')
+  position: real("position").notNull().default(0),
+  createdAt: text("created_at")
     .notNull()
     .default(sql`(datetime('now'))`),
-  updatedAt: text('updated_at')
+  updatedAt: text("updated_at")
     .notNull()
     .default(sql`(datetime('now'))`),
-})
+});
 
 export const taskTags = sqliteTable(
-  'task_tags',
+  "task_tags",
   {
-    taskId: text('task_id')
+    taskId: text("task_id")
       .notNull()
-      .references(() => tasks.id, { onDelete: 'cascade' }),
-    tag: text('tag').notNull(),
+      .references(() => tasks.id, { onDelete: "cascade" }),
+    tag: text("tag").notNull(),
   },
   (table) => ({
     pk: primaryKey({ columns: [table.taskId, table.tag] }),
-  })
-)
+  }),
+);
 
 // Undirected: always query WHERE task_id = ? OR linked_task_id = ?
 export const taskLinks = sqliteTable(
-  'task_links',
+  "task_links",
   {
-    taskId: text('task_id')
+    taskId: text("task_id")
       .notNull()
-      .references(() => tasks.id, { onDelete: 'cascade' }),
-    linkedTaskId: text('linked_task_id')
+      .references(() => tasks.id, { onDelete: "cascade" }),
+    linkedTaskId: text("linked_task_id")
       .notNull()
-      .references(() => tasks.id, { onDelete: 'cascade' }),
+      .references(() => tasks.id, { onDelete: "cascade" }),
   },
   (table) => ({
     pk: primaryKey({ columns: [table.taskId, table.linkedTaskId] }),
-  })
-)
+  }),
+);
 
 export const taskWatchers = sqliteTable(
-  'task_watchers',
+  "task_watchers",
   {
-    taskId: text('task_id')
+    taskId: text("task_id")
       .notNull()
-      .references(() => tasks.id, { onDelete: 'cascade' }),
-    userId: text('user_id')
+      .references(() => tasks.id, { onDelete: "cascade" }),
+    userId: text("user_id")
       .notNull()
-      .references(() => users.id, { onDelete: 'cascade' }),
+      .references(() => users.id, { onDelete: "cascade" }),
   },
   (table) => ({
     pk: primaryKey({ columns: [table.taskId, table.userId] }),
-  })
-)
+  }),
+);
 
 export const taskAdvisors = sqliteTable(
-  'task_advisors',
+  "task_advisors",
   {
-    taskId: text('task_id')
+    taskId: text("task_id")
       .notNull()
-      .references(() => tasks.id, { onDelete: 'cascade' }),
-    userId: text('user_id')
+      .references(() => tasks.id, { onDelete: "cascade" }),
+    userId: text("user_id")
       .notNull()
-      .references(() => users.id, { onDelete: 'cascade' }),
+      .references(() => users.id, { onDelete: "cascade" }),
   },
   (table) => ({
     pk: primaryKey({ columns: [table.taskId, table.userId] }),
-  })
-)
+  }),
+);
 
-export const taskHistory = sqliteTable('task_history', {
-  id: text('id').primaryKey(),
-  taskId: text('task_id')
+export const taskHistory = sqliteTable("task_history", {
+  id: text("id").primaryKey(),
+  taskId: text("task_id")
     .notNull()
-    .references(() => tasks.id, { onDelete: 'cascade' }),
-  userId: text('user_id')
+    .references(() => tasks.id, { onDelete: "cascade" }),
+  userId: text("user_id")
     .notNull()
     .references(() => users.id),
-  field: text('field').notNull(),
-  oldValue: text('old_value'),
-  newValue: text('new_value'),
-  changedAt: text('changed_at')
+  field: text("field").notNull(),
+  oldValue: text("old_value"),
+  newValue: text("new_value"),
+  changedAt: text("changed_at")
     .notNull()
     .default(sql`(datetime('now'))`),
-  batchId: text('batch_id'),
-})
+  batchId: text("batch_id"),
+});
 ```
 
 - [ ] **Step 2: Create `apps/api/src/db/schema/index.ts`**
 
 ```typescript
-export * from './identity.js'
-export * from './organization.js'
-export * from './project.js'
-export * from './board.js'
+export * from "./identity.js";
+export * from "./organization.js";
+export * from "./project.js";
+export * from "./board.js";
 ```
 
 - [ ] **Step 3: Commit**
@@ -1183,6 +1204,7 @@ git commit -m "feat(api/db): add board schema (tasks, tags, links, watchers, adv
 ## Task 10: DB Client, Migrations & Integration Tests
 
 **Files:**
+
 - Create: `apps/api/src/db/client.ts`
 - Create: `apps/api/src/db/migrate.ts`
 - Create: `apps/api/src/db/test-utils.ts`
@@ -1202,70 +1224,72 @@ Expected: `apps/api/drizzle/migrations/0000_initial.sql` (or similar) created.
 - [ ] **Step 2: Create `apps/api/src/db/client.ts`**
 
 ```typescript
-import Database from 'better-sqlite3'
-import { drizzle } from 'drizzle-orm/better-sqlite3'
-import * as schema from './schema/index.js'
+import Database from "better-sqlite3";
+import { drizzle } from "drizzle-orm/better-sqlite3";
+import * as schema from "./schema/index.js";
 
-const databaseUrl = process.env['DATABASE_URL'] ?? './kanban.db'
+const databaseUrl = process.env["DATABASE_URL"] ?? "./kanban.db";
 
-const sqlite = new Database(databaseUrl)
-sqlite.pragma('journal_mode = WAL')
-sqlite.pragma('foreign_keys = ON')
+const sqlite = new Database(databaseUrl);
+sqlite.pragma("journal_mode = WAL");
+sqlite.pragma("foreign_keys = ON");
 
-export const db = drizzle(sqlite, { schema })
-export { sqlite }
+export const db = drizzle(sqlite, { schema });
+export { sqlite };
 ```
 
 - [ ] **Step 3: Create `apps/api/src/db/migrate.ts`**
 
 ```typescript
-import { migrate } from 'drizzle-orm/better-sqlite3/migrator'
-import { dirname, join } from 'node:path'
-import { fileURLToPath } from 'node:url'
-import { db } from './client.js'
+import { migrate } from "drizzle-orm/better-sqlite3/migrator";
+import { dirname, join } from "node:path";
+import { fileURLToPath } from "node:url";
+import { db } from "./client.js";
 
-const __dirname = dirname(fileURLToPath(import.meta.url))
+const __dirname = dirname(fileURLToPath(import.meta.url));
 
 export function runMigrations(): void {
-  migrate(db, { migrationsFolder: join(__dirname, '../../../drizzle/migrations') })
+  migrate(db, {
+    migrationsFolder: join(__dirname, "../../../drizzle/migrations"),
+  });
 }
 ```
 
 - [ ] **Step 4: Update `apps/api/src/index.ts` to run migrations on startup**
 
 ```typescript
-import { serve } from '@hono/node-server'
-import { runMigrations } from './db/migrate.js'
-import { app } from './app.js'
+import { serve } from "@hono/node-server";
+import { runMigrations } from "./db/migrate.js";
+import { app } from "./app.js";
 
-runMigrations()
+runMigrations();
 
-const port = Number(process.env['PORT'] ?? 3001)
+const port = Number(process.env["PORT"] ?? 3001);
 
 serve({ fetch: app.fetch, port }, () => {
-  console.log(`API running on http://localhost:${port}`)
-})
+  console.log(`API running on http://localhost:${port}`);
+});
 ```
 
 - [ ] **Step 5: Create `apps/api/src/db/test-utils.ts`**
 
 ```typescript
-import Database from 'better-sqlite3'
-import { drizzle } from 'drizzle-orm/better-sqlite3'
-import { migrate } from 'drizzle-orm/better-sqlite3/migrator'
-import { dirname, join } from 'node:path'
-import { fileURLToPath } from 'node:url'
-import * as schema from './schema/index.js'
+import Database from "better-sqlite3";
+import { drizzle } from "drizzle-orm/better-sqlite3";
+import { migrate } from "drizzle-orm/better-sqlite3/migrator";
+import { dirname, join } from "node:path";
+import { fileURLToPath } from "node:url";
+import * as schema from "./schema/index.js";
 
-const __dirname = dirname(fileURLToPath(import.meta.url))
-const migrationsFolder = join(__dirname, '../../../drizzle/migrations')
+const __dirname = dirname(fileURLToPath(import.meta.url));
+const migrationsFolder = join(__dirname, "../../../drizzle/migrations");
 
 export function createTestDb() {
-  const sqlite = new Database(':memory:')
-  sqlite.pragma('foreign_keys = ON')
-  const db = drizzle(sqlite, { schema })
-  migrate(db, { migrationsFolder })
-  return { db, close: () => sqlite.close() }
+  const sqlite = new Database(":memory:");
+  sqlite.pragma("foreign_keys = ON");
+  const db = drizzle(sqlite, { schema });
+  migrate(db, { migrationsFolder });
+  return { db, close: () => sqlite.close() };
 }
 ```
 
@@ -1274,77 +1298,88 @@ export function createTestDb() {
 Create `apps/api/src/tests/schema/identity.test.ts`:
 
 ```typescript
-import { describe, it, expect, beforeEach, afterEach } from 'vitest'
-import type { BetterSQLite3Database } from 'drizzle-orm/better-sqlite3'
-import type * as schema from '../../db/schema/index.js'
-import { createTestDb } from '../../db/test-utils.js'
-import { users, apiKeys } from '../../db/schema/index.js'
+import { describe, it, expect, beforeEach, afterEach } from "vitest";
+import type { BetterSQLite3Database } from "drizzle-orm/better-sqlite3";
+import type * as schema from "../../db/schema/index.js";
+import { createTestDb } from "../../db/test-utils.js";
+import { users, apiKeys } from "../../db/schema/index.js";
 
-let db: BetterSQLite3Database<typeof schema>
-let closeDb: () => void
+let db: BetterSQLite3Database<typeof schema>;
+let closeDb: () => void;
 
 beforeEach(() => {
-  const testDb = createTestDb()
-  db = testDb.db
-  closeDb = testDb.close
-})
+  const testDb = createTestDb();
+  db = testDb.db;
+  closeDb = testDb.close;
+});
 
-afterEach(() => closeDb())
+afterEach(() => closeDb());
 
-describe('users table', () => {
-  it('inserts and retrieves a user', () => {
-    db.insert(users).values({
-      id: 'user-1',
-      email: 'alice@example.com',
-      passwordHash: 'hash',
-      displayName: 'Alice',
-    }).run()
+describe("users table", () => {
+  it("inserts and retrieves a user", () => {
+    db.insert(users)
+      .values({
+        id: "user-1",
+        email: "alice@example.com",
+        passwordHash: "hash",
+        displayName: "Alice",
+      })
+      .run();
 
-    const result = db.select().from(users).all()
-    expect(result).toHaveLength(1)
-    expect(result[0]?.email).toBe('alice@example.com')
-  })
+    const result = db.select().from(users).all();
+    expect(result).toHaveLength(1);
+    expect(result[0]?.email).toBe("alice@example.com");
+  });
 
-  it('enforces email uniqueness', () => {
-    db.insert(users).values({
-      id: 'user-1',
-      email: 'alice@example.com',
-      passwordHash: 'hash',
-      displayName: 'Alice',
-    }).run()
+  it("enforces email uniqueness", () => {
+    db.insert(users)
+      .values({
+        id: "user-1",
+        email: "alice@example.com",
+        passwordHash: "hash",
+        displayName: "Alice",
+      })
+      .run();
 
     expect(() =>
-      db.insert(users).values({
-        id: 'user-2',
-        email: 'alice@example.com',
-        passwordHash: 'hash2',
-        displayName: 'Alice 2',
-      }).run()
-    ).toThrow()
-  })
-})
+      db
+        .insert(users)
+        .values({
+          id: "user-2",
+          email: "alice@example.com",
+          passwordHash: "hash2",
+          displayName: "Alice 2",
+        })
+        .run(),
+    ).toThrow();
+  });
+});
 
-describe('api_keys table', () => {
-  it('cascades delete when user is deleted', () => {
-    db.insert(users).values({
-      id: 'user-1',
-      email: 'alice@example.com',
-      passwordHash: 'hash',
-      displayName: 'Alice',
-    }).run()
+describe("api_keys table", () => {
+  it("cascades delete when user is deleted", () => {
+    db.insert(users)
+      .values({
+        id: "user-1",
+        email: "alice@example.com",
+        passwordHash: "hash",
+        displayName: "Alice",
+      })
+      .run();
 
-    db.insert(apiKeys).values({
-      id: 'key-1',
-      userId: 'user-1',
-      hashedKey: 'hashed-key',
-      label: 'My Key',
-    }).run()
+    db.insert(apiKeys)
+      .values({
+        id: "key-1",
+        userId: "user-1",
+        hashedKey: "hashed-key",
+        label: "My Key",
+      })
+      .run();
 
-    db.delete(users).run()
-    const keys = db.select().from(apiKeys).all()
-    expect(keys).toHaveLength(0)
-  })
-})
+    db.delete(users).run();
+    const keys = db.select().from(apiKeys).all();
+    expect(keys).toHaveLength(0);
+  });
+});
 ```
 
 - [ ] **Step 7: Run tests to verify they fail**
@@ -1368,52 +1403,82 @@ Expected: PASS — 3 tests passing (health + 3 identity tests).
 Create `apps/api/src/tests/schema/organization.test.ts`:
 
 ```typescript
-import { describe, it, expect, beforeEach, afterEach } from 'vitest'
-import type { BetterSQLite3Database } from 'drizzle-orm/better-sqlite3'
-import type * as schema from '../../db/schema/index.js'
-import { createTestDb } from '../../db/test-utils.js'
-import { users, organizations, memberships } from '../../db/schema/index.js'
+import { describe, it, expect, beforeEach, afterEach } from "vitest";
+import type { BetterSQLite3Database } from "drizzle-orm/better-sqlite3";
+import type * as schema from "../../db/schema/index.js";
+import { createTestDb } from "../../db/test-utils.js";
+import { users, organizations, memberships } from "../../db/schema/index.js";
 
-let db: BetterSQLite3Database<typeof schema>
-let closeDb: () => void
+let db: BetterSQLite3Database<typeof schema>;
+let closeDb: () => void;
 
 beforeEach(() => {
-  const testDb = createTestDb()
-  db = testDb.db
-  closeDb = testDb.close
-})
+  const testDb = createTestDb();
+  db = testDb.db;
+  closeDb = testDb.close;
+});
 
-afterEach(() => closeDb())
+afterEach(() => closeDb());
 
-describe('memberships table', () => {
-  it('creates a membership with owner role', () => {
-    db.insert(users).values({ id: 'u1', email: 'a@b.com', passwordHash: 'h', displayName: 'A' }).run()
-    db.insert(organizations).values({ id: 'o1', name: 'Acme' }).run()
-    db.insert(memberships).values({ userId: 'u1', organizationId: 'o1', role: 'owner' }).run()
+describe("memberships table", () => {
+  it("creates a membership with owner role", () => {
+    db.insert(users)
+      .values({
+        id: "u1",
+        email: "a@b.com",
+        passwordHash: "h",
+        displayName: "A",
+      })
+      .run();
+    db.insert(organizations).values({ id: "o1", name: "Acme" }).run();
+    db.insert(memberships)
+      .values({ userId: "u1", organizationId: "o1", role: "owner" })
+      .run();
 
-    const result = db.select().from(memberships).all()
-    expect(result[0]?.role).toBe('owner')
-  })
+    const result = db.select().from(memberships).all();
+    expect(result[0]?.role).toBe("owner");
+  });
 
-  it('enforces composite primary key (no duplicate membership)', () => {
-    db.insert(users).values({ id: 'u1', email: 'a@b.com', passwordHash: 'h', displayName: 'A' }).run()
-    db.insert(organizations).values({ id: 'o1', name: 'Acme' }).run()
-    db.insert(memberships).values({ userId: 'u1', organizationId: 'o1', role: 'owner' }).run()
+  it("enforces composite primary key (no duplicate membership)", () => {
+    db.insert(users)
+      .values({
+        id: "u1",
+        email: "a@b.com",
+        passwordHash: "h",
+        displayName: "A",
+      })
+      .run();
+    db.insert(organizations).values({ id: "o1", name: "Acme" }).run();
+    db.insert(memberships)
+      .values({ userId: "u1", organizationId: "o1", role: "owner" })
+      .run();
 
     expect(() =>
-      db.insert(memberships).values({ userId: 'u1', organizationId: 'o1', role: 'member' }).run()
-    ).toThrow()
-  })
+      db
+        .insert(memberships)
+        .values({ userId: "u1", organizationId: "o1", role: "member" })
+        .run(),
+    ).toThrow();
+  });
 
-  it('cascades delete when organization is deleted', () => {
-    db.insert(users).values({ id: 'u1', email: 'a@b.com', passwordHash: 'h', displayName: 'A' }).run()
-    db.insert(organizations).values({ id: 'o1', name: 'Acme' }).run()
-    db.insert(memberships).values({ userId: 'u1', organizationId: 'o1', role: 'owner' }).run()
+  it("cascades delete when organization is deleted", () => {
+    db.insert(users)
+      .values({
+        id: "u1",
+        email: "a@b.com",
+        passwordHash: "h",
+        displayName: "A",
+      })
+      .run();
+    db.insert(organizations).values({ id: "o1", name: "Acme" }).run();
+    db.insert(memberships)
+      .values({ userId: "u1", organizationId: "o1", role: "owner" })
+      .run();
 
-    db.delete(organizations).run()
-    expect(db.select().from(memberships).all()).toHaveLength(0)
-  })
-})
+    db.delete(organizations).run();
+    expect(db.select().from(memberships).all()).toHaveLength(0);
+  });
+});
 ```
 
 - [ ] **Step 10: Write project schema tests**
@@ -1421,39 +1486,52 @@ describe('memberships table', () => {
 Create `apps/api/src/tests/schema/project.test.ts`:
 
 ```typescript
-import { describe, it, expect, beforeEach, afterEach } from 'vitest'
-import type { BetterSQLite3Database } from 'drizzle-orm/better-sqlite3'
-import type * as schema from '../../db/schema/index.js'
-import { createTestDb } from '../../db/test-utils.js'
-import { users, organizations, memberships, projects } from '../../db/schema/index.js'
+import { describe, it, expect, beforeEach, afterEach } from "vitest";
+import type { BetterSQLite3Database } from "drizzle-orm/better-sqlite3";
+import type * as schema from "../../db/schema/index.js";
+import { createTestDb } from "../../db/test-utils.js";
+import {
+  users,
+  organizations,
+  memberships,
+  projects,
+} from "../../db/schema/index.js";
 
-let db: BetterSQLite3Database<typeof schema>
-let closeDb: () => void
+let db: BetterSQLite3Database<typeof schema>;
+let closeDb: () => void;
 
 beforeEach(() => {
-  const testDb = createTestDb()
-  db = testDb.db
-  closeDb = testDb.close
-  db.insert(users).values({ id: 'u1', email: 'a@b.com', passwordHash: 'h', displayName: 'A' }).run()
-  db.insert(organizations).values({ id: 'o1', name: 'Acme' }).run()
-  db.insert(memberships).values({ userId: 'u1', organizationId: 'o1', role: 'owner' }).run()
-})
+  const testDb = createTestDb();
+  db = testDb.db;
+  closeDb = testDb.close;
+  db.insert(users)
+    .values({ id: "u1", email: "a@b.com", passwordHash: "h", displayName: "A" })
+    .run();
+  db.insert(organizations).values({ id: "o1", name: "Acme" }).run();
+  db.insert(memberships)
+    .values({ userId: "u1", organizationId: "o1", role: "owner" })
+    .run();
+});
 
-afterEach(() => closeDb())
+afterEach(() => closeDb());
 
-describe('projects table', () => {
-  it('creates a project within an org', () => {
-    db.insert(projects).values({ id: 'p1', organizationId: 'o1', name: 'Alpha' }).run()
-    const result = db.select().from(projects).all()
-    expect(result[0]?.name).toBe('Alpha')
-  })
+describe("projects table", () => {
+  it("creates a project within an org", () => {
+    db.insert(projects)
+      .values({ id: "p1", organizationId: "o1", name: "Alpha" })
+      .run();
+    const result = db.select().from(projects).all();
+    expect(result[0]?.name).toBe("Alpha");
+  });
 
-  it('cascades delete when org is deleted', () => {
-    db.insert(projects).values({ id: 'p1', organizationId: 'o1', name: 'Alpha' }).run()
-    db.delete(organizations).run()
-    expect(db.select().from(projects).all()).toHaveLength(0)
-  })
-})
+  it("cascades delete when org is deleted", () => {
+    db.insert(projects)
+      .values({ id: "p1", organizationId: "o1", name: "Alpha" })
+      .run();
+    db.delete(organizations).run();
+    expect(db.select().from(projects).all()).toHaveLength(0);
+  });
+});
 ```
 
 - [ ] **Step 11: Write board schema tests**
@@ -1461,10 +1539,10 @@ describe('projects table', () => {
 Create `apps/api/src/tests/schema/board.test.ts`:
 
 ```typescript
-import { describe, it, expect, beforeEach, afterEach } from 'vitest'
-import type { BetterSQLite3Database } from 'drizzle-orm/better-sqlite3'
-import type * as schema from '../../db/schema/index.js'
-import { createTestDb } from '../../db/test-utils.js'
+import { describe, it, expect, beforeEach, afterEach } from "vitest";
+import type { BetterSQLite3Database } from "drizzle-orm/better-sqlite3";
+import type * as schema from "../../db/schema/index.js";
+import { createTestDb } from "../../db/test-utils.js";
 import {
   users,
   organizations,
@@ -1473,112 +1551,130 @@ import {
   tasks,
   taskTags,
   taskHistory,
-} from '../../db/schema/index.js'
+} from "../../db/schema/index.js";
 
-let db: BetterSQLite3Database<typeof schema>
-let closeDb: () => void
+let db: BetterSQLite3Database<typeof schema>;
+let closeDb: () => void;
 
 beforeEach(() => {
-  const testDb = createTestDb()
-  db = testDb.db
-  closeDb = testDb.close
-  db.insert(users).values({ id: 'u1', email: 'a@b.com', passwordHash: 'h', displayName: 'A' }).run()
-  db.insert(organizations).values({ id: 'o1', name: 'Acme' }).run()
-  db.insert(memberships).values({ userId: 'u1', organizationId: 'o1', role: 'owner' }).run()
-  db.insert(projects).values({ id: 'p1', organizationId: 'o1', name: 'Alpha' }).run()
-})
+  const testDb = createTestDb();
+  db = testDb.db;
+  closeDb = testDb.close;
+  db.insert(users)
+    .values({ id: "u1", email: "a@b.com", passwordHash: "h", displayName: "A" })
+    .run();
+  db.insert(organizations).values({ id: "o1", name: "Acme" }).run();
+  db.insert(memberships)
+    .values({ userId: "u1", organizationId: "o1", role: "owner" })
+    .run();
+  db.insert(projects)
+    .values({ id: "p1", organizationId: "o1", name: "Alpha" })
+    .run();
+});
 
-afterEach(() => closeDb())
+afterEach(() => closeDb());
 
-describe('tasks table', () => {
+describe("tasks table", () => {
   it('creates a task with default column "todo"', () => {
-    db.insert(tasks).values({
-      id: 't1',
-      projectId: 'p1',
-      title: 'First task',
-      startDate: '2026-04-03',
-      endDate: '2026-04-05',
-      reporterId: 'u1',
-    }).run()
+    db.insert(tasks)
+      .values({
+        id: "t1",
+        projectId: "p1",
+        title: "First task",
+        startDate: "2026-04-03",
+        endDate: "2026-04-05",
+        reporterId: "u1",
+      })
+      .run();
 
-    const result = db.select().from(tasks).all()
-    expect(result[0]?.column).toBe('todo')
-    expect(result[0]?.doerId).toBeNull()
-  })
+    const result = db.select().from(tasks).all();
+    expect(result[0]?.column).toBe("todo");
+    expect(result[0]?.doerId).toBeNull();
+  });
 
-  it('allows null doerId (not required at creation)', () => {
-    db.insert(tasks).values({
-      id: 't1',
-      projectId: 'p1',
-      title: 'Task without doer',
-      startDate: '2026-04-03',
-      endDate: '2026-04-05',
-      reporterId: 'u1',
-      doerId: null,
-    }).run()
+  it("allows null doerId (not required at creation)", () => {
+    db.insert(tasks)
+      .values({
+        id: "t1",
+        projectId: "p1",
+        title: "Task without doer",
+        startDate: "2026-04-03",
+        endDate: "2026-04-05",
+        reporterId: "u1",
+        doerId: null,
+      })
+      .run();
 
-    const result = db.select().from(tasks).all()
-    expect(result[0]?.doerId).toBeNull()
-  })
+    const result = db.select().from(tasks).all();
+    expect(result[0]?.doerId).toBeNull();
+  });
 
-  it('cascades delete when project is deleted', () => {
-    db.insert(tasks).values({
-      id: 't1',
-      projectId: 'p1',
-      title: 'Task',
-      startDate: '2026-04-03',
-      endDate: '2026-04-05',
-      reporterId: 'u1',
-    }).run()
+  it("cascades delete when project is deleted", () => {
+    db.insert(tasks)
+      .values({
+        id: "t1",
+        projectId: "p1",
+        title: "Task",
+        startDate: "2026-04-03",
+        endDate: "2026-04-05",
+        reporterId: "u1",
+      })
+      .run();
 
-    db.delete(projects).run()
-    expect(db.select().from(tasks).all()).toHaveLength(0)
-  })
-})
+    db.delete(projects).run();
+    expect(db.select().from(tasks).all()).toHaveLength(0);
+  });
+});
 
-describe('task_tags table', () => {
-  it('enforces composite PK (no duplicate tag per task)', () => {
-    db.insert(tasks).values({
-      id: 't1',
-      projectId: 'p1',
-      title: 'Task',
-      startDate: '2026-04-03',
-      endDate: '2026-04-05',
-      reporterId: 'u1',
-    }).run()
+describe("task_tags table", () => {
+  it("enforces composite PK (no duplicate tag per task)", () => {
+    db.insert(tasks)
+      .values({
+        id: "t1",
+        projectId: "p1",
+        title: "Task",
+        startDate: "2026-04-03",
+        endDate: "2026-04-05",
+        reporterId: "u1",
+      })
+      .run();
 
-    db.insert(taskTags).values({ taskId: 't1', tag: 'bug' }).run()
+    db.insert(taskTags).values({ taskId: "t1", tag: "bug" }).run();
     expect(() =>
-      db.insert(taskTags).values({ taskId: 't1', tag: 'bug' }).run()
-    ).toThrow()
-  })
-})
+      db.insert(taskTags).values({ taskId: "t1", tag: "bug" }).run(),
+    ).toThrow();
+  });
+});
 
-describe('task_history table', () => {
-  it('records a history entry with batchId', () => {
-    db.insert(tasks).values({
-      id: 't1',
-      projectId: 'p1',
-      title: 'Task',
-      startDate: '2026-04-03',
-      endDate: '2026-04-05',
-      reporterId: 'u1',
-    }).run()
+describe("task_history table", () => {
+  it("records a history entry with batchId", () => {
+    db.insert(tasks)
+      .values({
+        id: "t1",
+        projectId: "p1",
+        title: "Task",
+        startDate: "2026-04-03",
+        endDate: "2026-04-05",
+        reporterId: "u1",
+      })
+      .run();
 
-    db.insert(taskHistory).values({
-      id: 'h1',
-      taskId: 't1',
-      userId: 'u1',
-      field: 'column',
-      oldValue: 'todo',
-      newValue: 'doing',
-      batchId: 'batch-xyz',
-    }).run()
+    db.insert(taskHistory)
+      .values({
+        id: "h1",
+        taskId: "t1",
+        userId: "u1",
+        field: "column",
+        oldValue: "todo",
+        newValue: "doing",
+        batchId: "batch-xyz",
+      })
+      .run();
 
-    const result = db.select().from(taskHistory).all()
-    expect(result[0]?.batchId).toBe('batch-xyz')
-  })
-})
+    const result = db.select().from(taskHistory).all();
+    expect(result[0]?.batchId).toBe("batch-xyz");
+  });
+});
 ```
 
 - [ ] **Step 12: Run all tests**
@@ -1636,6 +1732,7 @@ git commit -m "fix(lint): resolve ESLint warnings across packages"
 ## Task 12: Docker Compose
 
 **Files:**
+
 - Create: `apps/api/Dockerfile`
 - Create: `apps/web/Dockerfile`
 - Create: `docker-compose.yml`
@@ -1720,14 +1817,14 @@ CMD ["node", "server.js"]
 Update `apps/web/next.config.ts`:
 
 ```typescript
-import type { NextConfig } from 'next'
+import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
   reactStrictMode: true,
-  output: 'standalone',
-}
+  output: "standalone",
+};
 
-export default nextConfig
+export default nextConfig;
 ```
 
 - [ ] **Step 4: Create `docker-compose.yml`**
@@ -1807,7 +1904,7 @@ Expected: "Kanban is coming." displayed.
 
 - [ ] **Step 4: Create `CLAUDE.md` in repo root**
 
-```markdown
+````markdown
 # CLAUDE.md
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
@@ -1836,6 +1933,7 @@ pnpm format
 cd apps/api && pnpm drizzle-kit generate   # generate migration from schema changes
 cd apps/api && pnpm drizzle-kit studio     # open Drizzle Studio (DB GUI)
 ```
+````
 
 ## Architecture
 
@@ -1852,20 +1950,22 @@ cd apps/api && pnpm drizzle-kit studio     # open Drizzle Studio (DB GUI)
 **Testing:** Vitest in `apps/api`. Integration tests use `:memory:` SQLite via `createTestDb()` from `src/db/test-utils.ts`. Tests live in `src/tests/`.
 
 **Key invariant:** Drizzle schema types (`apps/api/src/db/schema`) never leave the API package. The API returns only `@kanban/shared` DTOs.
-```
+
+````
 
 - [ ] **Step 5: Commit**
 
 ```bash
 git add CLAUDE.md
 git commit -m "docs: add CLAUDE.md with architecture and commands"
-```
+````
 
 ---
 
 ## Plan 1 Complete
 
 End state:
+
 - ✅ `pnpm dev` starts both apps
 - ✅ `GET http://localhost:3001/health` → `{"status":"ok"}`
 - ✅ `http://localhost:3000` renders placeholder page

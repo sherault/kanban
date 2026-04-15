@@ -41,17 +41,18 @@ CREATE TABLE password_resets (
 
 ### New public routes (no auth required)
 
-| Method | Path | Body | Purpose |
-|--------|------|------|---------|
-| `POST` | `/identity/forgot-password` | `{ email: string }` | Request a password reset link |
-| `POST` | `/identity/reset-password` | `{ token: string, password: string }` | Set new password using reset token |
-| `POST` | `/identity/resend-verification-public` | `{ email: string }` | Resend email verification link (unauthenticated) |
+| Method | Path                                   | Body                                  | Purpose                                          |
+| ------ | -------------------------------------- | ------------------------------------- | ------------------------------------------------ |
+| `POST` | `/identity/forgot-password`            | `{ email: string }`                   | Request a password reset link                    |
+| `POST` | `/identity/reset-password`             | `{ token: string, password: string }` | Set new password using reset token               |
+| `POST` | `/identity/resend-verification-public` | `{ email: string }`                   | Resend email verification link (unauthenticated) |
 
 Existing authenticated `POST /identity/resend-verification` remains unchanged.
 
 ### New service methods (`IdentityService`)
 
 **`requestPasswordReset(email: string): Promise<void>`**
+
 - Looks up user by email; silently does nothing if not found (prevents email enumeration)
 - Deletes any existing pending reset token for the user
 - Generates a new token, hashes it, inserts into `passwordResets` with 1-hour expiry
@@ -59,6 +60,7 @@ Existing authenticated `POST /identity/resend-verification` remains unchanged.
 - Always returns success
 
 **`resetPassword(rawToken: string, newPassword: string): Promise<void>`**
+
 - Hashes token, looks up in `passwordResets`
 - Throws `unauthorized` if not found or expired (deletes expired record)
 - Hashes new password, updates `users.passwordHash`
@@ -66,6 +68,7 @@ Existing authenticated `POST /identity/resend-verification` remains unchanged.
 - Deletes the used reset token
 
 **`resendVerificationByEmail(email: string): Promise<void>`**
+
 - Looks up user by email; silently returns if not found or already verified (prevents enumeration)
 - Delegates to existing `resendVerification(userId)` logic
 - Always returns success
@@ -73,6 +76,7 @@ Existing authenticated `POST /identity/resend-verification` remains unchanged.
 ### New mailer functions (`apps/api/src/lib/mailer.ts`)
 
 **`sendPasswordResetEmail(to: string, token: string): Promise<void>`**
+
 - Same pattern as `sendVerificationEmail`
 - URL: `${APP_URL}/reset-password?token=${token}`
 - Subject: "Reset your password"
@@ -86,11 +90,11 @@ Resend verification reuses the existing `sendVerificationEmail`.
 
 ### New pages
 
-| Route | Description |
-|-------|-------------|
-| `/forgot-password` | Email input form. On submit → always redirects to `/forgot-password/check-email` (no error leak) |
-| `/forgot-password/check-email` | Static "check your email" page, mirrors `/register/check-email` |
-| `/reset-password` | Reads `?token=` from URL query. New password input form. On success → redirects to `/login?reset=success`. Shows error inline on invalid/expired token. |
+| Route                          | Description                                                                                                                                             |
+| ------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `/forgot-password`             | Email input form. On submit → always redirects to `/forgot-password/check-email` (no error leak)                                                        |
+| `/forgot-password/check-email` | Static "check your email" page, mirrors `/register/check-email`                                                                                         |
+| `/reset-password`              | Reads `?token=` from URL query. New password input form. On success → redirects to `/login?reset=success`. Shows error inline on invalid/expired token. |
 
 ### Login page changes (`/login`)
 
@@ -101,16 +105,19 @@ Resend verification reuses the existing `sendVerificationEmail`.
 ### New server actions (`apps/web/src/actions/auth.ts`)
 
 **`forgotPasswordAction(_prev, formData)`**
+
 - Calls `POST /identity/forgot-password`
 - Always redirects to `/forgot-password/check-email` regardless of outcome
 
 **`resetPasswordAction(_prev, formData)`**
+
 - Reads `token` from hidden form field, `password` from input
 - Calls `POST /identity/reset-password`
 - On success: redirects to `/login?reset=success`
 - On error: returns `{ error: string }` for inline display
 
 **`resendVerificationPublicAction(_prev, formData)`**
+
 - Calls `POST /identity/resend-verification-public`
 - Always redirects to `/register/check-email` (reuses existing static page)
 

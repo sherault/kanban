@@ -1,30 +1,30 @@
-import Link from 'next/link'
-import { api, ApiError } from '../../../lib/api'
+import Link from "next/link";
+import { api, ApiError } from "../../../lib/api";
 
 export default async function VerifyEmailPage({
   searchParams,
 }: {
-  searchParams: Promise<{ token?: string }>
+  searchParams: Promise<{ token?: string }>;
 }) {
-  const { token } = await searchParams
+  const { token } = await searchParams;
 
   if (!token) {
-    return <Result error="Missing verification token." />
+    return <Result error="Missing verification token." />;
   }
 
-  let success = false
-  let errorMsg = ''
+  let success = false;
+  let errorMsg = "";
   try {
-    await api.auth.verifyEmail(token)
-    success = true
+    await api.auth.verifyEmail(token);
+    success = true;
   } catch (e) {
-    errorMsg = e instanceof ApiError ? e.message : 'Verification failed.'
+    errorMsg = e instanceof ApiError ? e.message : "Verification failed.";
   }
 
   if (success) {
-    return <Result success />
+    return <Result success />;
   } else {
-    return <Result error={errorMsg} />
+    return <Result error={errorMsg} />;
   }
 }
 
@@ -33,9 +33,9 @@ function Result({ success, error }: { success?: boolean; error?: string }) {
     <div className="min-h-screen flex items-center justify-center bg-gray-50">
       <div className="w-full max-w-sm">
         <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-8 text-center space-y-4">
-          <div className="text-4xl">{success ? '✅' : '❌'}</div>
+          <div className="text-4xl">{success ? "✅" : "❌"}</div>
           <h1 className="text-xl font-bold text-gray-900">
-            {success ? 'Email verified!' : 'Verification failed'}
+            {success ? "Email verified!" : "Verification failed"}
           </h1>
           {success ? (
             <p className="text-sm text-gray-600">
@@ -53,5 +53,5 @@ function Result({ success, error }: { success?: boolean; error?: string }) {
         </div>
       </div>
     </div>
-  )
+  );
 }

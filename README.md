@@ -219,34 +219,60 @@ The project is designed so you **never** have to change your `.env` when switchi
 # Clone and install
 git clone https://github.com/sherault/kanban
 cd kanban
+./scripts/setup.sh    # Initialize .env and generate secrets
 pnpm install
-
-# Configure environment
-cp .env.example .env
-# Edit .env — set JWT_SECRET and REFRESH_SECRET (must be ≥ 32 chars)
 
 # Start all apps via Turborepo
 pnpm dev
 ```
 
-Open [http://localhost:3009](http://localhost:3009) in your browser.
+Open [http://localhost:3000](http://localhost:3000) (Web) and the API will be available on [http://localhost:3010](http://localhost:3010).
 
-### Docker
+### Docker for Deployment (Local)
 
-Running in Docker is the recommended way for production-like environments.
+The primary `docker-compose.yml` is used for "production-like" deployments on your local machine.
 
 ```bash
+# Initialise environment
+./scripts/setup.sh
+
 # Build and start
 docker compose up -d --build
-
-# View logs
-docker compose logs -f
 ```
 
-- Web: [http://localhost:3009](http://localhost:3009)
-- API: [http://localhost:3010](http://localhost:3010) (exposed for Browser/MCP)
+- **Unified Entry Point:** [http://localhost:3000](http://localhost:3000)
+  - `/ws` and `/mcp/*` are automatically routed to the API.
+  - Everything else is routed to the Web app (SSR).
+
+### Self-Hosting (Production with SSL)
+
+For a real deployment on a server with a domain name and automatic HTTPS:
+
+```bash
+# Initialise environment
+./scripts/setup.sh
+
+# Set your domain and start with the production config
+DOMAIN=kanban.example.com docker compose -f docker-compose.prod.yml up -d --build
+```
+
+Caddy will automatically generate and renew SSL certificates via Let's Encrypt for your domain. Ensure ports 80 and 443 are open.
 
 The SQLite database is persisted to `./data/kanban.db` on the host.
+
+### Docker for Development
+
+If you want to run the whole stack in Docker with **Hot Module Replacement (HMR)** and source code volumes:
+
+```bash
+# Start in dev mode
+docker compose -f docker-compose.dev.yml up --build
+```
+
+- Web: [http://localhost:3000](http://localhost:3000)
+- API: [http://localhost:3010](http://localhost:3010)
+
+This setup mounts your local project directory into the containers and runs `pnpm dev`.
 
 ---
 
@@ -266,16 +292,16 @@ User accounts: `alice@acmecorp.io`, `bob@acmecorp.io`, `carol@acmecorp.io`. Pass
 
 ## MCP Integration (Claude / AI)
 
-Connect Claude to your board from the **Profile** page by generating an API key.
+Connect Claude (or any other MCP client) to your board from the **Profile** page by generating an API key. The page provides ready-to-use config snippets that automatically use the correct URL for your environment (Local vs Docker/Hosted).
 
-**Config Snippet:**
+**Config Snippet Example:**
 
 ```json
 {
   "mcpServers": {
     "kanban": {
       "type": "http",
-      "url": "http://localhost:3010/mcp/",
+      "url": "http://localhost:3000/mcp/",
       "headers": { "Authorization": "Bearer <your-key>" }
     }
   }

@@ -13,6 +13,7 @@
 ## File Map
 
 **Create:**
+
 - `apps/api/drizzle/migrations/0003_password_resets.sql` — migration for new table
 - `apps/web/src/app/(auth)/forgot-password/page.tsx` — email input form
 - `apps/web/src/app/(auth)/forgot-password/check-email/page.tsx` — static confirmation page
@@ -20,6 +21,7 @@
 - `apps/web/src/app/(auth)/reset-password/ResetPasswordForm.tsx` — client form component
 
 **Modify:**
+
 - `apps/api/src/db/schema/identity.ts` — add `passwordResets` table definition
 - `apps/api/src/lib/mailer.ts` — add `sendPasswordResetEmail`
 - `apps/api/src/features/identity/identity.service.ts` — add 3 new service methods
@@ -35,6 +37,7 @@
 ## Task 1: DB schema + migration
 
 **Files:**
+
 - Modify: `apps/api/src/db/schema/identity.ts`
 - Create: `apps/api/drizzle/migrations/0003_password_resets.sql`
 
@@ -43,17 +46,17 @@
   Open `apps/api/src/db/schema/identity.ts` and append after the `emailVerifications` table:
 
   ```ts
-  export const passwordResets = sqliteTable('password_resets', {
-    id: text('id').primaryKey(),
-    userId: text('user_id')
+  export const passwordResets = sqliteTable("password_resets", {
+    id: text("id").primaryKey(),
+    userId: text("user_id")
       .notNull()
-      .references(() => users.id, { onDelete: 'cascade' }),
-    hashedToken: text('hashed_token').notNull().unique(),
-    expiresAt: text('expires_at').notNull(),
-    createdAt: text('created_at')
+      .references(() => users.id, { onDelete: "cascade" }),
+    hashedToken: text("hashed_token").notNull().unique(),
+    expiresAt: text("expires_at").notNull(),
+    createdAt: text("created_at")
       .notNull()
       .default(sql`(datetime('now'))`),
-  })
+  });
   ```
 
 - [ ] **Step 2: Generate the migration**
@@ -65,9 +68,11 @@
   Expected: a new file `apps/api/drizzle/migrations/0003_<something>.sql` is created containing `CREATE TABLE \`password_resets\``.
 
   Rename it to `0003_password_resets.sql` for clarity (optional but keeps naming consistent with the rest):
+
   ```bash
   mv apps/api/drizzle/migrations/0003_*.sql apps/api/drizzle/migrations/0003_password_resets.sql
   ```
+
   Then update `apps/api/drizzle/migrations/meta/_journal.json` — change the `"tag"` for entry `idx: 3` to `"0003_password_resets"`.
 
 - [ ] **Step 3: Run tests to confirm migration loads cleanly**
@@ -90,6 +95,7 @@
 ## Task 2: Mailer — `sendPasswordResetEmail`
 
 **Files:**
+
 - Modify: `apps/api/src/lib/mailer.ts`
 
 - [ ] **Step 1: Add the function**
@@ -97,27 +103,30 @@
   Append to `apps/api/src/lib/mailer.ts`:
 
   ```ts
-  export async function sendPasswordResetEmail(to: string, token: string): Promise<void> {
-    const appUrl = process.env['APP_URL'] ?? 'http://localhost:3000'
-    const url = `${appUrl}/reset-password?token=${token}`
-    const transport = createTransport()
+  export async function sendPasswordResetEmail(
+    to: string,
+    token: string,
+  ): Promise<void> {
+    const appUrl = process.env["APP_URL"] ?? "http://localhost:3000";
+    const url = `${appUrl}/reset-password?token=${token}`;
+    const transport = createTransport();
 
     if (!transport) {
-      console.log(`[mailer] Password reset email for ${to}:\n  ${url}`)
-      return
+      console.log(`[mailer] Password reset email for ${to}:\n  ${url}`);
+      return;
     }
 
     await transport.sendMail({
-      from: process.env['SMTP_FROM'] ?? 'noreply@kanban.local',
+      from: process.env["SMTP_FROM"] ?? "noreply@kanban.local",
       to,
-      subject: 'Reset your password',
+      subject: "Reset your password",
       text: `Reset your password by visiting: ${url}\n\nThis link expires in 1 hour. If you did not request a reset, ignore this email.`,
       html: `
         <p>Someone requested a password reset for your account.</p>
         <p><a href="${url}" style="background:#2563eb;color:#fff;padding:10px 20px;border-radius:6px;text-decoration:none;display:inline-block;">Reset password</a></p>
         <p style="color:#6b7280;font-size:12px;">Or copy this link: ${url}<br>This link expires in 1 hour. If you did not request a reset, ignore this email.</p>
       `,
-    })
+    });
   }
   ```
 
@@ -141,6 +150,7 @@
 ## Task 3: IdentityService — new methods (tests first)
 
 **Files:**
+
 - Modify: `apps/api/src/tests/features/identity.service.test.ts`
 - Modify: `apps/api/src/features/identity/identity.service.ts`
 
@@ -149,108 +159,164 @@
   First, update the imports at the top of `apps/api/src/tests/features/identity.service.test.ts` to add:
 
   ```ts
-  import { eq } from 'drizzle-orm'
-  import { generateToken, hashToken } from '../../lib/token.js'
-  import { generateId } from '../../lib/id.js'
-  import { passwordResets, users } from '../../db/schema/index.js'
+  import { eq } from "drizzle-orm";
+  import { generateToken, hashToken } from "../../lib/token.js";
+  import { generateId } from "../../lib/id.js";
+  import { passwordResets, users } from "../../db/schema/index.js";
   ```
 
   Then append the new test suites:
 
   ```ts
-  describe('IdentityService.requestPasswordReset', () => {
-    it('succeeds silently for unknown email (no enumeration)', async () => {
-      const { db, close } = createTestDb()
-      const svc = new IdentityService(db)
-      await expect(svc.requestPasswordReset('nobody@example.com')).resolves.toBeUndefined()
-      close()
-    })
+  describe("IdentityService.requestPasswordReset", () => {
+    it("succeeds silently for unknown email (no enumeration)", async () => {
+      const { db, close } = createTestDb();
+      const svc = new IdentityService(db);
+      await expect(
+        svc.requestPasswordReset("nobody@example.com"),
+      ).resolves.toBeUndefined();
+      close();
+    });
 
-    it('succeeds for known email', async () => {
-      const { db, close } = createTestDb()
-      const svc = new IdentityService(db)
-      await createVerifiedUser(db, { email: 'eve@example.com', password: 'pw', displayName: 'Eve' })
-      await expect(svc.requestPasswordReset('eve@example.com')).resolves.toBeUndefined()
-      close()
-    })
+    it("succeeds for known email", async () => {
+      const { db, close } = createTestDb();
+      const svc = new IdentityService(db);
+      await createVerifiedUser(db, {
+        email: "eve@example.com",
+        password: "pw",
+        displayName: "Eve",
+      });
+      await expect(
+        svc.requestPasswordReset("eve@example.com"),
+      ).resolves.toBeUndefined();
+      close();
+    });
 
-    it('replaces an existing reset token on re-request', async () => {
-      const { db, close } = createTestDb()
-      const svc = new IdentityService(db)
-      await createVerifiedUser(db, { email: 'eve@example.com', password: 'pw', displayName: 'Eve' })
-      await svc.requestPasswordReset('eve@example.com')
-      await svc.requestPasswordReset('eve@example.com')
-      await expect(svc.requestPasswordReset('eve@example.com')).resolves.toBeUndefined()
-      close()
-    })
-  })
+    it("replaces an existing reset token on re-request", async () => {
+      const { db, close } = createTestDb();
+      const svc = new IdentityService(db);
+      await createVerifiedUser(db, {
+        email: "eve@example.com",
+        password: "pw",
+        displayName: "Eve",
+      });
+      await svc.requestPasswordReset("eve@example.com");
+      await svc.requestPasswordReset("eve@example.com");
+      await expect(
+        svc.requestPasswordReset("eve@example.com"),
+      ).resolves.toBeUndefined();
+      close();
+    });
+  });
 
   // Helper: insert a valid reset token directly into the DB for a given user email
-  async function insertResetToken(db: ReturnType<typeof createTestDb>['db'], email: string): Promise<string> {
-    const rawToken = generateToken()
-    const hashedToken = hashToken(rawToken)
-    const user = db.select().from(users).where(eq(users.email, email)).get()!
-    const future = new Date()
-    future.setHours(future.getHours() + 1)
-    db.insert(passwordResets).values({ id: generateId(), userId: user.id, hashedToken, expiresAt: future.toISOString() }).run()
-    return rawToken
+  async function insertResetToken(
+    db: ReturnType<typeof createTestDb>["db"],
+    email: string,
+  ): Promise<string> {
+    const rawToken = generateToken();
+    const hashedToken = hashToken(rawToken);
+    const user = db.select().from(users).where(eq(users.email, email)).get()!;
+    const future = new Date();
+    future.setHours(future.getHours() + 1);
+    db.insert(passwordResets)
+      .values({
+        id: generateId(),
+        userId: user.id,
+        hashedToken,
+        expiresAt: future.toISOString(),
+      })
+      .run();
+    return rawToken;
   }
 
-  describe('IdentityService.resetPassword', () => {
-    it('changes the password and allows login with new password', async () => {
-      const { db, close } = createTestDb()
-      const svc = new IdentityService(db)
-      await createVerifiedUser(db, { email: 'frank@example.com', password: 'oldpass', displayName: 'Frank' })
-      const rawToken = await insertResetToken(db, 'frank@example.com')
-      await svc.resetPassword(rawToken, 'newpass123')
-      const result = await svc.login({ email: 'frank@example.com', password: 'newpass123' })
-      expect(typeof result.accessToken).toBe('string')
-      close()
-    })
+  describe("IdentityService.resetPassword", () => {
+    it("changes the password and allows login with new password", async () => {
+      const { db, close } = createTestDb();
+      const svc = new IdentityService(db);
+      await createVerifiedUser(db, {
+        email: "frank@example.com",
+        password: "oldpass",
+        displayName: "Frank",
+      });
+      const rawToken = await insertResetToken(db, "frank@example.com");
+      await svc.resetPassword(rawToken, "newpass123");
+      const result = await svc.login({
+        email: "frank@example.com",
+        password: "newpass123",
+      });
+      expect(typeof result.accessToken).toBe("string");
+      close();
+    });
 
-    it('throws 401 for invalid token', async () => {
-      const { db, close } = createTestDb()
-      const svc = new IdentityService(db)
-      await expect(svc.resetPassword('bad-token', 'newpass123')).rejects.toMatchObject({ status: 401 })
-      close()
-    })
+    it("throws 401 for invalid token", async () => {
+      const { db, close } = createTestDb();
+      const svc = new IdentityService(db);
+      await expect(
+        svc.resetPassword("bad-token", "newpass123"),
+      ).rejects.toMatchObject({ status: 401 });
+      close();
+    });
 
-    it('invalidates all sessions on successful reset', async () => {
-      const { db, close } = createTestDb()
-      const svc = new IdentityService(db)
-      await createVerifiedUser(db, { email: 'grace@example.com', password: 'oldpass', displayName: 'Grace' })
-      const { refreshToken } = await svc.login({ email: 'grace@example.com', password: 'oldpass' })
-      const rawToken = await insertResetToken(db, 'grace@example.com')
-      await svc.resetPassword(rawToken, 'newpass123')
-      await expect(svc.refresh(refreshToken)).rejects.toMatchObject({ status: 401 })
-      close()
-    })
-  })
+    it("invalidates all sessions on successful reset", async () => {
+      const { db, close } = createTestDb();
+      const svc = new IdentityService(db);
+      await createVerifiedUser(db, {
+        email: "grace@example.com",
+        password: "oldpass",
+        displayName: "Grace",
+      });
+      const { refreshToken } = await svc.login({
+        email: "grace@example.com",
+        password: "oldpass",
+      });
+      const rawToken = await insertResetToken(db, "grace@example.com");
+      await svc.resetPassword(rawToken, "newpass123");
+      await expect(svc.refresh(refreshToken)).rejects.toMatchObject({
+        status: 401,
+      });
+      close();
+    });
+  });
 
-  describe('IdentityService.resendVerificationByEmail', () => {
-    it('succeeds silently for unknown email', async () => {
-      const { db, close } = createTestDb()
-      const svc = new IdentityService(db)
-      await expect(svc.resendVerificationByEmail('nobody@example.com')).resolves.toBeUndefined()
-      close()
-    })
+  describe("IdentityService.resendVerificationByEmail", () => {
+    it("succeeds silently for unknown email", async () => {
+      const { db, close } = createTestDb();
+      const svc = new IdentityService(db);
+      await expect(
+        svc.resendVerificationByEmail("nobody@example.com"),
+      ).resolves.toBeUndefined();
+      close();
+    });
 
-    it('succeeds silently for already-verified email', async () => {
-      const { db, close } = createTestDb()
-      const svc = new IdentityService(db)
-      await createVerifiedUser(db, { email: 'hank@example.com', password: 'pw', displayName: 'Hank' })
-      await expect(svc.resendVerificationByEmail('hank@example.com')).resolves.toBeUndefined()
-      close()
-    })
+    it("succeeds silently for already-verified email", async () => {
+      const { db, close } = createTestDb();
+      const svc = new IdentityService(db);
+      await createVerifiedUser(db, {
+        email: "hank@example.com",
+        password: "pw",
+        displayName: "Hank",
+      });
+      await expect(
+        svc.resendVerificationByEmail("hank@example.com"),
+      ).resolves.toBeUndefined();
+      close();
+    });
 
-    it('sends a new token for an unverified email', async () => {
-      const { db, close } = createTestDb()
-      const svc = new IdentityService(db)
-      await svc.register({ email: 'ivy@example.com', password: 'pw12345678', displayName: 'Ivy' })
-      await expect(svc.resendVerificationByEmail('ivy@example.com')).resolves.toBeUndefined()
-      close()
-    })
-  })
+    it("sends a new token for an unverified email", async () => {
+      const { db, close } = createTestDb();
+      const svc = new IdentityService(db);
+      await svc.register({
+        email: "ivy@example.com",
+        password: "pw12345678",
+        displayName: "Ivy",
+      });
+      await expect(
+        svc.resendVerificationByEmail("ivy@example.com"),
+      ).resolves.toBeUndefined();
+      close();
+    });
+  });
   ```
 
 - [ ] **Step 2: Run tests to confirm they fail**
@@ -268,14 +334,14 @@
   a. Add import at the top alongside existing imports:
 
   ```ts
-  import { sendPasswordResetEmail } from '../../lib/mailer.js'
-  import { passwordResets } from '../../db/schema/index.js'
+  import { sendPasswordResetEmail } from "../../lib/mailer.js";
+  import { passwordResets } from "../../db/schema/index.js";
   ```
 
   b. Add constant alongside existing TTL constants:
 
   ```ts
-  const RESET_TTL_HOURS = 1
+  const RESET_TTL_HOURS = 1;
   ```
 
   c. Add three methods inside the `IdentityService` class, after `resendVerification`:
@@ -363,6 +429,7 @@
 ## Task 4: API routes — 3 new public endpoints (tests first)
 
 **Files:**
+
 - Modify: `apps/api/src/tests/features/identity.test.ts`
 - Modify: `apps/api/src/features/identity/identity.routes.ts`
 
@@ -371,77 +438,77 @@
   Append to `apps/api/src/tests/features/identity.test.ts`:
 
   ```ts
-  describe('POST /auth/forgot-password', () => {
-    it('returns 200 for any email (no enumeration)', async () => {
-      const { app, close } = setup()
-      const res = await app.request('/auth/forgot-password', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email: 'anyone@example.com' }),
-      })
-      expect(res.status).toBe(200)
-      close()
-    })
+  describe("POST /auth/forgot-password", () => {
+    it("returns 200 for any email (no enumeration)", async () => {
+      const { app, close } = setup();
+      const res = await app.request("/auth/forgot-password", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: "anyone@example.com" }),
+      });
+      expect(res.status).toBe(200);
+      close();
+    });
 
-    it('returns 400 for invalid email', async () => {
-      const { app, close } = setup()
-      const res = await app.request('/auth/forgot-password', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email: 'not-an-email' }),
-      })
-      expect(res.status).toBe(400)
-      close()
-    })
-  })
+    it("returns 400 for invalid email", async () => {
+      const { app, close } = setup();
+      const res = await app.request("/auth/forgot-password", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: "not-an-email" }),
+      });
+      expect(res.status).toBe(400);
+      close();
+    });
+  });
 
-  describe('POST /auth/reset-password', () => {
-    it('returns 401 for invalid token', async () => {
-      const { app, close } = setup()
-      const res = await app.request('/auth/reset-password', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ token: 'bad-token', password: 'newpass123' }),
-      })
-      expect(res.status).toBe(401)
-      close()
-    })
+  describe("POST /auth/reset-password", () => {
+    it("returns 401 for invalid token", async () => {
+      const { app, close } = setup();
+      const res = await app.request("/auth/reset-password", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ token: "bad-token", password: "newpass123" }),
+      });
+      expect(res.status).toBe(401);
+      close();
+    });
 
-    it('returns 400 for missing fields', async () => {
-      const { app, close } = setup()
-      const res = await app.request('/auth/reset-password', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ token: 'tok' }),
-      })
-      expect(res.status).toBe(400)
-      close()
-    })
-  })
+    it("returns 400 for missing fields", async () => {
+      const { app, close } = setup();
+      const res = await app.request("/auth/reset-password", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ token: "tok" }),
+      });
+      expect(res.status).toBe(400);
+      close();
+    });
+  });
 
-  describe('POST /auth/resend-verification-public', () => {
-    it('returns 200 for any email (no enumeration)', async () => {
-      const { app, close } = setup()
-      const res = await app.request('/auth/resend-verification-public', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email: 'anyone@example.com' }),
-      })
-      expect(res.status).toBe(200)
-      close()
-    })
+  describe("POST /auth/resend-verification-public", () => {
+    it("returns 200 for any email (no enumeration)", async () => {
+      const { app, close } = setup();
+      const res = await app.request("/auth/resend-verification-public", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: "anyone@example.com" }),
+      });
+      expect(res.status).toBe(200);
+      close();
+    });
 
-    it('returns 400 for invalid email', async () => {
-      const { app, close } = setup()
-      const res = await app.request('/auth/resend-verification-public', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email: 'bad' }),
-      })
-      expect(res.status).toBe(400)
-      close()
-    })
-  })
+    it("returns 400 for invalid email", async () => {
+      const { app, close } = setup();
+      const res = await app.request("/auth/resend-verification-public", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: "bad" }),
+      });
+      expect(res.status).toBe(400);
+      close();
+    });
+  });
   ```
 
 - [ ] **Step 2: Run tests to confirm they fail**
@@ -457,30 +524,45 @@
   In `apps/api/src/features/identity/identity.routes.ts`, add these schemas near the other schema definitions at the top of `identityRoutes`:
 
   ```ts
-  const emailSchema = z.object({ email: z.string().email() })
-  const resetPasswordSchema = z.object({ token: z.string().min(1), password: z.string().min(8) })
+  const emailSchema = z.object({ email: z.string().email() });
+  const resetPasswordSchema = z.object({
+    token: z.string().min(1),
+    password: z.string().min(8),
+  });
   ```
 
   Then add these three routes in the `// ── Public ──` section, before the `// ── Authenticated ──` section:
 
   ```ts
-  router.post('/forgot-password', zValidator('json', emailSchema), async (c) => {
-    const { email } = c.req.valid('json')
-    await svc.requestPasswordReset(email)
-    return c.json({ success: true })
-  })
+  router.post(
+    "/forgot-password",
+    zValidator("json", emailSchema),
+    async (c) => {
+      const { email } = c.req.valid("json");
+      await svc.requestPasswordReset(email);
+      return c.json({ success: true });
+    },
+  );
 
-  router.post('/reset-password', zValidator('json', resetPasswordSchema), async (c) => {
-    const { token, password } = c.req.valid('json')
-    await svc.resetPassword(token, password)
-    return c.json({ success: true })
-  })
+  router.post(
+    "/reset-password",
+    zValidator("json", resetPasswordSchema),
+    async (c) => {
+      const { token, password } = c.req.valid("json");
+      await svc.resetPassword(token, password);
+      return c.json({ success: true });
+    },
+  );
 
-  router.post('/resend-verification-public', zValidator('json', emailSchema), async (c) => {
-    const { email } = c.req.valid('json')
-    await svc.resendVerificationByEmail(email)
-    return c.json({ success: true })
-  })
+  router.post(
+    "/resend-verification-public",
+    zValidator("json", emailSchema),
+    async (c) => {
+      const { email } = c.req.valid("json");
+      await svc.resendVerificationByEmail(email);
+      return c.json({ success: true });
+    },
+  );
   ```
 
 - [ ] **Step 4: Run tests to confirm they pass**
@@ -512,6 +594,7 @@
 ## Task 5: Web API client — 3 new methods
 
 **Files:**
+
 - Modify: `apps/web/src/lib/api.ts`
 
 - [ ] **Step 1: Add 3 methods to the `auth` namespace**
@@ -551,6 +634,7 @@
 ## Task 6: Web server actions — 3 new actions
 
 **Files:**
+
 - Modify: `apps/web/src/actions/auth.ts`
 
 - [ ] **Step 1: Add the three actions**
@@ -560,34 +644,34 @@
   ```ts
   export async function forgotPasswordAction(
     _prev: Record<string, never>,
-    formData: FormData
+    formData: FormData,
   ): Promise<Record<string, never>> {
-    const email = formData.get('email') as string
-    await api.auth.forgotPassword({ email }).catch(() => {})
-    redirect('/forgot-password/check-email')
+    const email = formData.get("email") as string;
+    await api.auth.forgotPassword({ email }).catch(() => {});
+    redirect("/forgot-password/check-email");
   }
 
   export async function resetPasswordAction(
     _prev: { error?: string },
-    formData: FormData
+    formData: FormData,
   ): Promise<{ error?: string }> {
-    const token = formData.get('token') as string
-    const password = formData.get('password') as string
+    const token = formData.get("token") as string;
+    const password = formData.get("password") as string;
     try {
-      await api.auth.resetPassword({ token, password })
+      await api.auth.resetPassword({ token, password });
     } catch (e) {
-      return { error: e instanceof ApiError ? e.message : 'Reset failed' }
+      return { error: e instanceof ApiError ? e.message : "Reset failed" };
     }
-    redirect('/login?reset=success')
+    redirect("/login?reset=success");
   }
 
   export async function resendVerificationPublicAction(
     _prev: Record<string, never>,
-    formData: FormData
+    formData: FormData,
   ): Promise<Record<string, never>> {
-    const email = formData.get('email') as string
-    await api.auth.resendVerificationPublic({ email }).catch(() => {})
-    redirect('/register/check-email')
+    const email = formData.get("email") as string;
+    await api.auth.resendVerificationPublic({ email }).catch(() => {});
+    redirect("/register/check-email");
   }
   ```
 
@@ -603,6 +687,7 @@
 ## Task 7: Web — forgot-password pages
 
 **Files:**
+
 - Create: `apps/web/src/app/(auth)/forgot-password/page.tsx`
 - Create: `apps/web/src/app/(auth)/forgot-password/check-email/page.tsx`
 
@@ -611,41 +696,46 @@
   Create `apps/web/src/app/(auth)/forgot-password/page.tsx`:
 
   ```tsx
-  'use client'
+  "use client";
 
-  import { useActionState } from 'react'
-  import { useFormStatus } from 'react-dom'
-  import Link from 'next/link'
-  import { forgotPasswordAction } from '../../../../actions/auth'
+  import { useActionState } from "react";
+  import { useFormStatus } from "react-dom";
+  import Link from "next/link";
+  import { forgotPasswordAction } from "../../../../actions/auth";
 
   function SubmitButton() {
-    const { pending } = useFormStatus()
+    const { pending } = useFormStatus();
     return (
       <button
         type="submit"
         disabled={pending}
         className="w-full bg-blue-600 text-white py-2 px-4 rounded-md text-sm font-medium hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
       >
-        {pending ? 'Sending…' : 'Send reset link'}
+        {pending ? "Sending…" : "Send reset link"}
       </button>
-    )
+    );
   }
 
   export default function ForgotPasswordPage() {
-    const [, formAction] = useActionState(forgotPasswordAction, {})
+    const [, formAction] = useActionState(forgotPasswordAction, {});
 
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50">
         <div className="w-full max-w-sm">
           <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-8">
-            <h1 className="text-2xl font-bold text-gray-900 mb-2">Forgot password?</h1>
+            <h1 className="text-2xl font-bold text-gray-900 mb-2">
+              Forgot password?
+            </h1>
             <p className="text-sm text-gray-500 mb-6">
               Enter your email and we&apos;ll send you a reset link.
             </p>
 
             <form action={formAction} className="space-y-4">
               <div>
-                <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-1">
+                <label
+                  htmlFor="email"
+                  className="block text-sm font-medium text-gray-700 mb-1"
+                >
                   Email
                 </label>
                 <input
@@ -663,14 +753,17 @@
             </form>
 
             <p className="mt-4 text-center text-sm text-gray-500">
-              <Link href="/login" className="text-blue-600 hover:underline font-medium">
+              <Link
+                href="/login"
+                className="text-blue-600 hover:underline font-medium"
+              >
                 Back to sign in
               </Link>
             </p>
           </div>
         </div>
       </div>
-    )
+    );
   }
   ```
 
@@ -679,7 +772,7 @@
   Create `apps/web/src/app/(auth)/forgot-password/check-email/page.tsx`:
 
   ```tsx
-  import Link from 'next/link'
+  import Link from "next/link";
 
   export default function ForgotPasswordCheckEmailPage() {
     return (
@@ -687,12 +780,16 @@
         <div className="w-full max-w-sm">
           <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-8 text-center space-y-4">
             <div className="text-4xl">📬</div>
-            <h1 className="text-xl font-bold text-gray-900">Check your email</h1>
+            <h1 className="text-xl font-bold text-gray-900">
+              Check your email
+            </h1>
             <p className="text-sm text-gray-600">
-              If that email is registered, we sent a password reset link. Click the link to set a new password.
+              If that email is registered, we sent a password reset link. Click
+              the link to set a new password.
             </p>
             <p className="text-xs text-gray-400">
-              The link expires in 1 hour. Check your spam folder if you don&apos;t see it.
+              The link expires in 1 hour. Check your spam folder if you
+              don&apos;t see it.
             </p>
             <Link
               href="/login"
@@ -703,7 +800,7 @@
           </div>
         </div>
       </div>
-    )
+    );
   }
   ```
 
@@ -719,6 +816,7 @@
 ## Task 8: Web — reset-password page
 
 **Files:**
+
 - Create: `apps/web/src/app/(auth)/reset-password/page.tsx`
 - Create: `apps/web/src/app/(auth)/reset-password/ResetPasswordForm.tsx`
 
@@ -727,49 +825,57 @@
   Create `apps/web/src/app/(auth)/reset-password/ResetPasswordForm.tsx`:
 
   ```tsx
-  'use client'
+  "use client";
 
-  import { useActionState } from 'react'
-  import { useFormStatus } from 'react-dom'
-  import Link from 'next/link'
-  import { resetPasswordAction } from '../../../../actions/auth'
+  import { useActionState } from "react";
+  import { useFormStatus } from "react-dom";
+  import Link from "next/link";
+  import { resetPasswordAction } from "../../../../actions/auth";
 
   function SubmitButton() {
-    const { pending } = useFormStatus()
+    const { pending } = useFormStatus();
     return (
       <button
         type="submit"
         disabled={pending}
         className="w-full bg-blue-600 text-white py-2 px-4 rounded-md text-sm font-medium hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
       >
-        {pending ? 'Saving…' : 'Set new password'}
+        {pending ? "Saving…" : "Set new password"}
       </button>
-    )
+    );
   }
 
   export function ResetPasswordForm({ token }: { token: string }) {
-    const [state, formAction] = useActionState(resetPasswordAction, {})
+    const [state, formAction] = useActionState(resetPasswordAction, {});
 
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50">
         <div className="w-full max-w-sm">
           <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-8">
-            <h1 className="text-2xl font-bold text-gray-900 mb-6">Set new password</h1>
+            <h1 className="text-2xl font-bold text-gray-900 mb-6">
+              Set new password
+            </h1>
 
             <form action={formAction} className="space-y-4">
               <input type="hidden" name="token" value={token} />
 
               {state.error && (
                 <div className="bg-red-50 border border-red-200 text-red-700 text-sm rounded-md px-3 py-2">
-                  {state.error}{' '}
-                  <Link href="/forgot-password" className="underline font-medium">
+                  {state.error}{" "}
+                  <Link
+                    href="/forgot-password"
+                    className="underline font-medium"
+                  >
                     Request a new link
                   </Link>
                 </div>
               )}
 
               <div>
-                <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-1">
+                <label
+                  htmlFor="password"
+                  className="block text-sm font-medium text-gray-700 mb-1"
+                >
                   New password
                 </label>
                 <input
@@ -789,7 +895,7 @@
           </div>
         </div>
       </div>
-    )
+    );
   }
   ```
 
@@ -798,15 +904,15 @@
   Create `apps/web/src/app/(auth)/reset-password/page.tsx`:
 
   ```tsx
-  import Link from 'next/link'
-  import { ResetPasswordForm } from './ResetPasswordForm'
+  import Link from "next/link";
+  import { ResetPasswordForm } from "./ResetPasswordForm";
 
   export default async function ResetPasswordPage({
     searchParams,
   }: {
-    searchParams: Promise<{ token?: string }>
+    searchParams: Promise<{ token?: string }>;
   }) {
-    const { token } = await searchParams
+    const { token } = await searchParams;
 
     if (!token) {
       return (
@@ -814,20 +920,25 @@
           <div className="w-full max-w-sm">
             <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-8 text-center space-y-4">
               <div className="text-4xl">❌</div>
-              <h1 className="text-xl font-bold text-gray-900">Invalid reset link</h1>
+              <h1 className="text-xl font-bold text-gray-900">
+                Invalid reset link
+              </h1>
               <p className="text-sm text-gray-600">
                 This link is missing a token. Please request a new reset link.
               </p>
-              <Link href="/forgot-password" className="inline-block text-sm text-blue-600 hover:underline font-medium">
+              <Link
+                href="/forgot-password"
+                className="inline-block text-sm text-blue-600 hover:underline font-medium"
+              >
                 Request new link
               </Link>
             </div>
           </div>
         </div>
-      )
+      );
     }
 
-    return <ResetPasswordForm token={token} />
+    return <ResetPasswordForm token={token} />;
   }
   ```
 
@@ -843,6 +954,7 @@
 ## Task 9: Login page — "Forgot password?" link + success banner
 
 **Files:**
+
 - Modify: `apps/web/src/app/(auth)/login/page.tsx`
 
 - [ ] **Step 1: Add Suspense import and ResetSuccessBanner component**
@@ -852,24 +964,24 @@
   a. Add `Suspense` to the React import and import `useSearchParams`:
 
   ```tsx
-  import { useActionState, Suspense } from 'react'
-  import { useFormStatus } from 'react-dom'
-  import { useSearchParams } from 'next/navigation'
-  import Link from 'next/link'
-  import { loginAction } from '../../../actions/auth'
+  import { useActionState, Suspense } from "react";
+  import { useFormStatus } from "react-dom";
+  import { useSearchParams } from "next/navigation";
+  import Link from "next/link";
+  import { loginAction } from "../../../actions/auth";
   ```
 
   b. Add the banner component (add before `LoginPage`):
 
   ```tsx
   function ResetSuccessBanner() {
-    const params = useSearchParams()
-    if (params.get('reset') !== 'success') return null
+    const params = useSearchParams();
+    if (params.get("reset") !== "success") return null;
     return (
       <div className="bg-green-50 border border-green-200 text-green-700 text-sm rounded-md px-3 py-2">
         Password updated — please sign in with your new password.
       </div>
-    )
+    );
   }
   ```
 

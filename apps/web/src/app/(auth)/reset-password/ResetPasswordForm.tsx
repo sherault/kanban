@@ -1,38 +1,40 @@
-'use client'
+"use client";
 
-import { useActionState } from 'react'
-import { useFormStatus } from 'react-dom'
-import Link from 'next/link'
-import { resetPasswordAction } from '../../../actions/auth'
+import { useActionState } from "react";
+import { useFormStatus } from "react-dom";
+import Link from "next/link";
+import { resetPasswordAction } from "../../../actions/auth";
 
 function SubmitButton() {
-  const { pending } = useFormStatus()
+  const { pending } = useFormStatus();
   return (
     <button
       type="submit"
       disabled={pending}
       className="w-full bg-blue-600 text-white py-2 px-4 rounded-md text-sm font-medium hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
     >
-      {pending ? 'Saving…' : 'Set new password'}
+      {pending ? "Saving…" : "Set new password"}
     </button>
-  )
+  );
 }
 
 export function ResetPasswordForm({ token }: { token: string }) {
-  const [state, formAction] = useActionState(resetPasswordAction, {})
+  const [state, formAction] = useActionState(resetPasswordAction, {});
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-50">
       <div className="w-full max-w-sm">
         <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-8">
-          <h1 className="text-2xl font-bold text-gray-900 mb-6">Set new password</h1>
+          <h1 className="text-2xl font-bold text-gray-900 mb-6">
+            Set new password
+          </h1>
 
           <form action={formAction} className="space-y-4">
             <input type="hidden" name="token" value={token} />
 
             {state.error && (
               <div className="bg-red-50 border border-red-200 text-red-700 text-sm rounded-md px-3 py-2">
-                {state.error}{' '}
+                {state.error}{" "}
                 <Link href="/forgot-password" className="underline font-medium">
                   Request a new link
                 </Link>
@@ -40,7 +42,10 @@ export function ResetPasswordForm({ token }: { token: string }) {
             )}
 
             <div>
-              <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-1">
+              <label
+                htmlFor="password"
+                className="block text-sm font-medium text-gray-700 mb-1"
+              >
                 New password
               </label>
               <input
@@ -60,5 +65,5 @@ export function ResetPasswordForm({ token }: { token: string }) {
         </div>
       </div>
     </div>
-  )
+  );
 }

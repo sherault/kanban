@@ -14,7 +14,7 @@ config();
 
 async function start() {
   console.log("Starting API initialization...");
-  
+
   try {
     console.log("Running database migrations...");
     runMigrations();
@@ -30,14 +30,14 @@ async function start() {
   const { injectWebSocket, upgradeWebSocket } = createNodeWebSocket({ app });
   app.route("/ws", wsRoutes(db, wsRooms, upgradeWebSocket));
 
-  const port = Number(process.env["PORT"] ?? 3001);
+  const port = Number(process.env["API_PORT"] ?? process.env["PORT"] ?? 3001);
   const hostname = "0.0.0.0";
 
   console.log(`Binding to ${hostname}:${port}...`);
   const server = serve({ fetch: app.fetch, port, hostname }, () => {
     console.log(`API is now listening on http://${hostname}:${port}`);
   });
-  
+
   injectWebSocket(server);
 }
 

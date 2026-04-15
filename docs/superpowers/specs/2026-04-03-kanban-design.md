@@ -53,12 +53,12 @@ LLM client              ──SSE───▶ api /mcp  (Bearer token)
 
 ### Bounded Contexts
 
-| Context | Entities / Value Objects |
-|---|---|
-| Identity | User, Session, ApiKey, InvitationToken |
-| Organization | Organization, Membership, Role |
-| Project | Project, Column |
-| Board | Task, TaskTag, TaskLink, TaskWatcher, TaskAdvisor, TaskHistory |
+| Context      | Entities / Value Objects                                       |
+| ------------ | -------------------------------------------------------------- |
+| Identity     | User, Session, ApiKey, InvitationToken                         |
+| Organization | Organization, Membership, Role                                 |
+| Project      | Project, Column                                                |
+| Board        | Task, TaskTag, TaskLink, TaskWatcher, TaskAdvisor, TaskHistory |
 
 ### Identity
 
@@ -102,14 +102,14 @@ LLM client              ──SSE───▶ api /mcp  (Bearer token)
 owner > manager > member
 ```
 
-| Action | member | manager | owner |
-|---|---|---|---|
-| Create project | ✓ | ✓ | ✓ |
-| Delete project | ✗ | ✓ | ✓ |
-| Create / edit task | ✓ | ✓ | ✓ |
-| Manage members | ✗ | ✓ | ✓ |
-| Transfer ownership | ✗ | ✗ | ✓ |
-| Delete organization | ✗ | ✗ | ✓ |
+| Action              | member | manager | owner |
+| ------------------- | ------ | ------- | ----- |
+| Create project      | ✓      | ✓       | ✓     |
+| Delete project      | ✗      | ✓       | ✓     |
+| Create / edit task  | ✓      | ✓       | ✓     |
+| Manage members      | ✗      | ✓       | ✓     |
+| Transfer ownership  | ✗      | ✗       | ✓     |
+| Delete organization | ✗      | ✗       | ✓     |
 
 ---
 
@@ -167,17 +167,17 @@ Role checks are always resource-scoped and always hit the DB. A user may hold di
 
 ### Events
 
-| Event | Room | Trigger |
-|---|---|---|
-| `task.created` | project | new task |
-| `task.updated` | project | field auto-save |
-| `task.moved` | project | column change |
-| `task.deleted` | project | deletion |
-| `task.history` | project | any history entry written |
-| `member.joined` | org | invitation accepted |
-| `member.removed` | org | manager or owner removes member |
-| `project.created` | org | new project |
-| `project.deleted` | org | project deleted |
+| Event             | Room    | Trigger                         |
+| ----------------- | ------- | ------------------------------- |
+| `task.created`    | project | new task                        |
+| `task.updated`    | project | field auto-save                 |
+| `task.moved`      | project | column change                   |
+| `task.deleted`    | project | deletion                        |
+| `task.history`    | project | any history entry written       |
+| `member.joined`   | org     | invitation accepted             |
+| `member.removed`  | org     | manager or owner removes member |
+| `project.created` | org     | new project                     |
+| `project.deleted` | org     | project deleted                 |
 
 ### Client Behavior
 
@@ -218,14 +218,17 @@ POST /mcp/message  — client messages (client → server)
 ### Tools
 
 **Organization**
+
 - `list_organizations`
 - `create_organization` — name, website?
 
 **Project**
+
 - `list_projects` — orgId
 - `create_project` — orgId, name
 
 **Task**
+
 - `list_tasks` — projectId, filters: column?, tag?, doerId?
 - `create_task` — all fields except doer; column defaults to `todo`
 - `update_task` — any fields; all changes share a `batchId` for history grouping
@@ -233,6 +236,7 @@ POST /mcp/message  — client messages (client → server)
 - `delete_task` — manager/owner only
 
 **Resources**
+
 - `kanban://projects/{projectId}/board` — full board state as structured text
 
 ### Security
@@ -273,6 +277,7 @@ POST /mcp/message  — client messages (client → server)
 ### New Task Modal
 
 Fields:
+
 - Title (required)
 - Description (markdown, optional)
 - Objective (optional)
@@ -378,21 +383,21 @@ Traefik passes WebSocket upgrades through automatically. No additional config ne
 
 ## 11. Technology Stack Summary
 
-| Concern | Choice |
-|---|---|
-| API framework | Hono (TypeScript) |
-| Frontend | Next.js 14 App Router |
-| ORM | Drizzle ORM |
-| Database (dev) | SQLite via `better-sqlite3` |
-| Database (prod) | PostgreSQL (driver swap only) |
-| Auth tokens | `jose` (JWT) |
-| Password hashing | `argon2` |
-| Real-time | WebSockets (`ws` + Hono WS helper) |
-| MCP server | `@modelcontextprotocol/sdk` |
-| Drag and drop | `@dnd-kit/core` |
-| UI components | shadcn/ui + Tailwind CSS |
-| Client state | Zustand |
-| Server state / cache | TanStack Query |
-| Monorepo | pnpm workspaces + Turborepo |
-| Linting | ESLint (typescript-eslint) + Prettier |
-| Containers | Docker Compose + Traefik |
+| Concern              | Choice                                |
+| -------------------- | ------------------------------------- |
+| API framework        | Hono (TypeScript)                     |
+| Frontend             | Next.js 14 App Router                 |
+| ORM                  | Drizzle ORM                           |
+| Database (dev)       | SQLite via `better-sqlite3`           |
+| Database (prod)      | PostgreSQL (driver swap only)         |
+| Auth tokens          | `jose` (JWT)                          |
+| Password hashing     | `argon2`                              |
+| Real-time            | WebSockets (`ws` + Hono WS helper)    |
+| MCP server           | `@modelcontextprotocol/sdk`           |
+| Drag and drop        | `@dnd-kit/core`                       |
+| UI components        | shadcn/ui + Tailwind CSS              |
+| Client state         | Zustand                               |
+| Server state / cache | TanStack Query                        |
+| Monorepo             | pnpm workspaces + Turborepo           |
+| Linting              | ESLint (typescript-eslint) + Prettier |
+| Containers           | Docker Compose + Traefik              |

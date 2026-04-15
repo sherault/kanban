@@ -87,7 +87,5 @@
     ]
   },
   "enableAllProjectMcpServers": true,
-  "enabledMcpjsonServers": [
-    "code-review-graph"
-  ]
+  "enabledMcpjsonServers": ["code-review-graph"]
 }

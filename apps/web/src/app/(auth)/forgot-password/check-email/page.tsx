@@ -1,4 +1,4 @@
-import Link from 'next/link'
+import Link from "next/link";
 
 export default function ForgotPasswordCheckEmailPage() {
   return (
@@ -8,10 +8,12 @@ export default function ForgotPasswordCheckEmailPage() {
           <div className="text-4xl">📬</div>
           <h1 className="text-xl font-bold text-gray-900">Check your email</h1>
           <p className="text-sm text-gray-600">
-            If that email is registered, we sent a password reset link. Click the link to set a new password.
+            If that email is registered, we sent a password reset link. Click
+            the link to set a new password.
           </p>
           <p className="text-xs text-gray-400">
-            The link expires in 1 hour. Check your spam folder if you don&apos;t see it.
+            The link expires in 1 hour. Check your spam folder if you don&apos;t
+            see it.
           </p>
           <Link
             href="/login"
@@ -22,5 +24,5 @@ export default function ForgotPasswordCheckEmailPage() {
         </div>
       </div>
     </div>
-  )
+  );
 }

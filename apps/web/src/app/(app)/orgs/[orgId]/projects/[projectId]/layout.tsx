@@ -1,20 +1,20 @@
-import Link from 'next/link'
-import { redirect } from 'next/navigation'
-import { api } from '../../../../../../lib/api'
-import { getAccessToken } from '../../../../../../lib/session'
+import Link from "next/link";
+import { redirect } from "next/navigation";
+import { api } from "../../../../../../lib/api";
+import { getAccessToken } from "../../../../../../lib/session";
 
 export default async function BoardLayout({
   children,
   params,
 }: {
-  children: React.ReactNode
-  params: Promise<{ orgId: string; projectId: string }>
+  children: React.ReactNode;
+  params: Promise<{ orgId: string; projectId: string }>;
 }) {
-  const { orgId, projectId } = await params
-  const token = await getAccessToken()
-  if (!token) redirect('/login')
+  const { orgId, projectId } = await params;
+  const token = await getAccessToken();
+  if (!token) redirect("/login");
 
-  const { data: projects } = await api.projects.list(token, orgId)
+  const { data: projects } = await api.projects.list(token, orgId);
 
   return (
     <div className="flex h-full overflow-hidden">
@@ -35,8 +35,8 @@ export default async function BoardLayout({
                 href={`/orgs/${orgId}/projects/${p.id}`}
                 className={`flex-1 flex items-center px-3 py-2 rounded-md text-sm transition-colors truncate ${
                   p.id === projectId
-                    ? 'bg-blue-50 text-blue-700 font-medium'
-                    : 'text-gray-600 hover:bg-gray-100'
+                    ? "bg-blue-50 text-blue-700 font-medium"
+                    : "text-gray-600 hover:bg-gray-100"
                 }`}
               >
                 {p.name}
@@ -70,5 +70,5 @@ export default async function BoardLayout({
 
       <div className="flex-1 overflow-hidden">{children}</div>
     </div>
-  )
+  );
 }

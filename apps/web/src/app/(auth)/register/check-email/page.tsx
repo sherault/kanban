@@ -1,4 +1,4 @@
-import Link from 'next/link'
+import Link from "next/link";
 
 export default function CheckEmailPage() {
   return (
@@ -8,10 +8,12 @@ export default function CheckEmailPage() {
           <div className="text-4xl">📬</div>
           <h1 className="text-xl font-bold text-gray-900">Check your email</h1>
           <p className="text-sm text-gray-600">
-            We sent a verification link to your email address. Click the link to activate your account.
+            We sent a verification link to your email address. Click the link to
+            activate your account.
           </p>
           <p className="text-xs text-gray-400">
-            The link expires in 24 hours. Check your spam folder if you don&apos;t see it.
+            The link expires in 24 hours. Check your spam folder if you
+            don&apos;t see it.
           </p>
           <Link
             href="/login"
@@ -22,5 +24,5 @@ export default function CheckEmailPage() {
         </div>
       </div>
     </div>
-  )
+  );
 }

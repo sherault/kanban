@@ -1,26 +1,26 @@
-import { cookies } from 'next/headers'
+import { cookies } from "next/headers";
 
-const ACCESS_COOKIE = 'access_token'
-const REFRESH_COOKIE = 'refresh_token'
-const USER_NAME_COOKIE = 'user_name'
-const USER_ID_COOKIE = 'user_id'
+const ACCESS_COOKIE = "access_token";
+const REFRESH_COOKIE = "refresh_token";
+const USER_NAME_COOKIE = "user_name";
+const USER_ID_COOKIE = "user_id";
 
-const secure = process.env['NODE_ENV'] === 'production'
+const secure = process.env["NODE_ENV"] === "production";
 
 export async function getAccessToken(): Promise<string | undefined> {
-  return (await cookies()).get(ACCESS_COOKIE)?.value
+  return (await cookies()).get(ACCESS_COOKIE)?.value;
 }
 
 export async function getRefreshToken(): Promise<string | undefined> {
-  return (await cookies()).get(REFRESH_COOKIE)?.value
+  return (await cookies()).get(REFRESH_COOKIE)?.value;
 }
 
 export async function getUserName(): Promise<string> {
-  return (await cookies()).get(USER_NAME_COOKIE)?.value ?? 'User'
+  return (await cookies()).get(USER_NAME_COOKIE)?.value ?? "User";
 }
 
 export async function getUserId(): Promise<string | undefined> {
-  return (await cookies()).get(USER_ID_COOKIE)?.value
+  return (await cookies()).get(USER_ID_COOKIE)?.value;
 }
 
 /**
@@ -31,56 +31,58 @@ export async function setTokens(
   accessToken: string,
   displayName: string,
   refreshToken?: string,
-  userId?: string
+  userId?: string,
 ): Promise<void> {
-  const jar = await cookies()
+  const jar = await cookies();
   jar.set(ACCESS_COOKIE, accessToken, {
     httpOnly: true,
-    sameSite: 'lax',
+    sameSite: "lax",
     secure,
     maxAge: 15 * 60,
-    path: '/',
-  })
+    path: "/",
+  });
   jar.set(USER_NAME_COOKIE, displayName, {
     httpOnly: false,
-    sameSite: 'lax',
+    sameSite: "lax",
     secure,
     maxAge: 7 * 24 * 60 * 60,
-    path: '/',
-  })
+    path: "/",
+  });
   if (userId) {
     jar.set(USER_ID_COOKIE, userId, {
       httpOnly: false,
-      sameSite: 'lax',
+      sameSite: "lax",
       secure,
       maxAge: 7 * 24 * 60 * 60,
-      path: '/',
-    })
+      path: "/",
+    });
   }
   if (refreshToken) {
     jar.set(REFRESH_COOKIE, refreshToken, {
       httpOnly: true,
-      sameSite: 'lax',
+      sameSite: "lax",
       secure,
       maxAge: 7 * 24 * 60 * 60,
-      path: '/',
-    })
+      path: "/",
+    });
   }
 }
 
 export async function clearTokens(): Promise<void> {
-  const jar = await cookies()
-  jar.delete(ACCESS_COOKIE)
-  jar.delete(REFRESH_COOKIE)
-  jar.delete(USER_NAME_COOKIE)
+  const jar = await cookies();
+  jar.delete(ACCESS_COOKIE);
+  jar.delete(REFRESH_COOKIE);
+  jar.delete(USER_NAME_COOKIE);
 }
 
 /**
  * Parse refresh_token value out of a Set-Cookie header string.
  * Example header: "refresh_token=abc123; HttpOnly; Path=/; Max-Age=604800"
  */
-export function extractRefreshToken(setCookieHeader: string | null): string | undefined {
-  if (!setCookieHeader) return undefined
-  const match = setCookieHeader.match(/refresh_token=([^;]+)/)
-  return match?.[1] ?? undefined
+export function extractRefreshToken(
+  setCookieHeader: string | null,
+): string | undefined {
+  if (!setCookieHeader) return undefined;
+  const match = setCookieHeader.match(/refresh_token=([^;]+)/);
+  return match?.[1] ?? undefined;
 }

@@ -1,25 +1,25 @@
-'use client'
+"use client";
 
-import { useActionState } from 'react'
-import { useFormStatus } from 'react-dom'
-import { acceptInviteAction } from '../../../actions/auth'
+import { useActionState } from "react";
+import { useFormStatus } from "react-dom";
+import { acceptInviteAction } from "../../../actions/auth";
 
 function SubmitButton() {
-  const { pending } = useFormStatus()
+  const { pending } = useFormStatus();
   return (
     <button
       type="submit"
       disabled={pending}
       className="w-full bg-blue-600 text-white py-2 px-4 rounded-md text-sm font-medium hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
     >
-      {pending ? 'Joining…' : 'Create account & join'}
+      {pending ? "Joining…" : "Create account & join"}
     </button>
-  )
+  );
 }
 
 export function AcceptInviteForm({ rawToken }: { rawToken: string }) {
-  const action = acceptInviteAction.bind(null, rawToken)
-  const [state, formAction] = useActionState(action, {})
+  const action = acceptInviteAction.bind(null, rawToken);
+  const [state, formAction] = useActionState(action, {});
 
   return (
     <form action={formAction} className="space-y-4">
@@ -30,7 +30,10 @@ export function AcceptInviteForm({ rawToken }: { rawToken: string }) {
       )}
 
       <div>
-        <label htmlFor="displayName" className="block text-sm font-medium text-gray-700 mb-1">
+        <label
+          htmlFor="displayName"
+          className="block text-sm font-medium text-gray-700 mb-1"
+        >
           Display name
         </label>
         <input
@@ -46,7 +49,10 @@ export function AcceptInviteForm({ rawToken }: { rawToken: string }) {
       </div>
 
       <div>
-        <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-1">
+        <label
+          htmlFor="email"
+          className="block text-sm font-medium text-gray-700 mb-1"
+        >
           Email
         </label>
         <input
@@ -60,7 +66,10 @@ export function AcceptInviteForm({ rawToken }: { rawToken: string }) {
       </div>
 
       <div>
-        <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-1">
+        <label
+          htmlFor="password"
+          className="block text-sm font-medium text-gray-700 mb-1"
+        >
           Password
         </label>
         <input
@@ -76,5 +85,5 @@ export function AcceptInviteForm({ rawToken }: { rawToken: string }) {
 
       <SubmitButton />
     </form>
-  )
+  );
 }

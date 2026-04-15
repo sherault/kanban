@@ -18,6 +18,7 @@ Perform a thorough, risk-aware code review using the knowledge graph.
 ### Output Format
 
 Provide findings grouped by risk level (high/medium/low) with:
+
 - What changed and why it matters
 - Test coverage status
 - Suggested improvements
