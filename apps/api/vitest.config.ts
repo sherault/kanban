@@ -9,5 +9,11 @@ export default defineConfig({
       provider: "v8",
       reporter: ["text", "lcov"],
     },
+    alias: {
+      "@kanban/shared": new URL(
+        "../../packages/shared/src/index.ts",
+        import.meta.url,
+      ).pathname,
+    },
   },
 });
