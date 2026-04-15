@@ -1,30 +1,29 @@
-'use client'
+"use client";
 
-import { useEffect, useRef, useState, useCallback } from 'react'
-import type { TaskDto } from '@kanban/shared'
+import { useEffect, useRef, useState, useCallback } from "react";
+import type { TaskDto } from "@kanban/shared";
 
-const WS_BASE = process.env['NEXT_PUBLIC_WS_URL'] ?? 'ws://localhost:3001'
+// WS_BASE is now fetched dynamically from /api/auth/token
 
 /** Subset of WsEvent from apps/api/src/types.ts — only task events needed here. */
 type IncomingEvent =
-  | { type: 'task.created'; payload: TaskDto }
-  | { type: 'task.updated'; payload: TaskDto }
-  | { type: 'task.deleted'; payload: { id: string; projectId: string } }
+  | { type: "task.created"; payload: TaskDto }
+  | { type: "task.updated"; payload: TaskDto }
+  | { type: "task.deleted"; payload: { id: string; projectId: string } };
 
 export interface ProjectSocketCallbacks {
-  onTaskCreated: (task: TaskDto) => void
-  onTaskUpdated: (task: TaskDto) => void
-  onTaskDeleted: (taskId: string) => void
+  onTaskCreated: (task: TaskDto) => void;
+  onTaskUpdated: (task: TaskDto) => void;
+  onTaskDeleted: (taskId: string) => void;
 }
 
-async function fetchToken(): Promise<string | null> {
+async function fetchConfig(): Promise<{ token: string; wsUrl: string } | null> {
   try {
-    const res = await fetch('/api/auth/token')
-    if (!res.ok) return null
-    const data = (await res.json()) as { token?: string }
-    return data.token ?? null
+    const res = await fetch("/api/auth/token");
+    if (!res.ok) return null;
+    return (await res.json()) as { token: string; wsUrl: string };
   } catch {
-    return null
+    return null;
   }
 }
 
@@ -41,89 +40,96 @@ async function fetchToken(): Promise<string | null> {
  */
 export function useProjectSocket(
   projectId: string,
-  callbacks: ProjectSocketCallbacks
+  callbacks: ProjectSocketCallbacks,
 ): { isConnected: boolean } {
-  const [isConnected, setIsConnected] = useState(false)
+  const [isConnected, setIsConnected] = useState(false);
 
   // Keep a stable ref to callbacks so the WebSocket handlers always call
   // the latest version without triggering reconnect.
-  const callbacksRef = useRef(callbacks)
+  const callbacksRef = useRef(callbacks);
   useEffect(() => {
-    callbacksRef.current = callbacks
-  })
+    callbacksRef.current = callbacks;
+  });
 
-  const unmountedRef = useRef(false)
-  const wsRef = useRef<WebSocket | null>(null)
-  const attemptRef = useRef(0)
+  const unmountedRef = useRef(false);
+  const wsRef = useRef<WebSocket | null>(null);
+  const attemptRef = useRef(0);
 
-  const connect = useCallback(async function doConnect() {
-    if (unmountedRef.current) return
+  const connect = useCallback(
+    async function doConnect() {
+      if (unmountedRef.current) return;
 
-    const token = await fetchToken()
-    if (!token || unmountedRef.current) return
+      const config = await fetchConfig();
+      if (!config || unmountedRef.current) return;
 
-    const ws = new WebSocket(`${WS_BASE}/ws?token=${encodeURIComponent(token)}`)
-    wsRef.current = ws
+      const ws = new WebSocket(
+        `${config.wsUrl}/ws?token=${encodeURIComponent(config.token)}`,
+      );
+      wsRef.current = ws;
 
-    ws.onopen = () => {
-      if (unmountedRef.current) {
-        ws.close()
-        return
-      }
-      // Reset backoff counter on successful connect
-      attemptRef.current = 0
-      setIsConnected(true)
-      ws.send(JSON.stringify({ type: 'subscribe', room: `project:${projectId}` }))
-    }
+      ws.onopen = () => {
+        if (unmountedRef.current) {
+          ws.close();
+          return;
+        }
+        // Reset backoff counter on successful connect
+        attemptRef.current = 0;
+        setIsConnected(true);
+        ws.send(
+          JSON.stringify({ type: "subscribe", room: `project:${projectId}` }),
+        );
+      };
 
-    ws.onmessage = (event) => {
-      let msg: IncomingEvent
-      try {
-        msg = JSON.parse(event.data as string) as IncomingEvent
-      } catch {
-        return // ignore malformed frames
-      }
+      ws.onmessage = (event) => {
+        let msg: IncomingEvent;
+        try {
+          msg = JSON.parse(event.data as string) as IncomingEvent;
+        } catch {
+          return; // ignore malformed frames
+        }
 
-      switch (msg.type) {
-        case 'task.created':
-          callbacksRef.current.onTaskCreated(msg.payload)
-          break
-        case 'task.updated':
-          callbacksRef.current.onTaskUpdated(msg.payload)
-          break
-        case 'task.deleted':
-          callbacksRef.current.onTaskDeleted(msg.payload.id)
-          break
-      }
-    }
+        switch (msg.type) {
+          case "task.created":
+            callbacksRef.current.onTaskCreated(msg.payload);
+            break;
+          case "task.updated":
+            callbacksRef.current.onTaskUpdated(msg.payload);
+            break;
+          case "task.deleted":
+            callbacksRef.current.onTaskDeleted(msg.payload.id);
+            break;
+        }
+      };
 
-    ws.onerror = () => {
-      // onerror is always followed by onclose — let onclose handle reconnect
-      ws.close()
-    }
+      ws.onerror = () => {
+        // onerror is always followed by onclose — let onclose handle reconnect
+        ws.close();
+      };
 
-    ws.onclose = () => {
-      setIsConnected(false)
-      wsRef.current = null
-      if (unmountedRef.current) return
+      ws.onclose = () => {
+        setIsConnected(false);
+        wsRef.current = null;
+        if (unmountedRef.current) return;
 
-      // Exponential backoff: 100ms × 2^attempt, capped at 30 s
-      const backoff = Math.min(100 * 2 ** attemptRef.current, 30_000)
-      attemptRef.current += 1
-      setTimeout(() => void doConnect(), backoff)
-    }
-  }, [projectId])
+        // Exponential backoff: 100ms × 2^attempt, capped at 30 s
+        const backoff = Math.min(100 * 2 ** attemptRef.current, 30_000);
+        attemptRef.current += 1;
+        setTimeout(() => void doConnect(), backoff);
+      };
+    },
+    [projectId],
+  );
 
   useEffect(() => {
-    unmountedRef.current = false
-    void connect()
+    unmountedRef.current = false;
+    void connect();
 
     return () => {
-      unmountedRef.current = true
-      wsRef.current?.close()
-      wsRef.current = null
-    }
-  }, [connect])
+      unmountedRef.current = true;
+      wsRef.current?.close();
+      wsRef.current = null;
+    };
+  }, [connect]);
 
-  return { isConnected }
+  return { isConnected };
 }

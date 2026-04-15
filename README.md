@@ -26,6 +26,7 @@ A self-hosted, real-time project management board with built-in MCP server — s
 ## Features
 
 ### Authentication & Security
+
 - **Email + password registration** with email verification (SMTP or console fallback in dev)
 - **Two-factor authentication (TOTP)** — Google Authenticator, Authy, 1Password, any TOTP app
 - **Two-step login** — email/password then TOTP code when 2FA is enabled
@@ -35,6 +36,7 @@ A self-hosted, real-time project management board with built-in MCP server — s
 - **API keys** — long-lived bearer tokens for MCP / programmatic access
 
 ### Organizations & Members
+
 - Create multiple organizations per account
 - Invite members via single-use invitation links (shareable URL)
 - Role system: **owner** and **member**
@@ -43,11 +45,13 @@ A self-hosted, real-time project management board with built-in MCP server — s
 - Rename organization and set optional website
 
 ### Projects
+
 - Multiple projects per organization
 - Create, rename, and delete projects
 - All members of the org have access to all projects
 
 ### Kanban Board
+
 - Four columns: **Ideas → To Do → Doing → Done**
 - Tasks sorted by **due date ascending** (overdue first)
 - **Drag-and-drop** tasks between columns
@@ -57,7 +61,9 @@ A self-hosted, real-time project management board with built-in MCP server — s
 - Auto-clear doer when moving back to Todo
 
 ### Task Detail
+
 Each task has a rich detail sidebar with:
+
 - **Title** and **description** (multi-line)
 - **Objective** — group tasks under a goal
 - **Global subject** — cross-cutting label
@@ -71,6 +77,7 @@ Each task has a rich detail sidebar with:
 - **Conflict detection** — if two users edit the same field simultaneously, the second user gets a warning with merge options
 
 ### Filtering
+
 - Filter by **tag** — click any tag chip on a card
 - Filter by **objective**
 - Filter by **doer** — click an avatar
@@ -78,6 +85,7 @@ Each task has a rich detail sidebar with:
 - Active filters shown as removable chips with "Clear all"
 
 ### Archive
+
 - Multi-select Done tasks with checkboxes
 - Archive in bulk with one click
 - **Resizable archive panel** at the bottom — drag to resize
@@ -86,22 +94,26 @@ Each task has a rich detail sidebar with:
 - Restore archived tasks back to Todo
 
 ### CSV Import
+
 - Upload a `.csv` file to bulk-create tasks
 - Columns: `title`, `description`, `startDate`, `endDate`, `column`
 - Invalid rows are skipped and reported; valid rows are imported atomically
 
 ### Real-Time Collaboration
+
 - **WebSocket** connection per board — live dot indicator (green = connected)
 - Task creates, updates, deletes, moves, and reorders pushed to all connected users instantly
 - **Conflict-aware editing** — if you are typing in a field and a remote update arrives, the change is held until you blur, then you are shown a diff and asked to choose
 
 ### Profile
+
 - View and update display name
 - Manage **TOTP 2FA** — enable with QR code scan, disable with code confirmation
 - Resend email verification link
 - Generate and revoke **MCP API keys** with labels
 
 ### MCP Server (Model Context Protocol)
+
 - Exposes your board as an MCP server for AI tools
 - **Streamable HTTP** transport (modern, recommended)
 - **Legacy SSE** transport (for older MCP clients)
@@ -116,59 +128,68 @@ Each task has a rich detail sidebar with:
 ## Screenshots
 
 ### Sign in
+
 ![Sign in](docs/screenshots/01-login.png)
 
 ### Organizations
+
 ![Organizations](docs/screenshots/02-orgs.png)
 
 ### Projects
+
 ![Projects](docs/screenshots/03-org-home.png)
 
 ### Kanban Board
+
 Tasks sorted by due date, colour-coded, with tags and assignees visible at a glance. The Ideas column is expanded on the left.
 
 ![Kanban Board](docs/screenshots/04-board.png)
 
 ### Task Detail Sidebar
+
 Click any card to open the full detail panel — description, dates, assignees, tags, linked tasks, colour picker, and history.
 
 ![Task Detail](docs/screenshots/05-task-sidebar.png)
 
 ### Tag Filtering
+
 Click any tag chip to filter the board. Active filters shown as removable chips.
 
 ![Filtering](docs/screenshots/06-filtered.png)
 
 ### Archive Panel
+
 Archived tasks are searchable and restorable from the collapsible panel at the bottom.
 
 ![Archive](docs/screenshots/07-archive.png)
 
 ### Profile & MCP API Keys
+
 Set up 2FA, generate API keys, copy the MCP config snippet for Claude.
 
 ![Profile](docs/screenshots/09-profile.png)
 
 ### Registration
+
 ![Register](docs/screenshots/10-register.png)
 
 ---
 
 ## Tech Stack
 
-| Layer | Technology |
-|---|---|
-| API | [Hono](https://hono.dev/) on Node.js |
-| Database | SQLite via [Drizzle ORM](https://orm.drizzle.team/) + `better-sqlite3` |
-| Real-time | WebSockets (`@hono/node-ws`) |
-| Web | [Next.js 14](https://nextjs.org/) App Router (Server Components + Server Actions) |
-| Auth | JWT access tokens, HTTP-only refresh cookies, Argon2 password hashing |
-| 2FA | [otplib](https://github.com/yeojz/otplib) (TOTP) + [qrcode](https://github.com/soldair/node-qrcode) |
-| Email | [nodemailer](https://nodemailer.com/) (SMTP) |
-| Drag & Drop | [@dnd-kit](https://dndkit.com/) |
-| MCP | [@modelcontextprotocol/sdk](https://github.com/modelcontextprotocol/typescript-sdk) |
-| Monorepo | pnpm workspaces + Turborepo |
-| Tests | Vitest + in-memory SQLite |
+| Layer       | Technology                                                                                          |
+| ----------- | --------------------------------------------------------------------------------------------------- |
+| API         | [Hono](https://hono.dev/) on Node.js                                                                |
+| Database    | SQLite via [Drizzle ORM](https://orm.drizzle.team/) + `better-sqlite3`                              |
+| Real-time   | WebSockets (`@hono/node-ws`)                                                                        |
+| Web         | [Next.js 14](https://nextjs.org/) App Router (Server Components + Server Actions)                   |
+| Auth        | JWT access tokens, HTTP-only refresh cookies, Argon2 password hashing                               |
+| 2FA         | [otplib](https://github.com/yeojz/otplib) (TOTP) + [qrcode](https://github.com/soldair/node-qrcode) |
+| Email       | [nodemailer](https://nodemailer.com/) (SMTP)                                                        |
+| Drag & Drop | [@dnd-kit](https://dndkit.com/)                                                                     |
+| MCP         | [@modelcontextprotocol/sdk](https://github.com/modelcontextprotocol/typescript-sdk)                 |
+| Monorepo    | pnpm workspaces + Turborepo                                                                         |
+| Tests       | Vitest + in-memory SQLite                                                                           |
 
 ---
 
@@ -179,11 +200,14 @@ Set up 2FA, generate API keys, copy the MCP config snippet for Claude.
 The application uses an agnostic approach to configuration. Copy `.env.example` to `.env` and configure your secrets.
 
 The core of the "Plug & Play" setup is the URL configuration:
+
 - `API_URL`: Base URL for the API (server-side).
-- `NEXT_PUBLIC_WS_URL`: WebSocket URL for the browser.
+- `WS_URL`: WebSocket URL for the browser.
 
 #### Zero-Config Switching
+
 The project is designed so you **never** have to change your `.env` when switching between Docker and Local development:
+
 1.  Set your `.env` for **Local Dev** (`localhost`, relative paths).
 2.  `docker-compose.yml` automatically **overrides** these values with specific container-internal addresses (`api:3001`, absolute paths) when running in Docker.
 
@@ -245,6 +269,7 @@ User accounts: `alice@acmecorp.io`, `bob@acmecorp.io`, `carol@acmecorp.io`. Pass
 Connect Claude to your board from the **Profile** page by generating an API key.
 
 **Config Snippet:**
+
 ```json
 {
   "mcpServers": {
@@ -271,16 +296,16 @@ The web layer is a pure consumer of the API. It uses `API_URL` for internal call
 
 ## Environment Variables
 
-| Variable | Required | Description |
-|---|---|---|
-| `JWT_SECRET` | Yes | Secret for signing access tokens (≥ 32 chars) |
-| `REFRESH_SECRET` | Yes | Secret for refresh tokens (≥ 32 chars) |
-| `DATABASE_URL` | No | Path to SQLite file (default: `./data/kanban.db`) |
-| `PORT` | No | Internal API port (default: `3001`) |
-| `APP_URL` | No | Public URL of the frontend (for email links, CSRF, and CORS) |
-| `API_URL` | No | API URL for server-to-server calls (Internal Docker: `http://api:3001`) |
-| `ENABLE_HSTS` | No | Set to `true` to force HTTPS HSTS (default: true if production, false otherwise) |
-| `NEXT_PUBLIC_WS_URL` | Yes | WebSocket URL for the browser (`ws://localhost:3010`) |
+| Variable         | Required | Description                                                                      |
+| ---------------- | -------- | -------------------------------------------------------------------------------- |
+| `JWT_SECRET`     | Yes      | Secret for signing access tokens (≥ 32 chars)                                    |
+| `REFRESH_SECRET` | Yes      | Secret for refresh tokens (≥ 32 chars)                                           |
+| `DATABASE_URL`   | No       | Path to SQLite file (default: `./data/kanban.db`)                                |
+| `PORT`           | No       | Internal API port (default: `3001`)                                              |
+| `APP_URL`        | No       | Public URL of the frontend (for email links, CSRF, and CORS)                     |
+| `API_URL`        | No       | API URL for server-to-server calls (Internal Docker: `http://api:3001`)          |
+| `ENABLE_HSTS`    | No       | Set to `true` to force HTTPS HSTS (default: true if production, false otherwise) |
+| `WS_URL`         | Yes      | WebSocket URL for the browser (`ws://localhost:3010`)                            |
 
 ---
 

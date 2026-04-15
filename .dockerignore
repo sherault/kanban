@@ -12,3 +12,9 @@
 **/test-results
 **/coverage
 node_modules
+
+# in case of 
+.env
+.env.*
+**/.env
+**/.env.*

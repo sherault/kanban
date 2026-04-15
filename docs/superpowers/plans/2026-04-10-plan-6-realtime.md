@@ -12,14 +12,14 @@
 
 ## File Map
 
-| Action | File | Purpose |
-|--------|------|---------|
-| Create | `apps/web/src/lib/query.ts` | QueryClient factory (server-safe singleton) |
-| Create | `apps/web/src/components/Providers.tsx` | `QueryClientProvider` client wrapper |
-| Modify | `apps/web/src/app/(app)/layout.tsx` | Wrap shell with `<Providers>` |
-| Create | `apps/web/src/app/api/auth/token/route.ts` | GET → `{ token }` using httpOnly cookie |
-| Create | `apps/web/src/hooks/useProjectSocket.ts` | WS hook: connect, subscribe, reconnect, dispatch |
-| Modify | `apps/web/src/app/(app)/orgs/[orgId]/projects/[projectId]/BoardClient.tsx` | Add `useProjectSocket`; handle WS events |
+| Action | File                                                                       | Purpose                                          |
+| ------ | -------------------------------------------------------------------------- | ------------------------------------------------ |
+| Create | `apps/web/src/lib/query.ts`                                                | QueryClient factory (server-safe singleton)      |
+| Create | `apps/web/src/components/Providers.tsx`                                    | `QueryClientProvider` client wrapper             |
+| Modify | `apps/web/src/app/(app)/layout.tsx`                                        | Wrap shell with `<Providers>`                    |
+| Create | `apps/web/src/app/api/auth/token/route.ts`                                 | GET → `{ token }` using httpOnly cookie          |
+| Create | `apps/web/src/hooks/useProjectSocket.ts`                                   | WS hook: connect, subscribe, reconnect, dispatch |
+| Modify | `apps/web/src/app/(app)/orgs/[orgId]/projects/[projectId]/BoardClient.tsx` | Add `useProjectSocket`; handle WS events         |
 
 ---
 
@@ -40,18 +40,31 @@ On connect the server auto-subscribes the user to their org rooms. To subscribe 
 Events the client will receive (from `apps/api/src/types.ts`):
 
 ```typescript
-{ type: 'task.created'; payload: TaskDto }
-{ type: 'task.updated'; payload: TaskDto }
-{ type: 'task.deleted'; payload: { id: string; projectId: string } }
+{
+  type: "task.created";
+  payload: TaskDto;
+}
+{
+  type: "task.updated";
+  payload: TaskDto;
+}
+{
+  type: "task.deleted";
+  payload: {
+    id: string;
+    projectId: string;
+  }
+}
 ```
 
-The WS URL for the browser is `process.env.NEXT_PUBLIC_WS_URL` (default `ws://localhost:3001`). The full connection URL is `${NEXT_PUBLIC_WS_URL}/ws?token=<token>`.
+The WS URL for the browser is `process.env.WS_URL` (default `ws://localhost:3001`). The full connection URL is `${WS_URL}/ws?token=<token>`.
 
 ---
 
 ## Task 1: TanStack Query Provider Setup
 
 **Files:**
+
 - Create: `apps/web/src/lib/query.ts`
 - Create: `apps/web/src/components/Providers.tsx`
 - Modify: `apps/web/src/app/(app)/layout.tsx`
@@ -69,7 +82,7 @@ Expected: package added to `apps/web/package.json` dependencies.
 Create `apps/web/src/lib/query.ts`:
 
 ```typescript
-import { QueryClient } from '@tanstack/react-query'
+import { QueryClient } from "@tanstack/react-query";
 
 function makeQueryClient() {
   return new QueryClient({
@@ -80,10 +93,10 @@ function makeQueryClient() {
         staleTime: 60 * 1000,
       },
     },
-  })
+  });
 }
 
-let browserQueryClient: QueryClient | undefined
+let browserQueryClient: QueryClient | undefined;
 
 /**
  * Returns a stable QueryClient.
@@ -91,9 +104,9 @@ let browserQueryClient: QueryClient | undefined
  * - Browser: singleton so the cache persists across renders.
  */
 export function getQueryClient(): QueryClient {
-  if (typeof window === 'undefined') return makeQueryClient()
-  if (!browserQueryClient) browserQueryClient = makeQueryClient()
-  return browserQueryClient
+  if (typeof window === "undefined") return makeQueryClient();
+  if (!browserQueryClient) browserQueryClient = makeQueryClient();
+  return browserQueryClient;
 }
 ```
 
@@ -102,20 +115,18 @@ export function getQueryClient(): QueryClient {
 Create `apps/web/src/components/Providers.tsx`:
 
 ```tsx
-'use client'
+"use client";
 
-import { QueryClientProvider } from '@tanstack/react-query'
-import { type ReactNode } from 'react'
-import { getQueryClient } from '../lib/query'
+import { QueryClientProvider } from "@tanstack/react-query";
+import { type ReactNode } from "react";
+import { getQueryClient } from "../lib/query";
 
 export function Providers({ children }: { children: ReactNode }) {
   // getQueryClient() returns the browser singleton — stable across re-renders
-  const queryClient = getQueryClient()
+  const queryClient = getQueryClient();
   return (
-    <QueryClientProvider client={queryClient}>
-      {children}
-    </QueryClientProvider>
-  )
+    <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
+  );
 }
 ```
 
@@ -124,25 +135,35 @@ export function Providers({ children }: { children: ReactNode }) {
 Read `apps/web/src/app/(app)/layout.tsx` first. Replace it with:
 
 ```tsx
-import Link from 'next/link'
-import { getUserName } from '../../lib/session'
-import { logoutAction } from '../../actions/auth'
-import { Providers } from '../../components/Providers'
+import Link from "next/link";
+import { getUserName } from "../../lib/session";
+import { logoutAction } from "../../actions/auth";
+import { Providers } from "../../components/Providers";
 
-export default async function AppLayout({ children }: { children: React.ReactNode }) {
-  const displayName = await getUserName()
+export default async function AppLayout({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
+  const displayName = await getUserName();
 
   return (
     <Providers>
       <div className="h-screen flex flex-col bg-gray-50">
         <header className="bg-white border-b border-gray-200 px-6 py-3 flex items-center justify-between shrink-0">
-          <Link href="/orgs" className="font-bold text-gray-900 text-lg tracking-tight">
+          <Link
+            href="/orgs"
+            className="font-bold text-gray-900 text-lg tracking-tight"
+          >
             Kanban
           </Link>
           <div className="flex items-center gap-4">
             <span className="text-sm text-gray-500">{displayName}</span>
             <form action={logoutAction}>
-              <button type="submit" className="text-sm text-gray-500 hover:text-gray-900 transition-colors">
+              <button
+                type="submit"
+                className="text-sm text-gray-500 hover:text-gray-900 transition-colors"
+              >
                 Sign out
               </button>
             </form>
@@ -151,7 +172,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
         <div className="flex-1 overflow-hidden">{children}</div>
       </div>
     </Providers>
-  )
+  );
 }
 ```
 
@@ -181,6 +202,7 @@ git commit -m "feat: install TanStack Query and wire QueryClientProvider into ap
 The browser needs an access token to authenticate the WebSocket connection, but `access_token` is an httpOnly cookie (invisible to JavaScript). A Next.js Route Handler runs server-side with full cookie access, so it can safely proxy the token.
 
 **Files:**
+
 - Create: `apps/web/src/app/api/auth/token/route.ts`
 
 - [ ] **Step 1: Create the route handler**
@@ -188,8 +210,8 @@ The browser needs an access token to authenticate the WebSocket connection, but 
 Create `apps/web/src/app/api/auth/token/route.ts`:
 
 ```typescript
-import { NextResponse } from 'next/server'
-import { getAccessToken } from '../../../../lib/session'
+import { NextResponse } from "next/server";
+import { getAccessToken } from "../../../../lib/session";
 
 /**
  * GET /api/auth/token
@@ -200,11 +222,11 @@ import { getAccessToken } from '../../../../lib/session'
  * This endpoint is same-origin only — no CORS headers intentionally.
  */
 export async function GET(): Promise<NextResponse> {
-  const token = await getAccessToken()
+  const token = await getAccessToken();
   if (!token) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
-  return NextResponse.json({ token })
+  return NextResponse.json({ token });
 }
 ```
 
@@ -229,6 +251,7 @@ git commit -m "feat: token route handler for client-side WS authentication"
 ## Task 3: `useProjectSocket` Hook
 
 **Files:**
+
 - Create: `apps/web/src/hooks/useProjectSocket.ts`
 
 - [ ] **Step 1: Create the hook**
@@ -236,33 +259,33 @@ git commit -m "feat: token route handler for client-side WS authentication"
 Create `apps/web/src/hooks/useProjectSocket.ts`:
 
 ```typescript
-'use client'
+"use client";
 
-import { useEffect, useRef, useState, useCallback } from 'react'
-import type { TaskDto } from '@kanban/shared'
+import { useEffect, useRef, useState, useCallback } from "react";
+import type { TaskDto } from "@kanban/shared";
 
-const WS_BASE = process.env['NEXT_PUBLIC_WS_URL'] ?? 'ws://localhost:3001'
+const WS_BASE = process.env["NEXT_PUBLIC_WS_URL"] ?? "ws://localhost:3001";
 
 /** Subset of WsEvent from apps/api/src/types.ts — only task events needed here. */
 type IncomingEvent =
-  | { type: 'task.created'; payload: TaskDto }
-  | { type: 'task.updated'; payload: TaskDto }
-  | { type: 'task.deleted'; payload: { id: string; projectId: string } }
+  | { type: "task.created"; payload: TaskDto }
+  | { type: "task.updated"; payload: TaskDto }
+  | { type: "task.deleted"; payload: { id: string; projectId: string } };
 
 export interface ProjectSocketCallbacks {
-  onTaskCreated: (task: TaskDto) => void
-  onTaskUpdated: (task: TaskDto) => void
-  onTaskDeleted: (taskId: string) => void
+  onTaskCreated: (task: TaskDto) => void;
+  onTaskUpdated: (task: TaskDto) => void;
+  onTaskDeleted: (taskId: string) => void;
 }
 
 async function fetchToken(): Promise<string | null> {
   try {
-    const res = await fetch('/api/auth/token')
-    if (!res.ok) return null
-    const data = (await res.json()) as { token?: string }
-    return data.token ?? null
+    const res = await fetch("/api/auth/token");
+    if (!res.ok) return null;
+    const data = (await res.json()) as { token?: string };
+    return data.token ?? null;
   } catch {
-    return null
+    return null;
   }
 }
 
@@ -279,91 +302,95 @@ async function fetchToken(): Promise<string | null> {
  */
 export function useProjectSocket(
   projectId: string,
-  callbacks: ProjectSocketCallbacks
+  callbacks: ProjectSocketCallbacks,
 ): { isConnected: boolean } {
-  const [isConnected, setIsConnected] = useState(false)
+  const [isConnected, setIsConnected] = useState(false);
 
   // Keep a stable ref to callbacks so the WebSocket handlers always call
   // the latest version without triggering reconnect.
-  const callbacksRef = useRef(callbacks)
+  const callbacksRef = useRef(callbacks);
   useEffect(() => {
-    callbacksRef.current = callbacks
-  })
+    callbacksRef.current = callbacks;
+  });
 
-  const unmountedRef = useRef(false)
-  const wsRef = useRef<WebSocket | null>(null)
-  const attemptRef = useRef(0)
+  const unmountedRef = useRef(false);
+  const wsRef = useRef<WebSocket | null>(null);
+  const attemptRef = useRef(0);
 
   const connect = useCallback(async () => {
-    if (unmountedRef.current) return
+    if (unmountedRef.current) return;
 
-    const token = await fetchToken()
-    if (!token || unmountedRef.current) return
+    const token = await fetchToken();
+    if (!token || unmountedRef.current) return;
 
-    const ws = new WebSocket(`${WS_BASE}/ws?token=${encodeURIComponent(token)}`)
-    wsRef.current = ws
+    const ws = new WebSocket(
+      `${WS_BASE}/ws?token=${encodeURIComponent(token)}`,
+    );
+    wsRef.current = ws;
 
     ws.onopen = () => {
       if (unmountedRef.current) {
-        ws.close()
-        return
+        ws.close();
+        return;
       }
       // Reset backoff counter on successful connect
-      attemptRef.current = 0
-      setIsConnected(true)
-      ws.send(JSON.stringify({ type: 'subscribe', room: `project:${projectId}` }))
-    }
+      attemptRef.current = 0;
+      setIsConnected(true);
+      ws.send(
+        JSON.stringify({ type: "subscribe", room: `project:${projectId}` }),
+      );
+    };
 
     ws.onmessage = (event) => {
-      let msg: IncomingEvent
+      let msg: IncomingEvent;
       try {
-        msg = JSON.parse(event.data as string) as IncomingEvent
+        msg = JSON.parse(event.data as string) as IncomingEvent;
       } catch {
-        return // ignore malformed frames
+        return; // ignore malformed frames
       }
 
       switch (msg.type) {
-        case 'task.created':
-          callbacksRef.current.onTaskCreated(msg.payload)
-          break
-        case 'task.updated':
-          callbacksRef.current.onTaskUpdated(msg.payload)
-          break
-        case 'task.deleted':
-          callbacksRef.current.onTaskDeleted(msg.payload.id)
-          break
+        case "task.created":
+          callbacksRef.current.onTaskCreated(msg.payload);
+          break;
+        case "task.updated":
+          callbacksRef.current.onTaskUpdated(msg.payload);
+          break;
+        case "task.deleted":
+          callbacksRef.current.onTaskDeleted(msg.payload.id);
+          break;
       }
-    }
+    };
 
     ws.onerror = () => {
       // onerror is always followed by onclose — let onclose handle reconnect
-      ws.close()
-    }
+      ws.close();
+    };
 
     ws.onclose = () => {
-      setIsConnected(false)
-      wsRef.current = null
-      if (unmountedRef.current) return
+      setIsConnected(false);
+      wsRef.current = null;
+      if (unmountedRef.current) return;
 
       // Exponential backoff: 100ms × 2^attempt, capped at 30 s
-      const backoff = Math.min(100 * 2 ** attemptRef.current, 30_000)
-      attemptRef.current += 1
-      setTimeout(connect, backoff)
-    }
-  }, [projectId])
+      const backoff = Math.min(100 * 2 ** attemptRef.current, 30_000);
+      attemptRef.current += 1;
+      setTimeout(connect, backoff);
+    };
+  }, [projectId]);
 
   useEffect(() => {
-    unmountedRef.current = false
-    void connect()
+    unmountedRef.current = false;
+    void connect();
 
     return () => {
-      unmountedRef.current = true
-      wsRef.current?.close()
-      wsRef.current = null
-    }
-  }, [connect])
+      unmountedRef.current = true;
+      wsRef.current?.close();
+      wsRef.current = null;
+    };
+  }, [connect]);
 
-  return { isConnected }
+  return { isConnected };
 }
 ```
 
@@ -388,6 +415,7 @@ git commit -m "feat: useProjectSocket hook with exponential-backoff reconnect"
 ## Task 4: Integrate Real-Time into BoardClient
 
 **Files:**
+
 - Modify: `apps/web/src/app/(app)/orgs/[orgId]/projects/[projectId]/BoardClient.tsx`
 
 - [ ] **Step 1: Read the current BoardClient**
@@ -399,9 +427,9 @@ Read `apps/web/src/app/(app)/orgs/[orgId]/projects/[projectId]/BoardClient.tsx` 
 Replace `apps/web/src/app/(app)/orgs/[orgId]/projects/[projectId]/BoardClient.tsx` entirely:
 
 ```tsx
-'use client'
+"use client";
 
-import { useState, useTransition, useRef, useEffect } from 'react'
+import { useState, useTransition, useRef, useEffect } from "react";
 import {
   DndContext,
   type DragEndEvent,
@@ -410,124 +438,137 @@ import {
   PointerSensor,
   useSensor,
   useSensors,
-} from '@dnd-kit/core'
-import type { TaskDto, MembershipDto } from '@kanban/shared'
-import { Column } from '@kanban/shared'
-import { moveTaskAction } from '@/actions/tasks'
-import { useProjectSocket } from '@/hooks/useProjectSocket'
-import { TaskCard } from './TaskCard'
-import { BoardColumn } from './BoardColumn'
-import { NewTaskModal } from './NewTaskModal'
-import { TaskDetailSidebar } from './TaskDetailSidebar'
+} from "@dnd-kit/core";
+import type { TaskDto, MembershipDto } from "@kanban/shared";
+import { Column } from "@kanban/shared";
+import { moveTaskAction } from "@/actions/tasks";
+import { useProjectSocket } from "@/hooks/useProjectSocket";
+import { TaskCard } from "./TaskCard";
+import { BoardColumn } from "./BoardColumn";
+import { NewTaskModal } from "./NewTaskModal";
+import { TaskDetailSidebar } from "./TaskDetailSidebar";
 
 const COLUMNS: { id: Column; label: string }[] = [
-  { id: Column.IDEAS, label: 'Ideas' },
-  { id: Column.TODO, label: 'To Do' },
-  { id: Column.DOING, label: 'Doing' },
-  { id: Column.DONE, label: 'Done' },
-]
+  { id: Column.IDEAS, label: "Ideas" },
+  { id: Column.TODO, label: "To Do" },
+  { id: Column.DOING, label: "Doing" },
+  { id: Column.DONE, label: "Done" },
+];
 
 interface Props {
-  initialTasks: TaskDto[]
-  orgMembers: MembershipDto[]
-  projectId: string
-  orgId: string
+  initialTasks: TaskDto[];
+  orgMembers: MembershipDto[];
+  projectId: string;
+  orgId: string;
 }
 
-export function BoardClient({ initialTasks, orgMembers, projectId, orgId }: Props) {
-  const [tasks, setTasks] = useState<TaskDto[]>(initialTasks)
-  const [activeTask, setActiveTask] = useState<TaskDto | null>(null)
-  const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null)
-  const [newTaskColumn, setNewTaskColumn] = useState<Column | null>(null)
-  const [ideasCollapsed, setIdeasCollapsed] = useState(true)
-  const [error, setError] = useState<string | null>(null)
-  const [, startTransition] = useTransition()
+export function BoardClient({
+  initialTasks,
+  orgMembers,
+  projectId,
+  orgId,
+}: Props) {
+  const [tasks, setTasks] = useState<TaskDto[]>(initialTasks);
+  const [activeTask, setActiveTask] = useState<TaskDto | null>(null);
+  const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null);
+  const [newTaskColumn, setNewTaskColumn] = useState<Column | null>(null);
+  const [ideasCollapsed, setIdeasCollapsed] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [, startTransition] = useTransition();
 
   // Keep a ref to selectedTaskId so WS callbacks (closures) always read
   // the latest value without needing to be recreated on every render.
-  const selectedTaskIdRef = useRef<string | null>(null)
+  const selectedTaskIdRef = useRef<string | null>(null);
   useEffect(() => {
-    selectedTaskIdRef.current = selectedTaskId
-  }, [selectedTaskId])
+    selectedTaskIdRef.current = selectedTaskId;
+  }, [selectedTaskId]);
 
   const sensors = useSensors(
-    useSensor(PointerSensor, { activationConstraint: { distance: 8 } })
-  )
+    useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
+  );
 
   // ── WebSocket real-time ───────────────────────────────────────────────────
 
   const { isConnected } = useProjectSocket(projectId, {
     onTaskCreated(task) {
       // Ignore if we already have the task (e.g. from our own Server Action)
-      setTasks((prev) => (prev.some((t) => t.id === task.id) ? prev : [...prev, task]))
+      setTasks((prev) =>
+        prev.some((t) => t.id === task.id) ? prev : [...prev, task],
+      );
     },
     onTaskUpdated(task) {
       setTasks((prev) =>
         prev.map((t) => {
-          if (t.id !== task.id) return t
+          if (t.id !== task.id) return t;
           // Don't overwrite a task the user has open in the sidebar —
           // their in-progress edits take precedence until they close it.
-          if (selectedTaskIdRef.current === task.id) return t
-          return task
-        })
-      )
+          if (selectedTaskIdRef.current === task.id) return t;
+          return task;
+        }),
+      );
     },
     onTaskDeleted(taskId) {
-      setTasks((prev) => prev.filter((t) => t.id !== taskId))
-      if (selectedTaskIdRef.current === taskId) setSelectedTaskId(null)
+      setTasks((prev) => prev.filter((t) => t.id !== taskId));
+      if (selectedTaskIdRef.current === taskId) setSelectedTaskId(null);
     },
-  })
+  });
 
   // ── Drag and drop ─────────────────────────────────────────────────────────
 
-  const selectedTask = tasks.find((t) => t.id === selectedTaskId) ?? null
+  const selectedTask = tasks.find((t) => t.id === selectedTaskId) ?? null;
 
   function handleDragStart(event: DragStartEvent) {
-    setActiveTask(tasks.find((t) => t.id === event.active.id) ?? null)
-    setError(null)
+    setActiveTask(tasks.find((t) => t.id === event.active.id) ?? null);
+    setError(null);
   }
 
   function handleDragEnd(event: DragEndEvent) {
-    setActiveTask(null)
-    const { active, over } = event
-    if (!over) return
+    setActiveTask(null);
+    const { active, over } = event;
+    if (!over) return;
 
-    const taskId = active.id as string
-    const newColumn = over.id as Column
-    const task = tasks.find((t) => t.id === taskId)
-    if (!task || task.column === newColumn) return
+    const taskId = active.id as string;
+    const newColumn = over.id as Column;
+    const task = tasks.find((t) => t.id === taskId);
+    if (!task || task.column === newColumn) return;
 
     if (newColumn === Column.DOING && !task.doer) {
-      setError('Assign a doer to this task before moving it to Doing.')
-      return
+      setError("Assign a doer to this task before moving it to Doing.");
+      return;
     }
 
     // Optimistic update
     setTasks((prev) =>
-      prev.map((t) => (t.id === taskId ? { ...t, column: newColumn } : t))
-    )
+      prev.map((t) => (t.id === taskId ? { ...t, column: newColumn } : t)),
+    );
 
     startTransition(async () => {
-      const result = await moveTaskAction(projectId, taskId, newColumn)
+      const result = await moveTaskAction(projectId, taskId, newColumn);
       if (result.error) {
         // Revert to original column
         setTasks((prev) =>
-          prev.map((t) => (t.id === taskId ? { ...t, column: task.column } : t))
-        )
-        setError(result.error)
+          prev.map((t) =>
+            t.id === taskId ? { ...t, column: task.column } : t,
+          ),
+        );
+        setError(result.error);
       } else if (result.task) {
         setTasks((prev) =>
-          prev.map((t) => (t.id === result.task!.id ? result.task! : t))
-        )
+          prev.map((t) => (t.id === result.task!.id ? result.task! : t)),
+        );
       }
-    })
+    });
   }
 
   // ── Render ────────────────────────────────────────────────────────────────
 
   return (
     <div className="flex h-full overflow-hidden">
-      <DndContext sensors={sensors} onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
+      <DndContext
+        sensors={sensors}
+        onDragStart={handleDragStart}
+        onDragEnd={handleDragEnd}
+      >
         <div className="flex-1 flex flex-col overflow-hidden">
           {/* Error banner */}
           {error && (
@@ -552,7 +593,9 @@ export function BoardClient({ initialTasks, orgMembers, projectId, orgId }: Prop
                 tasks={tasks.filter((t) => t.column === id)}
                 collapsed={id === Column.IDEAS ? ideasCollapsed : false}
                 onToggleCollapse={
-                  id === Column.IDEAS ? () => setIdeasCollapsed((v) => !v) : undefined
+                  id === Column.IDEAS
+                    ? () => setIdeasCollapsed((v) => !v)
+                    : undefined
                 }
                 onTaskClick={(taskId) => setSelectedTaskId(taskId)}
                 onNewTask={() => setNewTaskColumn(id)}
@@ -563,16 +606,18 @@ export function BoardClient({ initialTasks, orgMembers, projectId, orgId }: Prop
           {/* Connection status indicator */}
           <div className="px-6 pb-3 flex items-center gap-1.5 shrink-0">
             <span
-              className={`w-1.5 h-1.5 rounded-full ${isConnected ? 'bg-green-400' : 'bg-gray-300'}`}
+              className={`w-1.5 h-1.5 rounded-full ${isConnected ? "bg-green-400" : "bg-gray-300"}`}
             />
             <span className="text-xs text-gray-400">
-              {isConnected ? 'Live' : 'Connecting…'}
+              {isConnected ? "Live" : "Connecting…"}
             </span>
           </div>
         </div>
 
         <DragOverlay>
-          {activeTask ? <TaskCard task={activeTask} onClick={() => {}} overlay /> : null}
+          {activeTask ? (
+            <TaskCard task={activeTask} onClick={() => {}} overlay />
+          ) : null}
         </DragOverlay>
       </DndContext>
 
@@ -583,11 +628,13 @@ export function BoardClient({ initialTasks, orgMembers, projectId, orgId }: Prop
           projectId={projectId}
           onClose={() => setSelectedTaskId(null)}
           onUpdated={(updated) =>
-            setTasks((prev) => prev.map((t) => (t.id === updated.id ? updated : t)))
+            setTasks((prev) =>
+              prev.map((t) => (t.id === updated.id ? updated : t)),
+            )
           }
           onDeleted={(taskId) => {
-            setTasks((prev) => prev.filter((t) => t.id !== taskId))
-            setSelectedTaskId(null)
+            setTasks((prev) => prev.filter((t) => t.id !== taskId));
+            setSelectedTaskId(null);
           }}
         />
       )}
@@ -599,13 +646,13 @@ export function BoardClient({ initialTasks, orgMembers, projectId, orgId }: Prop
           initialColumn={newTaskColumn}
           onClose={() => setNewTaskColumn(null)}
           onCreated={(task) => {
-            setTasks((prev) => [...prev, task])
-            setNewTaskColumn(null)
+            setTasks((prev) => [...prev, task]);
+            setNewTaskColumn(null);
           }}
         />
       )}
     </div>
-  )
+  );
 }
 ```
 
@@ -663,15 +710,15 @@ After all tasks are committed, verify end-to-end in two browser windows:
 
 ### Spec Coverage
 
-| Requirement (from design doc §6) | Task |
-|---|---|
-| One WS connection per session, auth via `?token=<accessToken>` | Task 3 (`fetchToken` + connect URL) |
-| Auto-subscribe to org rooms on connect | API already handles this |
-| Client sends `{ type: "subscribe", room: "project:{projectId}" }` | Task 3 (`ws.onopen`) |
-| `task.created / updated / deleted` events | Task 3 (switch in `onmessage`) |
-| WS events do not overwrite field being actively edited | Task 4 (`selectedTaskIdRef` guard) |
-| Reconnect with exponential backoff, max 30 s | Task 3 (`onclose` + `setTimeout`) |
-| TanStack Query installed | Task 1 |
+| Requirement (from design doc §6)                                  | Task                                |
+| ----------------------------------------------------------------- | ----------------------------------- |
+| One WS connection per session, auth via `?token=<accessToken>`    | Task 3 (`fetchToken` + connect URL) |
+| Auto-subscribe to org rooms on connect                            | API already handles this            |
+| Client sends `{ type: "subscribe", room: "project:{projectId}" }` | Task 3 (`ws.onopen`)                |
+| `task.created / updated / deleted` events                         | Task 3 (switch in `onmessage`)      |
+| WS events do not overwrite field being actively edited            | Task 4 (`selectedTaskIdRef` guard)  |
+| Reconnect with exponential backoff, max 30 s                      | Task 3 (`onclose` + `setTimeout`)   |
+| TanStack Query installed                                          | Task 1                              |
 
 ### Placeholder Scan
 

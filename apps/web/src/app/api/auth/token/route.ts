@@ -1,5 +1,5 @@
-import { NextResponse } from 'next/server'
-import { getAccessToken } from '@/lib/session'
+import { NextResponse } from "next/server";
+import { getAccessToken } from "@/lib/session";
 
 /**
  * GET /api/auth/token
@@ -10,9 +10,12 @@ import { getAccessToken } from '@/lib/session'
  * This endpoint is same-origin only — no CORS headers intentionally.
  */
 export async function GET(): Promise<NextResponse> {
-  const token = await getAccessToken()
+  const token = await getAccessToken();
   if (!token) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
-  return NextResponse.json({ token })
+  return NextResponse.json({
+    token,
+    wsUrl: process.env["WS_URL"] || "ws://localhost:3010",
+  });
 }

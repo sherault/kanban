@@ -31,7 +31,7 @@ services:
       target: web
     environment:
       API_URL: http://api:3001
-      NEXT_PUBLIC_WS_URL: ${NEXT_PUBLIC_WS_URL:-ws://localhost:3010}
+      WS_URL: ${WS_URL:-ws://localhost:3010}
     ports:
       - "3009:3000"
     depends_on:
