@@ -222,6 +222,9 @@ importers:
       '@kanban/eslint-config':
         specifier: workspace:*
         version: link:../eslint-config
+      '@types/node':
+        specifier: ^20.16.1
+        version: 20.19.39
       eslint:
         specifier: ^9.9.0
         version: 9.39.4(jiti@1.21.7)
