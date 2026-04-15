@@ -1,0 +1,24 @@
+{
+    admin off
+    persist_config off
+}
+
+# Unified entry point for Kanban
+# Uses {$DOMAIN} env var, defaults to localhost
+{$DOMAIN:localhost} {
+    # WebSocket (Browser to API)
+    handle /ws {
+        reverse_proxy api:3001
+    }
+
+    # MCP Endpoints (Claude to API)
+    handle /mcp/* {
+        reverse_proxy api:3001
+    }
+
+    # Static Assets & Web App
+    # Web app will communicate with API internally via http://api:3001
+    handle {
+        reverse_proxy web:3000
+    }
+}

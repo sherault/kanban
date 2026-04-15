@@ -8,20 +8,10 @@ services:
       - '.env'
     environment:
       DATABASE_URL: /data/kanban.db
-      JWT_SECRET: ${JWT_SECRET}
-      REFRESH_SECRET: ${REFRESH_SECRET}
       PORT: 3001
-      # APP_URL is the unified public URL
-      APP_URL: ${APP_URL:-http://localhost:3000}
-      SMTP_HOST: ${SMTP_HOST:-}
-      SMTP_PORT: ${SMTP_PORT:-587}
-      SMTP_SECURE: ${SMTP_SECURE:-false}
-      SMTP_USER: ${SMTP_USER:-}
-      SMTP_PASS: ${SMTP_PASS:-}
-      SMTP_FROM: ${SMTP_FROM:-noreply@example.com}
+      APP_URL: https://${DOMAIN}
     volumes:
       - ./data:/data
-    # No public ports, accessible through Caddy only
     restart: unless-stopped
 
   web:
@@ -30,11 +20,7 @@ services:
       dockerfile: Dockerfile
       target: web
     environment:
-      # Internal URL for SSR
       API_URL: http://api:3001
-      # Browser-side WebSocket URL (absolute or will be derived)
-      WS_URL: ${WS_URL:-}
-    # No public ports, accessible through Caddy only
     depends_on:
       - api
     restart: unless-stopped
@@ -43,9 +29,10 @@ services:
     image: caddy:2-alpine
     restart: unless-stopped
     ports:
-      - "3000:80"
+      - "80:80"
+      - "443:443"
     environment:
-      DOMAIN: ${DOMAIN:-localhost}
+      DOMAIN: ${DOMAIN}
     volumes:
       - ./Caddyfile:/etc/caddy/Caddyfile
       - caddy_data:/data
