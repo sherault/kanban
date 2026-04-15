@@ -286,12 +286,6 @@ export class TaskService {
 
     this.db.run(sql`DELETE FROM tasks WHERE id = ${taskId}`);
 
-    try {
-      this.db.run(sql`VACUUM`);
-    } catch {
-      // ignore busy vacuum
-    }
-
     this.broadcast(`project:${existing.projectId}`, {
       type: "task.deleted",
       payload: { id: taskId, projectId: existing.projectId },
@@ -704,34 +698,39 @@ export class TaskService {
     const row = this.getRow(taskId);
     if (!row) throw notFound("Task not found");
     if (!row.archivedAt) throw unprocessable("Task is not archived");
+
     const position = this.nextPosition(row.projectId, "todo");
     const timestamp = new Date().toISOString();
-    // Bypass ORM, use raw SQL
-    this.db.run(
-      sql`UPDATE tasks SET archived_at = NULL, column = 'todo', position = ${position}, updated_at = ${timestamp} WHERE id = ${taskId}`,
-    );
-    this.db.run(sql`VACUUM`); // Force physical sync
 
-    this.db
-      .insert(taskHistory)
-      .values({
-        id: generateId(),
-        taskId,
-        userId: actorId,
-        field: "archivedAt",
-        oldValue: row.archivedAt,
-        newValue: null,
-        batchId: null,
-      })
-      .run();
-    const updated = this.getRow(taskId);
-    const dto = assembleTaskDto(this.db, updated);
-    console.error(`[TaskService] Task restored successfully: ${dto.title}`);
-    this.broadcast(`project:${row.projectId}`, {
-      type: "task.created",
-      payload: dto,
+    return this.db.transaction((tx) => {
+      tx.run(
+        sql`UPDATE tasks SET archived_at = NULL, column = 'todo', position = ${position}, updated_at = ${timestamp} WHERE id = ${taskId}`,
+      );
+
+      tx.insert(taskHistory)
+        .values({
+          id: generateId(),
+          taskId,
+          userId: actorId,
+          field: "archivedAt",
+          oldValue: row.archivedAt,
+          newValue: null,
+          batchId: null,
+        })
+        .run();
+
+      const updated = tx.select().from(tasks).where(eq(tasks.id, taskId)).get();
+      if (!updated) throw notFound("Task not found after update");
+
+      const dto = assembleTaskDto(tx as any, updated);
+
+      this.broadcast(`project:${row.projectId}`, {
+        type: "task.created",
+        payload: dto,
+      });
+
+      return dto;
     });
-    return dto;
   }
 
   listArchivedTasks(

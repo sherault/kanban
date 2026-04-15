@@ -8,8 +8,10 @@ const rawUrl = process.env["DATABASE_URL"] ?? "./kanban.db";
 let databasePath = rawUrl.replace(/^file:/, "");
 
 if (!path.isAbsolute(databasePath)) {
-  const root =
-    process.env.MONOREPO_ROOT || path.resolve(process.cwd(), "../../");
+  // If we are running from apps/api, root is ../..
+  // If we are running from root, root is .
+  const cwd = process.cwd();
+  const root = cwd.includes("apps/api") ? path.resolve(cwd, "../../") : cwd;
   databasePath = path.resolve(root, databasePath);
 }
 const sqlite = new Database(databasePath);
