@@ -34,6 +34,7 @@ services:
       API_URL: http://api:3001
       # Browser-side WebSocket URL (absolute or will be derived)
       WS_URL: ${WS_URL:-}
+      APP_URL: ${APP_URL:-http://localhost:3000}
     # No public ports, accessible through Caddy only
     depends_on:
       - api

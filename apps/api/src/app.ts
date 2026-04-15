@@ -42,6 +42,19 @@ export function createApp(
     }),
   );
   if (!isTest) {
+    app.use("*", async (c, next) => {
+      const origin = c.req.header("Origin");
+      if (
+        c.req.method !== "GET" &&
+        c.req.method !== "HEAD" &&
+        origin !== frontendUrl
+      ) {
+        console.error(
+          `[CSRF] Rejected request from origin: "${origin}" (expected: "${frontendUrl}") for ${c.req.method} ${c.req.path}`,
+        );
+      }
+      await next();
+    });
     app.use(
       "*",
       csrf({

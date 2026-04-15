@@ -21,6 +21,7 @@ services:
       target: web
     environment:
       API_URL: http://api:3001
+      APP_URL: https://${DOMAIN}
     depends_on:
       - api
     restart: unless-stopped
