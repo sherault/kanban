@@ -4,8 +4,10 @@ import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { api, ApiError } from "../lib/api";
 import { getAccessToken } from "../lib/session";
-import { Column } from "@kanban/shared";
+import { Column, createLogger } from "@kanban/shared";
 import type { TaskDto, TaskHistoryDto } from "@kanban/shared";
+
+const logger = createLogger("task-actions");
 
 export async function createTaskAction(
   projectId: string,
@@ -90,11 +92,30 @@ export async function deleteTaskAction(
   const token = await getAccessToken();
   if (!token) redirect("/login");
 
+  logger.info(`[deleteTaskAction] Deleting task: ${taskId}`);
   try {
     await api.tasks.delete(token, projectId, taskId);
+    logger.info(`[deleteTaskAction] Successfully deleted task: ${taskId}`);
     return {};
   } catch (e: unknown) {
-    return { error: e instanceof Error ? e.message : "Failed to delete task" };
+    if (e instanceof ApiError) {
+      logger.error(
+        `[deleteTaskAction] API error (${e.status}) for task ${taskId}:`,
+        e.message,
+      );
+      if (e.body)
+        logger.error(
+          `[deleteTaskAction] API response body:`,
+          JSON.stringify(e.body),
+        );
+      return { error: e.message };
+    }
+    const error = e instanceof Error ? e.message : "Failed to delete task";
+    logger.error(
+      `[deleteTaskAction] Unexpected error for task ${taskId}:`,
+      error,
+    );
+    return { error };
   }
 }
 
@@ -298,12 +319,31 @@ export async function restoreTaskAction(
 ): Promise<{ error?: string; task?: TaskDto }> {
   const token = await getAccessToken();
   if (!token) redirect("/login");
+  logger.info(`[restoreTaskAction] Restoring task: ${taskId}`);
   try {
     const { data: task } = await api.tasks.restore(token, projectId, taskId);
+    logger.info(`[restoreTaskAction] Successfully restored task: ${taskId}`);
     revalidatePath(`/orgs/[orgId]/projects/${projectId}`, "page");
     return { task };
   } catch (e: unknown) {
-    return { error: e instanceof Error ? e.message : "Failed to restore task" };
+    if (e instanceof ApiError) {
+      logger.error(
+        `[restoreTaskAction] API error (${e.status}) for task ${taskId}:`,
+        e.message,
+      );
+      if (e.body)
+        logger.error(
+          `[restoreTaskAction] API response body:`,
+          JSON.stringify(e.body),
+        );
+      return { error: e.message };
+    }
+    const error = e instanceof Error ? e.message : "Failed to restore task";
+    logger.error(
+      `[restoreTaskAction] Unexpected error for task ${taskId}:`,
+      error,
+    );
+    return { error };
   }
 }
 

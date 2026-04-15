@@ -8,7 +8,7 @@ import {
 } from "@kanban/shared";
 
 const API_URL = process.env["API_URL"] ?? "http://localhost:3010";
-const APP_URL = process.env["APP_URL"] ?? "http://localhost:3000";
+const APP_URL = process.env["APP_URL"] ?? "http://localhost:3009";
 const secure = process.env["NODE_ENV"] === "production";
 
 const logger = createLogger("proxy");

@@ -19,7 +19,7 @@ export function createApp(
 ): Hono<HonoEnv> {
   const app = new Hono<HonoEnv>();
 
-  const frontendUrl = process.env["APP_URL"] ?? "http://localhost:3000";
+  const frontendUrl = process.env["APP_URL"] ?? "http://localhost:3009";
   const isProd = process.env["NODE_ENV"] === "production";
   const isTest = process.env["NODE_ENV"] === "test";
   const hstsEnabled =

@@ -18,6 +18,7 @@ export class ApiError extends Error {
   constructor(
     public readonly status: number,
     message: string,
+    public readonly body?: any,
   ) {
     super(message);
     this.name = "ApiError";
@@ -42,7 +43,12 @@ async function apiFetch<T>(
     ...(refreshToken
       ? { Cookie: `${KB_REFRESH_TOKEN_COOKIE}=${refreshToken}` }
       : {}),
+    Origin: process.env["APP_URL"] ?? "http://localhost:3009",
   };
+
+  if (init.method && init.method !== "GET") {
+    console.log(`[API] ${init.method} ${path} - Origin: ${headers.Origin}`);
+  }
 
   const res = await fetch(`${API_URL}${path}`, {
     ...init,

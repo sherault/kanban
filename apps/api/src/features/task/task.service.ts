@@ -2,6 +2,7 @@ import { eq, and, or, max, sql, isNull, isNotNull } from "drizzle-orm";
 import type { AppDb, Broadcaster } from "../../types.js";
 import { noopBroadcaster } from "../../types.js";
 import type { TaskDto, TaskHistoryDto, Column } from "@kanban/shared";
+import { createLogger } from "@kanban/shared";
 import { generateId } from "../../lib/id.js";
 import { notFound, unprocessable } from "../../lib/errors.js";
 import { parseCsvImport } from "./csv-import.js";
@@ -101,6 +102,8 @@ function assembleTaskDto(db: AppDb, row: typeof tasks.$inferSelect): TaskDto {
 // ---------- service ----------
 
 export class TaskService {
+  private logger = createLogger("TaskService");
+
   constructor(
     private readonly db: AppDb,
     private readonly broadcast: Broadcaster = noopBroadcaster,
@@ -137,7 +140,9 @@ export class TaskService {
 
   private getRow(taskId: string): typeof tasks.$inferSelect {
     const row = this.db.select().from(tasks).where(eq(tasks.id, taskId)).get();
-    if (!row) throw notFound("Task not found");
+    if (!row) {
+      throw notFound("Task not found");
+    }
     return row;
   }
 
@@ -281,15 +286,25 @@ export class TaskService {
   }
 
   deleteTask(taskId: string): void {
-    const existing = this.getRow(taskId);
-    if (!existing) return;
+    try {
+      this.logger.info(`Deleting task: ${taskId}`);
+      const existing = this.getRow(taskId);
+      if (!existing) {
+        this.logger.warn(`Delete failed: task ${taskId} not found`);
+        return;
+      }
 
-    this.db.run(sql`DELETE FROM tasks WHERE id = ${taskId}`);
+      this.db.delete(tasks).where(eq(tasks.id, taskId)).run();
 
-    this.broadcast(`project:${existing.projectId}`, {
-      type: "task.deleted",
-      payload: { id: taskId, projectId: existing.projectId },
-    });
+      this.broadcast(`project:${existing.projectId}`, {
+        type: "task.deleted",
+        payload: { id: taskId, projectId: existing.projectId },
+      });
+      this.logger.info(`Successfully deleted task: ${taskId}`);
+    } catch (err) {
+      this.logger.error(`Failed to delete task: ${taskId}`, err);
+      throw err;
+    }
   }
 
   getTaskHistory(taskId: string): TaskHistoryDto[] {
@@ -695,42 +710,61 @@ export class TaskService {
   }
 
   restoreTask(taskId: string, actorId: string): TaskDto {
-    const row = this.getRow(taskId);
-    if (!row) throw notFound("Task not found");
-    if (!row.archivedAt) throw unprocessable("Task is not archived");
+    try {
+      this.logger.info(`Restoring task: ${taskId} by actor: ${actorId}`);
+      const row = this.getRow(taskId);
+      if (!row) throw notFound("Task not found");
+      if (!row.archivedAt) throw unprocessable("Task is not archived");
 
-    const position = this.nextPosition(row.projectId, "todo");
-    const timestamp = new Date().toISOString();
+      const position = this.nextPosition(row.projectId, "todo");
+      const timestamp = new Date().toISOString();
 
-    return this.db.transaction((tx) => {
-      tx.run(
-        sql`UPDATE tasks SET archived_at = NULL, column = 'todo', position = ${position}, updated_at = ${timestamp} WHERE id = ${taskId}`,
-      );
+      const result = this.db.transaction((tx) => {
+        tx.update(tasks)
+          .set({
+            archivedAt: null,
+            column: "todo",
+            position,
+            updatedAt: timestamp,
+          })
+          .where(eq(tasks.id, taskId))
+          .run();
 
-      tx.insert(taskHistory)
-        .values({
-          id: generateId(),
-          taskId,
-          userId: actorId,
-          field: "archivedAt",
-          oldValue: row.archivedAt,
-          newValue: null,
-          batchId: null,
-        })
-        .run();
+        tx.insert(taskHistory)
+          .values({
+            id: generateId(),
+            taskId,
+            userId: actorId,
+            field: "archivedAt",
+            oldValue: row.archivedAt,
+            newValue: null,
+            batchId: null,
+          })
+          .run();
 
-      const updated = tx.select().from(tasks).where(eq(tasks.id, taskId)).get();
-      if (!updated) throw notFound("Task not found after update");
+        const updated = tx
+          .select()
+          .from(tasks)
+          .where(eq(tasks.id, taskId))
+          .get();
+        if (!updated) throw notFound("Task not found after update");
 
-      const dto = assembleTaskDto(tx as any, updated);
+        const dto = assembleTaskDto(tx as any, updated);
 
-      this.broadcast(`project:${row.projectId}`, {
-        type: "task.created",
-        payload: dto,
+        this.broadcast(`project:${row.projectId}`, {
+          type: "task.created",
+          payload: dto,
+        });
+
+        return dto;
       });
 
-      return dto;
-    });
+      this.logger.info(`Successfully restored task: ${taskId}`);
+      return result;
+    } catch (err) {
+      this.logger.error(`Failed to restore task: ${taskId}`, err);
+      throw err;
+    }
   }
 
   listArchivedTasks(
