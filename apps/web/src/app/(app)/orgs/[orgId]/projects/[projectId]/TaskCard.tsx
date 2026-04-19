@@ -76,64 +76,67 @@ export function TaskCard({
           : "hover:shadow-sm hover:border-gray-300"
       } ${overlay ? "shadow-xl rotate-2 opacity-90" : ""}`}
     >
-      {selectable && (
-        <div
-          className="absolute top-2 right-2"
-          onClick={(e) => {
-            e.stopPropagation();
-            onSelectChange?.(!selected);
-          }}
-        >
-          <input
-            type="checkbox"
-            checked={selected}
-            onChange={(e) => {
+      <div className="absolute top-2 right-2 flex items-center gap-1 z-10">
+        {/* Compare icon — visible on hover when a panel is already open */}
+        {onOpenAsComparison && !overlay && (
+          <button
+            onClick={(e) => {
               e.stopPropagation();
-              onSelectChange?.(e.target.checked);
+              onOpenAsComparison();
             }}
-            onClick={(e) => e.stopPropagation()}
-            className="w-3.5 h-3.5 accent-blue-500 cursor-pointer"
-          />
-        </div>
-      )}
-      {/* Compare icon — visible on hover when a panel is already open */}
-      {onOpenAsComparison && !overlay && (
-        <button
-          onClick={(e) => {
-            e.stopPropagation();
-            onOpenAsComparison();
-          }}
-          className="absolute top-1.5 right-1.5 opacity-0 group-hover:opacity-100 p-0.5 rounded text-gray-400 hover:text-blue-600 hover:bg-blue-50 transition-all"
-          title="Open as comparison panel"
-        >
-          <svg
-            width="13"
-            height="13"
-            viewBox="0 0 14 14"
-            fill="none"
-            xmlns="http://www.w3.org/2000/svg"
+            className="opacity-0 group-hover:opacity-100 p-0.5 rounded text-gray-400 hover:text-blue-600 hover:bg-blue-50 transition-all"
+            title="Open as comparison panel"
           >
-            <rect
-              x="1"
-              y="1"
-              width="5"
-              height="12"
-              rx="1"
-              stroke="currentColor"
-              strokeWidth="1.4"
+            <svg
+              width="13"
+              height="13"
+              viewBox="0 0 14 14"
+              fill="none"
+              xmlns="http://www.w3.org/2000/svg"
+            >
+              <rect
+                x="1"
+                y="1"
+                width="5"
+                height="12"
+                rx="1"
+                stroke="currentColor"
+                strokeWidth="1.4"
+              />
+              <rect
+                x="8"
+                y="1"
+                width="5"
+                height="12"
+                rx="1"
+                stroke="currentColor"
+                strokeWidth="1.4"
+              />
+            </svg>
+          </button>
+        )}
+
+        {selectable && (
+          <div
+            className="flex items-center justify-center p-0.5"
+            onClick={(e) => {
+              e.stopPropagation();
+              onSelectChange?.(!selected);
+            }}
+          >
+            <input
+              type="checkbox"
+              checked={selected}
+              onChange={(e) => {
+                e.stopPropagation();
+                onSelectChange?.(e.target.checked);
+              }}
+              onClick={(e) => e.stopPropagation()}
+              className="w-3.5 h-3.5 accent-blue-500 cursor-pointer"
             />
-            <rect
-              x="8"
-              y="1"
-              width="5"
-              height="12"
-              rx="1"
-              stroke="currentColor"
-              strokeWidth="1.4"
-            />
-          </svg>
-        </button>
-      )}
+          </div>
+        )}
+      </div>
       <p className="text-sm text-gray-900 font-medium leading-snug mb-2 line-clamp-2">
         {task.title}
       </p>
