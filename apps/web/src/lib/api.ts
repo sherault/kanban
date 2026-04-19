@@ -171,6 +171,20 @@ export const api = {
         token,
       });
     },
+    get(token: string, orgId: string) {
+      return apiFetch<OrganizationDto>(`/organizations/${orgId}`, { token });
+    },
+    update(
+      token: string,
+      orgId: string,
+      body: { name?: string; website?: string | null },
+    ) {
+      return apiFetch<OrganizationDto>(`/organizations/${orgId}`, {
+        method: "PATCH",
+        body: JSON.stringify(body),
+        token,
+      });
+    },
     listMembers(token: string, orgId: string) {
       return apiFetch<MembershipDto[]>(`/organizations/${orgId}/members`, {
         token,

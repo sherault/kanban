@@ -81,10 +81,15 @@ export async function createOrgAction(
   if (!token) redirect("/login");
 
   const name = formData.get("name") as string;
+  const website = formData.get("website") as string;
 
   let orgId: string;
   try {
-    const { data } = await api.orgs.create(token, { name });
+    const { data } = await api.orgs.create(token, {
+      name,
+      website: website || null,
+    });
+    revalidatePath("/orgs");
     orgId = data.id;
   } catch (e) {
     return {
@@ -100,13 +105,46 @@ export async function getOrgSettingsDataAction(orgId: string) {
   const token = await getAccessToken();
   if (!token) return null;
   try {
-    const [{ data: members }, currentUserId] = await Promise.all([
-      api.orgs.listMembers(token, orgId),
-      getUserId(),
-    ]);
-    return { members, currentUserId: currentUserId ?? "", token };
+    const [{ data: members }, { data: organization }, currentUserId] =
+      await Promise.all([
+        api.orgs.listMembers(token, orgId),
+        api.orgs.get(token, orgId),
+        getUserId(),
+      ]);
+    return {
+      members,
+      organization,
+      currentUserId: currentUserId ?? "",
+      token,
+    };
   } catch (e) {
     console.error("Failed to fetch org settings data:", e);
     return null;
+  }
+}
+
+export async function updateOrgAction(
+  orgId: string,
+  _prev: { error?: string },
+  formData: FormData,
+): Promise<{ error?: string }> {
+  const token = await getAccessToken();
+  if (!token) redirect("/login");
+
+  const name = formData.get("name") as string;
+  const website = formData.get("website") as string;
+
+  try {
+    await api.orgs.update(token, orgId, {
+      name,
+      website: website || null,
+    });
+    revalidatePath(`/orgs/${orgId}`);
+    return {};
+  } catch (e) {
+    return {
+      error:
+        e instanceof ApiError ? e.message : "Failed to update organization",
+    };
   }
 }

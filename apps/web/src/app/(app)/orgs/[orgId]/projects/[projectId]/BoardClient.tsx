@@ -597,7 +597,7 @@ export function BoardClient({
           const totalFoldedWidth = foldedTasks.length * foldedStripWidth;
 
           return (
-            <div className="fixed top-0 bottom-0 right-0 z-[60] w-full pointer-events-none">
+            <div className="absolute top-0 bottom-0 right-0 z-[60] w-full pointer-events-none">
               {/* Folded (title strip) panels — stacked rightmost */}
               {foldedTasks.map((ot, idx) => {
                 const task = tasks.find((t) => t.id === ot.id);

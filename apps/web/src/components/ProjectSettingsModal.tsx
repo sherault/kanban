@@ -31,7 +31,7 @@ export function ProjectSettingsModal({
   const [name, setName] = useState("");
   const [nameError, setNameError] = useState<string | null>(null);
   const [deleteError, setDeleteError] = useState<string | null>(null);
-  const [confirmDelete, setConfirmDelete] = useState(false);
+  const [confirmDeleteText, setConfirmDeleteText] = useState("");
   const router = useRouter();
 
   useEffect(() => {
@@ -55,7 +55,7 @@ export function ProjectSettingsModal({
 
   if (!data && isPending) {
     return (
-      <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-[100] p-4 backdrop-blur-sm">
+      <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-[200] p-4 backdrop-blur-sm">
         <div className="bg-white rounded-2xl shadow-2xl w-full max-w-3xl h-[600px] flex items-center justify-center">
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
         </div>
@@ -101,8 +101,16 @@ export function ProjectSettingsModal({
   ];
 
   return (
-    <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-[100] p-4 backdrop-blur-sm">
-      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-4xl h-[600px] flex overflow-hidden border border-gray-200">
+    <div
+      className="fixed inset-0 bg-black/40 flex items-center justify-center z-[200] p-4 backdrop-blur-sm"
+      onClick={(e) => {
+        if (e.target === e.currentTarget) onClose();
+      }}
+    >
+      <div
+        className="bg-white rounded-2xl shadow-2xl w-full max-w-4xl h-[600px] flex overflow-hidden border border-gray-200"
+        onClick={(e) => e.stopPropagation()}
+      >
         {/* Sidebar */}
         <div className="w-64 bg-gray-50 border-r border-gray-200 flex flex-col shrink-0">
           <div className="p-6 border-b border-gray-200 bg-white">
@@ -237,48 +245,72 @@ export function ProjectSettingsModal({
 
             {activeTab === "danger" && canDelete && (
               <div className="space-y-6 animate-in fade-in slide-in-from-bottom-2 duration-300">
-                <div className="bg-red-50 border border-red-100 rounded-xl p-6 shadow-sm">
-                  <h4 className="text-red-800 font-bold mb-2">
-                    Delete Project
-                  </h4>
-                  <p className="text-sm text-red-600 mb-6">
-                    This action is permanent and cannot be undone. All tasks,
-                    comments, and history associated with this project will be
-                    lost.
-                  </p>
-
-                  {!confirmDelete ? (
-                    <button
-                      onClick={() => setConfirmDelete(true)}
-                      className="px-4 py-2 bg-red-600 text-white text-sm font-medium rounded-lg hover:bg-red-700 transition-all shadow-sm shadow-red-100"
-                    >
-                      Delete this project
-                    </button>
-                  ) : (
-                    <div className="flex items-center gap-4">
-                      <div className="flex-1">
-                        <p className="text-xs text-red-800 font-semibold mb-2 italic">
-                          Are you absolutely sure?
-                        </p>
-                        <div className="flex gap-2">
-                          <button
-                            onClick={handleDelete}
-                            disabled={isPending}
-                            className="px-4 py-2 bg-red-600 text-white text-sm font-medium rounded-lg hover:bg-red-700 disabled:opacity-50 transition-all"
-                          >
-                            Yes, delete everything
-                          </button>
-                          <button
-                            onClick={() => setConfirmDelete(false)}
-                            disabled={isPending}
-                            className="px-4 py-2 bg-white border border-red-200 text-red-600 text-sm font-medium rounded-lg hover:bg-red-50 transition-all"
-                          >
-                            Cancel
-                          </button>
-                        </div>
-                      </div>
+                <div className="bg-red-50/50 border border-red-100 rounded-xl p-8 shadow-sm">
+                  <div className="flex items-start gap-4 mb-6">
+                    <div className="w-12 h-12 rounded-full bg-red-100 flex items-center justify-center shrink-0">
+                      <svg
+                        className="w-6 h-6 text-red-600"
+                        fill="none"
+                        viewBox="0 0 24 24"
+                        stroke="currentColor"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={2}
+                          d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"
+                        />
+                      </svg>
                     </div>
-                  )}
+                    <div>
+                      <h4 className="text-lg font-bold text-red-900">
+                        Delete Project
+                      </h4>
+                      <p className="text-sm text-red-700 mt-1">
+                        This action is{" "}
+                        <strong className="font-black italic">permanent</strong>{" "}
+                        and cannot be undone. All tasks and data for{" "}
+                        <span className="font-bold">"{data.project.name}"</span>{" "}
+                        will be lost.
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="space-y-4">
+                    <div className="space-y-2">
+                      <label
+                        htmlFor="projectConfirmDelete"
+                        className="block text-sm font-semibold text-red-900"
+                      >
+                        Type{" "}
+                        <span className="bg-red-200 px-1.5 py-0.5 rounded font-mono text-red-900">
+                          delete
+                        </span>{" "}
+                        to confirm
+                      </label>
+                      <input
+                        id="projectConfirmDelete"
+                        type="text"
+                        placeholder="delete"
+                        value={confirmDeleteText}
+                        onChange={(e) =>
+                          setConfirmDeleteText(e.target.value.toLowerCase())
+                        }
+                        className="w-full bg-white border border-red-200 rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-red-500/20 focus:border-red-500 transition-all font-mono"
+                        autoComplete="off"
+                      />
+                    </div>
+
+                    <button
+                      onClick={handleDelete}
+                      disabled={confirmDeleteText !== "delete" || isPending}
+                      className="w-full px-4 py-3 text-sm font-bold text-white bg-red-600 rounded-lg hover:bg-red-700 transition-all shadow-md shadow-red-200 disabled:opacity-50 disabled:shadow-none disabled:cursor-not-allowed active:scale-[0.98]"
+                    >
+                      {isPending
+                        ? "Deleting Project..."
+                        : "Permanently Delete Project"}
+                    </button>
+                  </div>
                   {deleteError && (
                     <p className="text-xs text-red-600 mt-4 font-bold">
                       {deleteError}
