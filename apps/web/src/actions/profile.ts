@@ -2,8 +2,9 @@
 
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
+import { headers } from "next/headers";
 import { api, ApiError } from "../lib/api";
-import { getAccessToken } from "../lib/session";
+import { getAccessToken, getUserName } from "../lib/session";
 import type { ApiKeyCreatedDto } from "@kanban/shared";
 
 export async function setupTotpAction(): Promise<{
@@ -107,5 +108,40 @@ export async function revokeApiKeyAction(
     return {
       error: e instanceof ApiError ? e.message : "Failed to revoke key",
     };
+  }
+}
+
+export async function getProfileDataAction() {
+  const token = await getAccessToken();
+  if (!token) return null;
+
+  try {
+    const [displayName, { data: keys }, { data: me }] = await Promise.all([
+      getUserName(),
+      api.profile.listKeys(token),
+      api.auth.me(token),
+    ]);
+
+    const headersList = await headers();
+    const host = headersList.get("host");
+    const protocol = headersList.get("x-forwarded-proto") || "http";
+    const isDev = process.env.NODE_ENV === "development";
+    const publicApiUrl =
+      process.env["PUBLIC_API_URL"] ||
+      process.env["NEXT_PUBLIC_API_URL"] ||
+      (isDev && host?.includes("localhost")
+        ? "http://localhost:3010"
+        : `${protocol}://${host}`);
+
+    return {
+      displayName,
+      keys,
+      me,
+      token,
+      publicApiUrl,
+    };
+  } catch (e) {
+    console.error("Failed to fetch profile data:", e);
+    return null;
   }
 }

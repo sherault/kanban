@@ -2,6 +2,7 @@ import Link from "next/link";
 import { getUserName } from "../../lib/session";
 import { logoutAction } from "../../actions/auth";
 import { Providers } from "../../components/Providers";
+import { ProfileNav } from "../../components/ProfileNav";
 
 export default async function AppLayout({
   children,
@@ -21,12 +22,7 @@ export default async function AppLayout({
             Kanban
           </Link>
           <div className="flex items-center gap-4">
-            <Link
-              href="/profile"
-              className="text-sm text-gray-500 hover:text-gray-900 transition-colors"
-            >
-              {displayName}
-            </Link>
+            <ProfileNav displayName={displayName} />
             <form action={logoutAction}>
               <button
                 type="submit"
