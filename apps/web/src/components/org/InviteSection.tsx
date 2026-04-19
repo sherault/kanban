@@ -2,7 +2,7 @@
 
 import { useActionState } from "react";
 import { useFormStatus } from "react-dom";
-import { createInvitationAction } from "../../../../../actions/invitations";
+import { createInvitationAction } from "@/actions/invitations";
 
 function GenerateButton() {
   const { pending } = useFormStatus();

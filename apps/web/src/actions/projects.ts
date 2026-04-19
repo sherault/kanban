@@ -3,7 +3,7 @@
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { api, ApiError } from "../lib/api";
-import { getAccessToken } from "../lib/session";
+import { getAccessToken, getUserId } from "../lib/session";
 import type { ProjectDto } from "@kanban/shared";
 
 export async function updateProjectAction(
@@ -68,4 +68,33 @@ export async function createProjectAction(
   }
 
   redirect(`/orgs/${orgId}/projects/${projectId}`);
+}
+
+export async function getProjectSettingsDataAction(
+  orgId: string,
+  projectId: string,
+) {
+  const token = await getAccessToken();
+  if (!token) return null;
+  try {
+    const [currentUserId, { data: projects }, { data: members }] =
+      await Promise.all([
+        getUserId(),
+        api.projects.list(token, orgId),
+        api.orgs.listMembers(token, orgId),
+      ]);
+    const project = projects.find((p) => p.id === projectId);
+    if (!project) return null;
+    const currentMember = members.find((m) => m.userId === currentUserId);
+    const currentUserRole = currentMember?.role ?? "member";
+    return {
+      project,
+      currentUserId: currentUserId ?? "",
+      currentUserRole,
+      token,
+    };
+  } catch (e) {
+    console.error("Failed to fetch project settings data:", e);
+    return null;
+  }
 }

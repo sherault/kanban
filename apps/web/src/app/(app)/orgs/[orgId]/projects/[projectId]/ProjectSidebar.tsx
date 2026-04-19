@@ -3,6 +3,8 @@
 import { useState, useEffect, useRef } from "react";
 import Link from "next/link";
 import type { ProjectDto } from "@kanban/shared";
+import { OrgSettingsModal } from "@/components/OrgSettingsModal";
+import { ProjectSettingsModal } from "@/components/ProjectSettingsModal";
 
 interface Props {
   projects: ProjectDto[];
@@ -14,6 +16,10 @@ export function ProjectSidebar({ projects, orgId, projectId }: Props) {
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [isTempExpanded, setIsTempExpanded] = useState(false);
   const [isHydrated, setIsHydrated] = useState(false);
+  const [activeOrgSettings, setActiveOrgSettings] = useState(false);
+  const [activeProjectSettings, setActiveProjectSettings] = useState<
+    string | null
+  >(null);
   const hoverTimerRef = useRef<NodeJS.Timeout | null>(null);
 
   useEffect(() => {
@@ -111,13 +117,13 @@ export function ProjectSidebar({ projects, orgId, projectId }: Props) {
                 >
                   {p.name}
                 </Link>
-                <Link
-                  href={`/orgs/${orgId}/projects/${p.id}/settings`}
+                <button
+                  onClick={() => setActiveProjectSettings(p.id)}
                   className="shrink-0 px-1 text-gray-300 hover:text-gray-600 opacity-0 group-hover:opacity-100 transition-all text-sm"
                   title="Settings"
                 >
                   ⚙️
-                </Link>
+                </button>
               </div>
             ))}
           </nav>
@@ -130,12 +136,12 @@ export function ProjectSidebar({ projects, orgId, projectId }: Props) {
             >
               <span className="text-blue-500 font-bold">+</span> New project
             </Link>
-            <Link
-              href={`/orgs/${orgId}/settings`}
-              className="flex items-center gap-1.5 px-3 py-2 rounded-md text-sm text-gray-500 hover:bg-gray-100 transition-colors"
+            <button
+              onClick={() => setActiveOrgSettings(true)}
+              className="w-full flex items-center gap-1.5 px-3 py-2 rounded-md text-sm text-gray-500 hover:bg-gray-100 transition-colors"
             >
               Settings
-            </Link>
+            </button>
           </div>
         </div>
 
@@ -146,6 +152,21 @@ export function ProjectSidebar({ projects, orgId, projectId }: Props) {
           </div>
         )}
       </aside>
+
+      {activeOrgSettings && (
+        <OrgSettingsModal
+          orgId={orgId}
+          onClose={() => setActiveOrgSettings(false)}
+        />
+      )}
+
+      {activeProjectSettings && (
+        <ProjectSettingsModal
+          orgId={orgId}
+          projectId={activeProjectSettings}
+          onClose={() => setActiveProjectSettings(null)}
+        />
+      )}
     </div>
   );
 }

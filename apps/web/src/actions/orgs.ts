@@ -3,7 +3,7 @@
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { api, ApiError } from "../lib/api";
-import { getAccessToken } from "../lib/session";
+import { getAccessToken, getUserId } from "../lib/session";
 
 export async function updateMemberRoleAction(
   orgId: string,
@@ -94,4 +94,19 @@ export async function createOrgAction(
   }
 
   redirect(`/orgs/${orgId}`);
+}
+
+export async function getOrgSettingsDataAction(orgId: string) {
+  const token = await getAccessToken();
+  if (!token) return null;
+  try {
+    const [{ data: members }, currentUserId] = await Promise.all([
+      api.orgs.listMembers(token, orgId),
+      getUserId(),
+    ]);
+    return { members, currentUserId: currentUserId ?? "", token };
+  } catch (e) {
+    console.error("Failed to fetch org settings data:", e);
+    return null;
+  }
 }
