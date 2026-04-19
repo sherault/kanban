@@ -31,7 +31,7 @@ export default async function ProfilePage() {
       : `${protocol}://${host}`);
 
   return (
-    <div className="max-w-2xl mx-auto px-6 py-8 space-y-10">
+    <div className="max-w-2xl mx-auto px-6 py-8 space-y-10 overflow-y-auto h-full">
       <div>
         <h1 className="text-2xl font-bold text-gray-900 mb-1">Profile</h1>
         <p className="text-sm text-gray-500">{displayName}</p>
