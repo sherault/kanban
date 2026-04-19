@@ -59,6 +59,8 @@ A self-hosted, real-time project management board with built-in MCP server — s
 - **Color-coded task cards** — set a custom background colour per task
 - Auto-assign the moving user as **doer** when dragging a task to Doing (no doer set)
 - Auto-clear doer when moving back to Todo
+- **Stacking task panels** — open multiple tasks side-by-side; inactive panels collapse to vertical title strips
+- **Side-by-side comparison** — hover any task card and click the ⊞ split icon to pin it as a comparison panel alongside your current task
 
 ### Task Detail
 
@@ -153,9 +155,15 @@ Click any card to open the full detail panel — description, dates, assignees, 
 
 ### Stacking Task Panels
 
-Open multiple tasks simultaneously. Inactive panels stack to the left, keeping their titles visible vertically for quick switching. The board remains accessible via horizontal scrolling.
+Open multiple tasks simultaneously. Inactive panels stack to the right as thin 48px vertical title strips for quick switching. The board remains accessible via horizontal scrolling.
 
 ![Stacking Panels](docs/screenshots/11-stacking-panels.png)
+
+### Side-by-side Task Comparison
+
+Hover any task card and click the ⊞ split icon to open it as a pinned comparison panel alongside your current task. Clicking other cards replaces only the right panel. Close the comparison with the dashed-split icon in the left panel header.
+
+![Compare Panels](docs/screenshots/12-compare-panels.png)
 
 ### Tag Filtering
 

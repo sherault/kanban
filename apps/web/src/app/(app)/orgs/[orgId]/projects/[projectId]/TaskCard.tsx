@@ -8,6 +8,7 @@ import type { TaskDto } from "@kanban/shared";
 interface Props {
   task: TaskDto;
   onClick: () => void;
+  onOpenAsComparison?: () => void;
   overlay?: boolean;
   selectable?: boolean;
   selected?: boolean;
@@ -20,6 +21,7 @@ interface Props {
 export function TaskCard({
   task,
   onClick,
+  onOpenAsComparison,
   overlay = false,
   selectable = false,
   selected = false,
@@ -66,7 +68,7 @@ export function TaskCard({
       {...attributes}
       {...listeners}
       onClick={onClick}
-      className={`relative bg-white rounded-lg border p-3 cursor-pointer select-none transition-shadow ${
+      className={`group relative bg-white rounded-lg border p-3 cursor-pointer select-none transition-shadow ${
         selected ? "border-blue-400 ring-1 ring-blue-200" : "border-gray-200"
       } ${
         isDragging
@@ -93,6 +95,44 @@ export function TaskCard({
             className="w-3.5 h-3.5 accent-blue-500 cursor-pointer"
           />
         </div>
+      )}
+      {/* Compare icon — visible on hover when a panel is already open */}
+      {onOpenAsComparison && !overlay && (
+        <button
+          onClick={(e) => {
+            e.stopPropagation();
+            onOpenAsComparison();
+          }}
+          className="absolute top-1.5 right-1.5 opacity-0 group-hover:opacity-100 p-0.5 rounded text-gray-400 hover:text-blue-600 hover:bg-blue-50 transition-all"
+          title="Open as comparison panel"
+        >
+          <svg
+            width="13"
+            height="13"
+            viewBox="0 0 14 14"
+            fill="none"
+            xmlns="http://www.w3.org/2000/svg"
+          >
+            <rect
+              x="1"
+              y="1"
+              width="5"
+              height="12"
+              rx="1"
+              stroke="currentColor"
+              strokeWidth="1.4"
+            />
+            <rect
+              x="8"
+              y="1"
+              width="5"
+              height="12"
+              rx="1"
+              stroke="currentColor"
+              strokeWidth="1.4"
+            />
+          </svg>
+        </button>
       )}
       <p className="text-sm text-gray-900 font-medium leading-snug mb-2 line-clamp-2">
         {task.title}

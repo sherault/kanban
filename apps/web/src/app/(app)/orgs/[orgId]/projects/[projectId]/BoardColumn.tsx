@@ -12,6 +12,7 @@ interface Props {
   collapsed: boolean;
   onToggleCollapse?: () => void;
   onTaskClick: (taskId: string) => void;
+  onOpenAsComparison: (taskId: string) => void;
   onNewTask: () => void;
   onTagClick: (tag: string) => void;
   onObjectiveClick?: (objective: string) => void;
@@ -35,6 +36,7 @@ export function BoardColumn({
   collapsed,
   onToggleCollapse,
   onTaskClick,
+  onOpenAsComparison,
   onNewTask,
   onTagClick,
   onObjectiveClick,
@@ -96,6 +98,7 @@ export function BoardColumn({
             key={task.id}
             task={task}
             onClick={() => onTaskClick(task.id)}
+            onOpenAsComparison={() => onOpenAsComparison(task.id)}
             selectable={selectable}
             selected={selectedIds?.has(task.id) ?? false}
             onSelectChange={(sel) => onSelectionChange?.(task.id, sel)}

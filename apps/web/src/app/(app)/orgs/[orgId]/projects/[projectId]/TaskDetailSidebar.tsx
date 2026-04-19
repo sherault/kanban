@@ -48,7 +48,13 @@ interface Props {
   onOpenRelatedTask?: (taskId: string) => void;
   showCloseAll?: boolean;
   isActive: boolean;
+  /** Whether this panel is currently expanded (not just a title strip) */
+  isExpanded: boolean;
   onActivate: () => void;
+  /** Fold this panel back to a title strip (only shown when isExpanded and a second panel is also open) */
+  onFold?: () => void;
+  /** Open this task as the comparison (left) panel */
+  onOpenAsComparison?: () => void;
   width: number;
   onWidthChange: (w: number) => void;
 }
@@ -345,7 +351,10 @@ export function TaskDetailSidebar({
   onOpenRelatedTask,
   showCloseAll,
   isActive,
+  isExpanded,
   onActivate,
+  onFold,
+  onOpenAsComparison,
   width: sidebarWidth,
   onWidthChange: setSidebarWidth,
 }: Props) {
@@ -553,13 +562,14 @@ export function TaskDetailSidebar({
 
       <aside
         data-sidebar="true"
-        style={{ width: sidebarWidth }}
+        style={{ width: isExpanded ? sidebarWidth : 48 }}
         className={`border-l border-gray-200 bg-white flex flex-col h-full overflow-hidden shrink-0 relative transition-opacity duration-300 ${!isActive ? "opacity-95" : "opacity-100"}`}
       >
-        {!isActive && (
+        {/* Title strip overlay — only for folded (non-expanded) panels */}
+        {!isExpanded && (
           <div
             onClick={onActivate}
-            className="absolute inset-0 z-[100] bg-gray-900/5 cursor-pointer hover:bg-gray-900/10 transition-colors flex items-start"
+            className="group absolute inset-0 z-[100] bg-gray-900/5 cursor-pointer hover:bg-gray-900/10 transition-colors flex items-start"
           >
             <div
               className="w-12 h-full flex items-center justify-center bg-white border-r border-gray-200"
@@ -572,16 +582,56 @@ export function TaskDetailSidebar({
                 {task.title || "Untitled Task"}
               </span>
             </div>
+            {/* Compare icon — visible on hover of a folded strip */}
+            {onOpenAsComparison && (
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onOpenAsComparison();
+                }}
+                className="absolute top-4 left-1/2 -translate-x-1/2 opacity-0 group-hover:opacity-100 p-1 rounded text-gray-400 hover:text-blue-600 hover:bg-blue-50 transition-all"
+                title="Open as comparison panel"
+              >
+                <svg
+                  width="14"
+                  height="14"
+                  viewBox="0 0 14 14"
+                  fill="none"
+                  xmlns="http://www.w3.org/2000/svg"
+                >
+                  <rect
+                    x="1"
+                    y="1"
+                    width="5"
+                    height="12"
+                    rx="1"
+                    stroke="currentColor"
+                    strokeWidth="1.4"
+                  />
+                  <rect
+                    x="8"
+                    y="1"
+                    width="5"
+                    height="12"
+                    rx="1"
+                    stroke="currentColor"
+                    strokeWidth="1.4"
+                  />
+                </svg>
+              </button>
+            )}
           </div>
         )}
-        {/* Resize handle */}
-        <div
-          onMouseDown={onResizeMouseDown}
-          className="absolute left-0 top-0 bottom-0 w-1 cursor-col-resize hover:bg-blue-400 active:bg-blue-500 transition-colors z-10 group"
-          title="Drag to resize"
-        >
-          <div className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-8 rounded-full bg-gray-300 group-hover:bg-blue-400 transition-colors" />
-        </div>
+        {/* Resize handle — only for expanded panels */}
+        {isExpanded && (
+          <div
+            onMouseDown={onResizeMouseDown}
+            className="absolute left-0 top-0 bottom-0 w-1 cursor-col-resize hover:bg-blue-400 active:bg-blue-500 transition-colors z-10 group"
+            title="Drag to resize"
+          >
+            <div className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-8 rounded-full bg-gray-300 group-hover:bg-blue-400 transition-colors" />
+          </div>
+        )}
 
         {/* Header */}
         <div className="flex items-center justify-between px-5 py-3 border-b border-gray-200 shrink-0">
@@ -604,6 +654,42 @@ export function TaskDetailSidebar({
           <div className="flex items-center gap-3">
             {isPending && (
               <span className="text-xs text-gray-400">Saving…</span>
+            )}
+            {/* Fold button — only on the LEFT (pinned) panel when comparison is active */}
+            {onFold && (
+              <button
+                onClick={onFold}
+                className="text-gray-400 hover:text-blue-600 transition-colors"
+                title="Close comparison view"
+              >
+                <svg
+                  width="16"
+                  height="16"
+                  viewBox="0 0 16 16"
+                  fill="none"
+                  xmlns="http://www.w3.org/2000/svg"
+                >
+                  <rect
+                    x="1"
+                    y="2"
+                    width="5"
+                    height="12"
+                    rx="1"
+                    stroke="currentColor"
+                    strokeWidth="1.4"
+                  />
+                  <rect
+                    x="10"
+                    y="2"
+                    width="5"
+                    height="12"
+                    rx="1"
+                    stroke="currentColor"
+                    strokeWidth="1.4"
+                    strokeDasharray="2 1.5"
+                  />
+                </svg>
+              </button>
             )}
             <button
               onClick={onClose}

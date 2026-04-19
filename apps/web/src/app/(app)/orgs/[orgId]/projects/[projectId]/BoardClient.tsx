@@ -50,6 +50,8 @@ export function BoardClient({
   const [openTasks, setOpenTasks] = useState<
     Array<{ id: string; archived?: boolean; data?: TaskDto }>
   >([]);
+  // IDs of panels currently expanded side-by-side (max 2, ordered left→right)
+  const [expandedIds, setExpandedIds] = useState<string[]>([]);
   const [isMounted, setIsMounted] = useState(false);
   const [isHydrated, setIsHydrated] = useState(false);
 
@@ -61,6 +63,14 @@ export function BoardClient({
         setOpenTasks(JSON.parse(saved));
       } catch (e) {
         console.error("Failed to parse open tasks", e);
+      }
+    }
+    const savedExpanded = localStorage.getItem("kanban_expanded_panels");
+    if (savedExpanded) {
+      try {
+        setExpandedIds(JSON.parse(savedExpanded));
+      } catch (e) {
+        console.error("Failed to parse expanded panels", e);
       }
     }
     setIsHydrated(true);
@@ -107,12 +117,21 @@ export function BoardClient({
     openTasksRef.current = openTasks;
   }, [openTasks]);
 
-  // Persist open tasks to localStorage ONLY (SPA behavior as requested)
+  // Persist open tasks and expanded panels to localStorage
   useEffect(() => {
     if (isHydrated) {
       localStorage.setItem("kanban_open_tasks", JSON.stringify(openTasks));
     }
   }, [openTasks, isHydrated]);
+
+  useEffect(() => {
+    if (isHydrated) {
+      localStorage.setItem(
+        "kanban_expanded_panels",
+        JSON.stringify(expandedIds),
+      );
+    }
+  }, [expandedIds, isHydrated]);
 
   // Stable shell map to prevent redundant sidebar fetches for external tasks
   const stableShells = useMemo(() => {
@@ -175,6 +194,7 @@ export function BoardClient({
         return next;
       });
       setOpenTasks((prev) => prev.filter((t) => t.id !== taskId));
+      setExpandedIds((prev) => prev.filter((id) => id !== taskId));
       setArchiveRevision((v) => v + 1);
     },
   });
@@ -182,59 +202,88 @@ export function BoardClient({
   // ── Drag and drop ─────────────────────────────────────────────────────────
 
   const handleOpenTask = (taskId: string, archived?: boolean) => {
+    // Always track in openTasks (for strips / persistence)
     setOpenTasks((prev) => {
       const existing = prev.find((t) => t.id === taskId);
       if (existing) {
-        // Move to the end (top-most)
         return [...prev.filter((t) => t.id !== taskId), existing];
       }
       const next = [...prev, { id: taskId, archived }];
-      // Apply the user-configured limit
       if (next.length > maxOpenPanels) {
         return next.slice(next.length - maxOpenPanels);
       }
       return next;
     });
+
+    // Expand:
+    // • Single mode (0–1 expanded): replace the single slot
+    // • Comparison mode (2 expanded): replace the RIGHT slot only, keep LEFT pinned
+    setExpandedIds((prev) => {
+      if (prev.includes(taskId)) return prev; // already shown, no change
+      if (prev.length >= 2) return [prev[0], taskId]; // comparison: replace right
+      return [taskId]; // single: replace
+    });
   };
 
-  const handleActivateTask = (taskId: string) => {
+  // Open a task explicitly as the LEFT comparison panel.
+  // Current right panel (if any) stays as the right.
+  const handleOpenAsComparison = (taskId: string, archived?: boolean) => {
     setOpenTasks((prev) => {
-      const target = prev.find((t) => t.id === taskId);
-      if (!target) return prev;
-      return [...prev.filter((t) => t.id !== taskId), target];
+      const existing = prev.find((t) => t.id === taskId);
+      if (existing) {
+        return [...prev.filter((t) => t.id !== taskId), existing];
+      }
+      const next = [...prev, { id: taskId, archived }];
+      if (next.length > maxOpenPanels) {
+        return next.slice(next.length - maxOpenPanels);
+      }
+      return next;
     });
+
+    setExpandedIds((prev) => {
+      // The current right/single panel becomes the right, new task becomes left
+      const currentRight = prev.length > 0 ? prev[prev.length - 1] : null;
+      if (!currentRight || currentRight === taskId) {
+        // Nothing open yet or same task — just open normally as single
+        return [taskId];
+      }
+      // Pin taskId as LEFT, keep currentRight as RIGHT
+      return [taskId, currentRight];
+    });
+  };
+
+  // Clicking a title strip re-opens it via normal single/comparison logic
+  const handleActivateTask = (taskId: string) => {
+    handleOpenTask(taskId);
+  };
+
+  // Fold the left comparison panel back to a strip (end comparison mode)
+  const handleFoldPanel = (taskId: string) => {
+    setExpandedIds((prev) => prev.filter((id) => id !== taskId));
   };
 
   const handleCloseTask = (taskId: string) => {
     setOpenTasks((prev) => prev.filter((t) => t.id !== taskId));
+    setExpandedIds((prev) => prev.filter((id) => id !== taskId));
   };
 
   const handleCloseAllTasks = () => {
     setOpenTasks([]);
+    setExpandedIds([]);
   };
 
-  const calculatePanelTranslateX = (index: number) => {
-    if (index >= openTasks.length - 1) return 0;
-
-    let x = 0;
-    for (let j = openTasks.length - 1; j > index; j--) {
-      const nextId = openTasks[j].id;
-      const currentId = openTasks[j - 1].id;
-      const nextWidth = panelWidths[nextId] || 384;
-      const currentWidth = panelWidths[currentId] || 384;
-      x += nextWidth - currentWidth + 48;
-    }
-    return x;
-  };
-
-  // Calculate total offset for the bottom "Live" label and board content
+  // Total width consumed by all panels (for board padding)
   const sidebarTotalWidth = useMemo(() => {
     if (openTasks.length === 0) return 0;
-    const topPanelId = openTasks[openTasks.length - 1].id;
-    const topPanelWidth = panelWidths[topPanelId] || 384;
-    // Total width = top panel width + 48px for every other panel
-    return topPanelWidth + (openTasks.length - 1) * 48;
-  }, [openTasks, panelWidths]);
+    const foldedCount = openTasks.filter(
+      (ot) => !expandedIds.includes(ot.id),
+    ).length;
+    const expandedWidth = expandedIds.reduce(
+      (sum, id) => sum + (panelWidths[id] || 384),
+      0,
+    );
+    return expandedWidth + foldedCount * 48;
+  }, [openTasks, expandedIds, panelWidths]);
 
   function handleDragStart(event: DragStartEvent) {
     setActiveTask(tasks.find((t) => t.id === event.active.id) ?? null);
@@ -424,6 +473,9 @@ export function BoardClient({
                   onTaskClick={(taskId) => {
                     handleOpenTask(taskId);
                   }}
+                  onOpenAsComparison={(taskId) => {
+                    handleOpenAsComparison(taskId);
+                  }}
                   onNewTask={() => setNewTaskColumn(id)}
                   onTagClick={(tag) => setActiveTag(tag)}
                   onObjectiveClick={(obj) => setActiveObjective(obj)}
@@ -510,67 +562,166 @@ export function BoardClient({
         </DragOverlay>
       </DndContext>
 
-      {isMounted && openTasks.length > 0 && (
-        <div className="fixed top-0 bottom-0 right-0 z-[60] w-full pointer-events-none">
-          {openTasks.map((ot, index) => {
-            const task = tasks.find((t) => t.id === ot.id);
-            const isActive = index === openTasks.length - 1;
-            const translateX = calculatePanelTranslateX(index);
-
-            return (
-              <div
-                key={ot.id}
-                className="pointer-events-auto h-full absolute top-0"
-                style={{
-                  right: 0,
-                  transform: `translateX(-${translateX}px)`,
-                  zIndex: index + 10,
-                  boxShadow: "-10px 0 30px rgba(0,0,0,0.15)",
-                  transition: "transform 0.3s cubic-bezier(0.4, 0, 0.2, 1)",
-                }}
-              >
-                <TaskDetailSidebar
-                  task={
-                    task ||
-                    ot.data ||
-                    stableShells.get(ot.id) || { taskId: ot.id }
-                  }
-                  key={ot.id}
-                  orgMembers={orgMembers}
-                  projectId={projectId}
-                  orgId={orgId}
-                  currentOpenTaskIds={openTasks.map((ot) => ot.id)}
-                  revision={sidebarRevision}
-                  objectives={objectives}
-                  allTags={allTags}
-                  isActive={isActive}
-                  onActivate={() => handleActivateTask(ot.id)}
-                  onClose={() => handleCloseTask(ot.id)}
-                  showCloseAll={
-                    index === openTasks.length - 1 && openTasks.length > 1
-                  }
-                  onCloseAll={handleCloseAllTasks}
-                  width={panelWidths[ot.id] || 384}
-                  onWidthChange={(w) => {
-                    setPanelWidths((prev) => ({ ...prev, [ot.id]: w }));
-                  }}
-                  onUpdated={(updated) => {
-                    setTasks((prev) =>
-                      prev.map((t) => (t.id === updated.id ? updated : t)),
-                    );
-                  }}
-                  onDeleted={(taskId) => {
-                    setTasks((prev) => prev.filter((t) => t.id !== taskId));
-                    handleCloseTask(taskId);
-                    setArchiveRevision((v) => v + 1);
-                  }}
-                  onOpenRelatedTask={(relatedId) => handleOpenTask(relatedId)}
-                />
-              </div>
+      {isMounted &&
+        openTasks.length > 0 &&
+        (() => {
+          // Separate panels into expanded (max 2, side by side) and folded (title strips)
+          const foldedTasks = openTasks.filter(
+            (ot) => !expandedIds.includes(ot.id),
+          );
+          // expandedIds is ordered left→right; render right-to-left so the DOM z-index works
+          const expandedTasks = expandedIds
+            .map((id) => openTasks.find((ot) => ot.id === id))
+            .filter(
+              (ot): ot is { id: string; archived?: boolean; data?: TaskDto } =>
+                !!ot,
             );
-          })}
-        </div>
-      )}
+
+          // Position calculation:
+          // Folded strips are stacked at the far right (rightmost)
+          // Expanded panels sit to the left of the strips
+          const foldedStripWidth = 48;
+          const totalFoldedWidth = foldedTasks.length * foldedStripWidth;
+
+          return (
+            <div className="fixed top-0 bottom-0 right-0 z-[60] w-full pointer-events-none">
+              {/* Folded (title strip) panels — stacked rightmost */}
+              {foldedTasks.map((ot, idx) => {
+                const task = tasks.find((t) => t.id === ot.id);
+                // Each strip is 48px wide, stacked right-to-left
+                const rightOffset = idx * foldedStripWidth;
+                return (
+                  <div
+                    key={ot.id}
+                    className="pointer-events-auto h-full absolute top-0"
+                    style={{
+                      right: rightOffset,
+                      width: foldedStripWidth,
+                      zIndex: 10 + idx,
+                      boxShadow: "-4px 0 12px rgba(0,0,0,0.08)",
+                      transition: "right 0.3s cubic-bezier(0.4, 0, 0.2, 1)",
+                    }}
+                  >
+                    <TaskDetailSidebar
+                      task={
+                        task ||
+                        ot.data ||
+                        stableShells.get(ot.id) || { taskId: ot.id }
+                      }
+                      orgMembers={orgMembers}
+                      projectId={projectId}
+                      orgId={orgId}
+                      currentOpenTaskIds={openTasks.map((t) => t.id)}
+                      revision={sidebarRevision}
+                      objectives={objectives}
+                      allTags={allTags}
+                      isActive={false}
+                      isExpanded={false}
+                      onActivate={() => handleActivateTask(ot.id)}
+                      onFold={undefined}
+                      onOpenAsComparison={
+                        expandedIds.length > 0
+                          ? () => handleOpenAsComparison(ot.id)
+                          : undefined
+                      }
+                      onClose={() => handleCloseTask(ot.id)}
+                      showCloseAll={false}
+                      onCloseAll={handleCloseAllTasks}
+                      width={foldedStripWidth}
+                      onWidthChange={() => {}}
+                      onUpdated={(updated) => {
+                        setTasks((prev) =>
+                          prev.map((t) => (t.id === updated.id ? updated : t)),
+                        );
+                      }}
+                      onDeleted={(taskId) => {
+                        setTasks((prev) => prev.filter((t) => t.id !== taskId));
+                        handleCloseTask(taskId);
+                        setArchiveRevision((v) => v + 1);
+                      }}
+                      onOpenRelatedTask={(relatedId) =>
+                        handleOpenTask(relatedId)
+                      }
+                    />
+                  </div>
+                );
+              })}
+
+              {/* Expanded panels — side by side, to the left of folded strips */}
+              {expandedTasks.map((ot, idx) => {
+                const task = tasks.find((t) => t.id === ot.id);
+                // idx=0 is left panel, idx=1 is right panel
+                // Right edge of rightmost expanded panel = totalFoldedWidth
+                // Right edge of left panel = totalFoldedWidth + rightPanelWidth
+                const rightPanelWidth =
+                  panelWidths[expandedTasks[expandedTasks.length - 1]?.id] ||
+                  384;
+                const rightOffset =
+                  idx === expandedTasks.length - 1
+                    ? totalFoldedWidth
+                    : totalFoldedWidth + rightPanelWidth;
+
+                return (
+                  <div
+                    key={ot.id}
+                    className="pointer-events-auto h-full absolute top-0"
+                    style={{
+                      right: rightOffset,
+                      zIndex: 20 + idx,
+                      boxShadow: "-10px 0 30px rgba(0,0,0,0.15)",
+                      transition: "right 0.3s cubic-bezier(0.4, 0, 0.2, 1)",
+                    }}
+                  >
+                    <TaskDetailSidebar
+                      task={
+                        task ||
+                        ot.data ||
+                        stableShells.get(ot.id) || { taskId: ot.id }
+                      }
+                      orgMembers={orgMembers}
+                      projectId={projectId}
+                      orgId={orgId}
+                      currentOpenTaskIds={openTasks.map((t) => t.id)}
+                      revision={sidebarRevision}
+                      objectives={objectives}
+                      allTags={allTags}
+                      isActive={idx === expandedTasks.length - 1}
+                      isExpanded={true}
+                      onActivate={() => handleActivateTask(ot.id)}
+                      onFold={
+                        idx === 0 && expandedTasks.length > 1
+                          ? () => handleFoldPanel(ot.id)
+                          : undefined
+                      }
+                      onClose={() => handleCloseTask(ot.id)}
+                      showCloseAll={
+                        openTasks.length > 1 && idx === expandedTasks.length - 1
+                      }
+                      onCloseAll={handleCloseAllTasks}
+                      width={panelWidths[ot.id] || 384}
+                      onWidthChange={(w) => {
+                        setPanelWidths((prev) => ({ ...prev, [ot.id]: w }));
+                      }}
+                      onUpdated={(updated) => {
+                        setTasks((prev) =>
+                          prev.map((t) => (t.id === updated.id ? updated : t)),
+                        );
+                      }}
+                      onDeleted={(taskId) => {
+                        setTasks((prev) => prev.filter((t) => t.id !== taskId));
+                        handleCloseTask(taskId);
+                        setArchiveRevision((v) => v + 1);
+                      }}
+                      onOpenRelatedTask={(relatedId) =>
+                        handleOpenTask(relatedId)
+                      }
+                    />
+                  </div>
+                );
+              })}
+            </div>
+          );
+        })()}
 
       {showImport && (
         <CsvImportModal
