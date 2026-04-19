@@ -56,25 +56,35 @@ export function BoardClient({
   const [isHydrated, setIsHydrated] = useState(false);
 
   useEffect(() => {
+    setIsHydrated(false);
     setIsMounted(true);
-    const saved = localStorage.getItem("kanban_open_tasks");
+    const tasksKey = `kanban_open_tasks_${orgId}`;
+    const expandedKey = `kanban_expanded_panels_${orgId}`;
+
+    const saved = localStorage.getItem(tasksKey);
     if (saved) {
       try {
         setOpenTasks(JSON.parse(saved));
       } catch (e) {
         console.error("Failed to parse open tasks", e);
       }
+    } else {
+      // Clear state if no saved tasks for this org
+      setOpenTasks([]);
     }
-    const savedExpanded = localStorage.getItem("kanban_expanded_panels");
+
+    const savedExpanded = localStorage.getItem(expandedKey);
     if (savedExpanded) {
       try {
         setExpandedIds(JSON.parse(savedExpanded));
       } catch (e) {
         console.error("Failed to parse expanded panels", e);
       }
+    } else {
+      setExpandedIds([]);
     }
     setIsHydrated(true);
-  }, []);
+  }, [orgId]);
 
   // Sync tasks when navigating between projects (React component reuse)
   useEffect(() => {
@@ -120,18 +130,21 @@ export function BoardClient({
   // Persist open tasks and expanded panels to localStorage
   useEffect(() => {
     if (isHydrated) {
-      localStorage.setItem("kanban_open_tasks", JSON.stringify(openTasks));
+      localStorage.setItem(
+        `kanban_open_tasks_${orgId}`,
+        JSON.stringify(openTasks),
+      );
     }
-  }, [openTasks, isHydrated]);
+  }, [openTasks, isHydrated, orgId]);
 
   useEffect(() => {
     if (isHydrated) {
       localStorage.setItem(
-        "kanban_expanded_panels",
+        `kanban_expanded_panels_${orgId}`,
         JSON.stringify(expandedIds),
       );
     }
-  }, [expandedIds, isHydrated]);
+  }, [expandedIds, isHydrated, orgId]);
 
   // Stable shell map to prevent redundant sidebar fetches for external tasks
   const stableShells = useMemo(() => {
