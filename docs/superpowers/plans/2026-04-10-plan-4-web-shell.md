@@ -2,11 +2,11 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Build the Next.js 14 web app from scratch — typed API client, cookie-based auth session, and a working multi-tenant shell: login/register, org selection/creation, project list/creation, org settings with invite management, and a public invite accept page.
+**Goal:** Build the Next.js 16 web app from scratch — typed API client, cookie-based auth session, and a working multi-tenant shell: login/register, org selection/creation, project list/creation, org settings with invite management, and a public invite accept page.
 
-**Architecture:** Next.js 14 App Router as BFF. All data fetching in React Server Components via a server-side typed `api` client. Mutations via Server Actions (`'use server'`). Session managed in two httpOnly cookies on the web domain: `access_token` (15-min JWT) and `refresh_token` (7-day rotating). The API sets `refresh_token` as a cookie on its own domain (3001) — the web BFF extracts it from the `Set-Cookie` response header and re-stores it on the web domain (3000). Route groups: `(auth)` for public pages, `(app)` for protected pages (guarded by `middleware.ts`). No additional npm dependencies needed.
+**Architecture:** Next.js 16 App Router as BFF. All data fetching in React Server Components via a server-side typed `api` client. Mutations via Server Actions (`'use server'`). Session managed in two httpOnly cookies on the web domain: `access_token` (15-min JWT) and `refresh_token` (7-day rotating). The API sets `refresh_token` as a cookie on its own domain (3001) — the web BFF extracts it from the `Set-Cookie` response header and re-stores it on the web domain (3000). Route groups: `(auth)` for public pages, `(app)` for protected pages (guarded by `middleware.ts`). No additional npm dependencies needed.
 
-**Tech Stack:** Next.js 14 App Router, React 18 Server Components + Server Actions (`useFormState` / `useFormStatus`), Tailwind CSS, `@kanban/shared` DTOs
+**Tech Stack:** Next.js 16 App Router, React 19 Server Components + Server Actions (`useFormState` / `useFormStatus`), Tailwind CSS, `@kanban/shared` DTOs
 
 ---
 

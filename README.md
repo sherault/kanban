@@ -196,7 +196,7 @@ Set up 2FA, generate API keys, copy the MCP config snippet for Claude.
 | API         | [Hono](https://hono.dev/) on Node.js                                                                |
 | Database    | SQLite via [Drizzle ORM](https://orm.drizzle.team/) + `better-sqlite3`                              |
 | Real-time   | WebSockets (`@hono/node-ws`)                                                                        |
-| Web         | [Next.js 14](https://nextjs.org/) App Router (Server Components + Server Actions)                   |
+| Web         | [Next.js 16](https://nextjs.org/) App Router (Server Components + Server Actions)                   |
 | Auth        | JWT access tokens, HTTP-only refresh cookies, Argon2 password hashing                               |
 | 2FA         | [otplib](https://github.com/yeojz/otplib) (TOTP) + [qrcode](https://github.com/soldair/node-qrcode) |
 | Email       | [nodemailer](https://nodemailer.com/) (SMTP)                                                        |
@@ -227,7 +227,7 @@ The project is designed so you **never** have to change your `.env` when switchi
 
 ### Local Development
 
-**Prerequisites:** Node.js ≥ 20, pnpm ≥ 9
+**Prerequisites:** Node.js ≥ 22, pnpm ≥ 10
 
 ```bash
 # Clone and install
@@ -327,7 +327,7 @@ Connect Claude (or any other MCP client) to your board from the **Profile** page
 ## Architecture
 
 - **`apps/api`**: Hono API. Stateless domain logic and SQLite.
-- **`apps/web`**: Next.js 14. Pure BFF, no direct DB access. Handles SSR and Server Actions.
+- **`apps/web`**: Next.js 16. Pure BFF, no direct DB access. Handles SSR and Server Actions.
 - **`packages/shared`**: Shared DTO types between front and back.
 
 The web layer is a pure consumer of the API. It uses `API_URL` for internal calls and `NEXT_PUBLIC_API_URL` for client-side hooks.

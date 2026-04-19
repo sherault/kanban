@@ -1,4 +1,4 @@
-FROM node:20-slim AS base
+FROM node:22-slim AS base
 RUN apt-get update && apt-get install -y --no-install-recommends \
     python3 \
     make \
@@ -23,7 +23,7 @@ RUN pnpm --filter @kanban/web --prod deploy --legacy /app/web-deployed
 RUN pnpm --filter @kanban/api --prod deploy --legacy /app/api-deployed
 
 # --- Web Runtime ---
-FROM node:20-slim AS web
+FROM node:22-slim AS web
 WORKDIR /app
 ENV NODE_ENV=production
 COPY --from=base /app/web-deployed ./
@@ -34,7 +34,7 @@ EXPOSE 3000
 CMD ["node", "apps/web/server.js"]
 
 # --- API Runtime ---
-FROM node:20-slim AS api
+FROM node:22-slim AS api
 WORKDIR /app
 ENV NODE_ENV=production
 COPY --from=base /app/api-deployed ./

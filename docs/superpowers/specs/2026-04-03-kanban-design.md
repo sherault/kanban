@@ -17,7 +17,7 @@ A multi-project, multi-tenant, multi-user Kanban web application. Users belong t
 kanban/
 ├── apps/
 │   ├── api/          # Hono backend (domain logic, DB, WS, MCP)
-│   └── web/          # Next.js 14 App Router (BFF + UI)
+│   └── web/          # Next.js 16 App Router (BFF + UI)
 ├── packages/
 │   ├── shared/       # Shared TypeScript DTOs and enums (no DB shapes)
 │   └── eslint-config/ # Shared ESLint + Prettier config
@@ -386,7 +386,7 @@ Traefik passes WebSocket upgrades through automatically. No additional config ne
 | Concern              | Choice                                |
 | -------------------- | ------------------------------------- |
 | API framework        | Hono (TypeScript)                     |
-| Frontend             | Next.js 14 App Router                 |
+| Frontend             | Next.js 16 App Router                 |
 | ORM                  | Drizzle ORM                           |
 | Database (dev)       | SQLite via `better-sqlite3`           |
 | Database (prod)      | PostgreSQL (driver swap only)         |

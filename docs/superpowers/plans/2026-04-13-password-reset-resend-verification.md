@@ -6,7 +6,7 @@
 
 **Architecture:** New `passwordResets` DB table + `IdentityService` methods + 3 public API routes, then 3 web pages, 3 server actions, and login page UX changes. Follows patterns already established by `emailVerifications`.
 
-**Tech Stack:** Drizzle ORM + better-sqlite3 (API), Hono routes, Next.js 14 App Router server actions + client components (Web), Nodemailer (mailer), Vitest (tests).
+**Tech Stack:** Drizzle ORM + better-sqlite3 (API), Hono routes, Next.js 16 App Router server actions + client components (Web), Nodemailer (mailer), Vitest (tests).
 
 ---
 

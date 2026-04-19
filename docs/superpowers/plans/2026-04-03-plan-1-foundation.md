@@ -6,7 +6,7 @@
 
 **Architecture:** pnpm workspaces + Turborepo coordinate two apps (`apps/api`, `apps/web`) and two packages (`packages/shared`, `packages/eslint-config`). Drizzle ORM owns schema definitions against SQLite for dev. Both apps are containerised with Docker Compose. No auth, no business logic — foundation only.
 
-**Tech Stack:** pnpm 9, Turborepo 2, TypeScript 5.5, Hono 4 + @hono/node-server, Next.js 14 App Router, Drizzle ORM 0.32 + drizzle-kit 0.23, better-sqlite3 11, Vitest 1.6, ESLint 9 (flat config) + typescript-eslint 8, Prettier 3, Tailwind CSS 3, tsx (dev runner)
+**Tech Stack:** pnpm 9, Turborepo 2, TypeScript 5.5, Hono 4 + @hono/node-server, Next.js 16 App Router, Drizzle ORM 0.32 + drizzle-kit 0.23, better-sqlite3 11, Vitest 1.6, ESLint 9 (flat config) + typescript-eslint 8, Prettier 3, Tailwind CSS 3, tsx (dev runner)
 
 ---
 
@@ -120,8 +120,8 @@ kanban/
     "typescript": "^5.5.4"
   },
   "engines": {
-    "node": ">=20",
-    "pnpm": ">=9"
+    "node": ">=22",
+    "pnpm": ">=10"
   }
 }
 ```
@@ -735,18 +735,18 @@ git commit -m "feat(api): add Hono skeleton with /health endpoint and Vitest"
   },
   "dependencies": {
     "@kanban/shared": "workspace:*",
-    "next": "^14.2.6",
-    "react": "^18.3.1",
-    "react-dom": "^18.3.1"
+    "next": "^16.2.3",
+    "react": "^19.2.5",
+    "react-dom": "^19.2.5"
   },
   "devDependencies": {
     "@kanban/eslint-config": "workspace:*",
     "@types/node": "^20.16.1",
-    "@types/react": "^18.3.4",
-    "@types/react-dom": "^18.3.0",
+    "@types/react": "^19.2.14",
+    "@types/react-dom": "^19.2.3",
     "autoprefixer": "^10.4.20",
     "eslint": "^9.9.0",
-    "eslint-config-next": "^14.2.6",
+    "eslint-config-next": "^16.2.3",
     "postcss": "^8.4.41",
     "tailwindcss": "^3.4.10",
     "typescript": "^5.5.4"
@@ -1941,7 +1941,7 @@ cd apps/api && pnpm drizzle-kit studio     # open Drizzle Studio (DB GUI)
 
 **API** (`apps/api`): Hono on Node.js. All domain logic, DB access, WebSockets, and MCP server live here. Entry point: `src/index.ts` → runs migrations → starts server. App factory: `src/app.ts`.
 
-**Web** (`apps/web`): Next.js 14 App Router. Acts as a BFF — server components fetch from the API and map to view models. No direct DB access.
+**Web** (`apps/web`): Next.js 16 App Router. Acts as a BFF — server components fetch from the API and map to view models. No direct DB access.
 
 **Shared** (`packages/shared`): TypeScript DTOs and enums only. No ORM types. Used by both apps.
 
