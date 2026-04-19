@@ -364,3 +364,83 @@ export async function moveTaskAction(
     return { error: e instanceof ApiError ? e.message : "Failed to move task" };
   }
 }
+
+export async function addLinkAction(
+  projectId: string,
+  taskId: string,
+  linkedTaskId: string,
+): Promise<{ error?: string; task?: TaskDto }> {
+  const token = await getAccessToken();
+  if (!token) redirect("/login");
+
+  try {
+    const { data: task } = await api.tasks.addLink(
+      token,
+      projectId,
+      taskId,
+      linkedTaskId,
+    );
+    return { task };
+  } catch (e) {
+    return { error: e instanceof ApiError ? e.message : "Failed to add link" };
+  }
+}
+
+export async function removeLinkAction(
+  projectId: string,
+  taskId: string,
+  linkedTaskId: string,
+): Promise<{ error?: string; task?: TaskDto }> {
+  const token = await getAccessToken();
+  if (!token) redirect("/login");
+
+  try {
+    const { data: task } = await api.tasks.removeLink(
+      token,
+      projectId,
+      taskId,
+      linkedTaskId,
+    );
+    return { task };
+  } catch (e) {
+    return {
+      error: e instanceof ApiError ? e.message : "Failed to remove link",
+    };
+  }
+}
+
+export async function searchTasksInOrgAction(
+  orgId: string,
+  query: string,
+): Promise<{
+  error?: string;
+  tasks?: Array<TaskDto & { projectName: string }>;
+}> {
+  const token = await getAccessToken();
+  if (!token) redirect("/login");
+
+  try {
+    const { data: tasks } = await api.tasks.search(token, orgId, query);
+    return { tasks };
+  } catch (e) {
+    return {
+      error: e instanceof ApiError ? e.message : "Failed to search tasks",
+    };
+  }
+}
+
+export async function getTaskByIdAction(
+  taskId: string,
+): Promise<{ error?: string; task?: TaskDto }> {
+  const token = await getAccessToken();
+  if (!token) redirect("/login");
+
+  try {
+    const { data: task } = await api.tasks.getById(token, taskId);
+    return { task };
+  } catch (e) {
+    return {
+      error: e instanceof ApiError ? e.message : "Failed to load task",
+    };
+  }
+}

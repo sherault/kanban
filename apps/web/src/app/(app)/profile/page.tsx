@@ -5,6 +5,7 @@ import { api } from "../../../lib/api";
 import { ApiKeysSection } from "./ApiKeysSection";
 import { TotpSection } from "./TotpSection";
 import { ResendVerificationButton } from "./ResendVerificationButton";
+import { SettingsSection } from "./SettingsSection";
 
 export const dynamic = "force-dynamic";
 
@@ -49,6 +50,11 @@ export default async function ProfilePage() {
 
       {/* 2FA */}
       <TotpSection totpEnabled={me.totpEnabled} />
+
+      <hr className="border-gray-200" />
+
+      {/* Preferences */}
+      <SettingsSection initialMaxOpenPanels={me.maxOpenPanels} token={token} />
 
       <hr className="border-gray-200" />
 

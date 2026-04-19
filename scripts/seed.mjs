@@ -7,7 +7,7 @@
 import { execSync } from 'node:child_process'
 
 const API = 'http://localhost:3010'
-const DB = 'apps/api/kanban.db'
+const DB = 'data/kanban.db'
 
 const sq = (sql) => execSync(`sqlite3 "${DB}" "${sql.replace(/"/g, '\\"')}"`, { encoding: 'utf8' }).trim()
 const sqMulti = (sql) => execSync(`sqlite3 "${DB}" <<'ENDSQL'\n${sql}\nENDSQL`, { encoding: 'utf8', shell: '/bin/bash' }).trim()
@@ -17,6 +17,7 @@ async function post(path, body, token) {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
+      'Origin': 'http://localhost:3009',
       ...(token ? { Authorization: `Bearer ${token}` } : {}),
     },
     body: JSON.stringify(body),
@@ -31,7 +32,11 @@ async function post(path, body, token) {
 async function patch(path, body, token) {
   const res = await fetch(`${API}${path}`, {
     method: 'PATCH',
-    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+    headers: { 
+      'Content-Type': 'application/json', 
+      'Origin': 'http://localhost:3009',
+      Authorization: `Bearer ${token}` 
+    },
     body: JSON.stringify(body),
   })
   if (!res.ok) throw new Error(`PATCH ${path} → ${res.status}`)
@@ -41,7 +46,10 @@ async function patch(path, body, token) {
 async function postEmpty(path, token) {
   const res = await fetch(`${API}${path}`, {
     method: 'POST',
-    headers: { Authorization: `Bearer ${token}` },
+    headers: { 
+      'Origin': 'http://localhost:3009',
+      Authorization: `Bearer ${token}` 
+    },
   })
   if (!res.ok) throw new Error(`POST ${path} → ${res.status}`)
   return res.json()
@@ -50,7 +58,10 @@ async function postEmpty(path, token) {
 async function login(email, password) {
   const res = await fetch(`${API}/auth/login`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: { 
+      'Content-Type': 'application/json',
+      'Origin': 'http://localhost:3009'
+    },
     body: JSON.stringify({ email, password }),
   })
   if (!res.ok) throw new Error(`Login failed for ${email}: ${res.status}`)
@@ -267,7 +278,7 @@ async function main() {
     const isArchived = dbGet(`SELECT archived_at FROM tasks WHERE id = '${taskId}'`)
     if (!isArchived || isArchived === 'null' || isArchived === '') {
       try {
-        await post(`/projects/${p1Id}/tasks/archive`, { ids: [taskId] }, alice.token)
+        await post(`/projects/${p1Id}/tasks/archive`, { taskIds: [taskId] }, alice.token)
         console.log(`  ✓ archived task`)
       } catch (e) {
         console.log(`  ↳ archive: ${e.message}`)

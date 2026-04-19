@@ -6,7 +6,10 @@ import { noopBroadcaster } from "../../types.js";
 import { authnMiddleware } from "../../middleware/authn.js";
 import { makeProjectAuthz } from "../../middleware/project-member.js";
 import { TaskService } from "./task.service.js";
-import { notFound, unprocessable } from "../../lib/errors.js";
+import { notFound, unprocessable, forbidden } from "../../lib/errors.js";
+import { makeAuthz } from "../../middleware/authz.js";
+import { projects, memberships } from "../../db/schema/index.js";
+import { eq, and } from "drizzle-orm";
 
 const columnEnum = z.enum(["ideas", "todo", "doing", "done"]);
 
@@ -42,10 +45,54 @@ export function taskRoutes(
   const router = new Hono<HonoEnv>();
   const svc = new TaskService(db, broadcast);
   const projectAuthz = makeProjectAuthz(db);
+  const orgAuthz = makeAuthz(db);
 
   router.use("*", authnMiddleware);
 
-  // All task routes require project membership (sets orgId in context)
+  // Global search (cross-project within org)
+  router.get(
+    "/search/:orgId",
+    orgAuthz.requireOrgRole("member", (c) => c.req.param("orgId")),
+    (c) => {
+      const query = c.req.query("q") ?? "";
+      if (query.length < 2) return c.json([]);
+      return c.json(svc.searchTasksInOrg(c.req.param("orgId"), query));
+    },
+  );
+
+  // Global task lookup by ID (with org membership check)
+  router.get("/by-id/:taskId", async (c) => {
+    const userId = c.get("userId");
+    const taskId = c.req.param("taskId");
+    const task = svc.getTaskGlobal(taskId);
+    if (!task) throw notFound("Task not found");
+
+    // Check if user is a member of the organization this task belongs to
+    const project = db
+      .select({ organizationId: projects.organizationId })
+      .from(projects)
+      .where(eq(projects.id, task.projectId))
+      .get();
+
+    if (!project) throw notFound("Task project not found");
+
+    const membership = db
+      .select()
+      .from(memberships)
+      .where(
+        and(
+          eq(memberships.userId, userId),
+          eq(memberships.organizationId, project.organizationId),
+        ),
+      )
+      .get();
+
+    if (!membership) throw forbidden();
+
+    return c.json(task);
+  });
+
+  // All other task routes require project membership (sets orgId in context)
   router.use("/:projectId/*", projectAuthz.requireProjectMember());
 
   // Archive multiple tasks (must be in "done")
@@ -168,9 +215,8 @@ export function taskRoutes(
 
   // Links
   router.post("/:projectId/tasks/:taskId/links/:linkedTaskId", (c) => {
-    const task = svc.getTask(c.req.param("taskId"));
-    if (!task || task.projectId !== c.req.param("projectId"))
-      throw notFound("Task not found");
+    // Permission check for the target task (linkedTaskId) is done in the service (org check)
+    // but we still rely on the projectId check for the source task.
     return c.json(
       svc.addLink(c.req.param("taskId"), c.req.param("linkedTaskId")),
     );

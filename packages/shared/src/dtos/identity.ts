@@ -5,6 +5,7 @@ export interface UserDto {
   emailVerified: boolean;
   totpEnabled: boolean;
   createdAt: string;
+  maxOpenPanels: number;
 }
 
 export interface ApiKeyDto {

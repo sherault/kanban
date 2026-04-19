@@ -15,6 +15,7 @@ export const users = sqliteTable("users", {
     .default(false),
   failedLoginAttempts: integer("failed_login_attempts").notNull().default(0),
   lockoutUntil: text("lockout_until"),
+  maxOpenPanels: integer("max_open_panels").notNull().default(5),
   createdAt: text("created_at")
     .notNull()
     .default(sql`(datetime('now'))`),

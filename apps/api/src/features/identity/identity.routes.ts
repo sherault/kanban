@@ -172,5 +172,19 @@ export function identityRoutes(db: AppDb): Hono<HonoEnv> {
     return c.json({ success: true });
   });
 
+  router.use("/me/settings", authnMiddleware);
+  router.patch(
+    "/me/settings",
+    zValidator(
+      "json",
+      z.object({ maxOpenPanels: z.number().min(1).max(10).optional() }),
+    ),
+    async (c) => {
+      const body = c.req.valid("json");
+      const user = await svc.updateSettings(c.get("userId"), body);
+      return c.json({ user });
+    },
+  );
+
   return router;
 }

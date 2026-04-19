@@ -1,0 +1,1 @@
+ALTER TABLE `users` ADD `max_open_panels` integer NOT NULL DEFAULT 5;

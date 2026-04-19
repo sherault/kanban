@@ -12,13 +12,13 @@ export default async function ProjectBoardPage({
   const token = await getAccessToken();
   if (!token) redirect("/login");
 
-  const [{ data: tasks }, { data: members }, currentUserId] = await Promise.all(
-    [
+  const [{ data: tasks }, { data: members }, { data: me }, currentUserId] =
+    await Promise.all([
       api.tasks.list(token, projectId),
       api.orgs.listMembers(token, orgId),
+      api.auth.me(token),
       getUserId(),
-    ],
-  );
+    ]);
 
   return (
     <BoardClient
@@ -27,6 +27,7 @@ export default async function ProjectBoardPage({
       projectId={projectId}
       orgId={orgId}
       currentUserId={currentUserId ?? ""}
+      maxOpenPanels={me.maxOpenPanels}
     />
   );
 }

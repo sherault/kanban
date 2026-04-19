@@ -23,6 +23,7 @@ export interface TaskDto {
   createdAt: string;
   updatedAt: string;
   archivedAt: string | null;
+  projectName?: string;
 }
 
 export interface TaskHistoryDto {

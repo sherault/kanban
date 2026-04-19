@@ -1,5 +1,6 @@
 "use client";
 
+import { useState, useEffect } from "react";
 import { useDraggable } from "@dnd-kit/core";
 import { CSS } from "@dnd-kit/utilities";
 import type { TaskDto } from "@kanban/shared";
@@ -37,8 +38,15 @@ export function TaskCard({
     ...(task.backgroundColor ? { backgroundColor: task.backgroundColor } : {}),
   };
 
+  const [isMounted, setIsMounted] = useState(false);
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setIsMounted(true);
+  }, []);
+
   const endDateObj = task.endDate ? new Date(task.endDate) : null;
   const isOverdue =
+    isMounted &&
     endDateObj != null &&
     !isNaN(endDateObj.getTime()) &&
     endDateObj < new Date();
@@ -89,9 +97,8 @@ export function TaskCard({
       <p className="text-sm text-gray-900 font-medium leading-snug mb-2 line-clamp-2">
         {task.title}
       </p>
-
       <div className="flex items-center justify-between gap-2">
-        {endDateObj && !isNaN(endDateObj.getTime()) && (
+        {isMounted && endDateObj && !isNaN(endDateObj.getTime()) && (
           <span
             className={`text-xs ${isOverdue ? "text-red-500 font-medium" : "text-gray-400"}`}
           >
@@ -118,7 +125,6 @@ export function TaskCard({
           </span>
         )}
       </div>
-
       {task.objective && (
         <div
           onClick={
@@ -135,7 +141,6 @@ export function TaskCard({
           {task.objective}
         </div>
       )}
-
       {task.tags.length > 0 && (
         <div className="flex flex-wrap gap-1 mt-1.5">
           {task.tags.map((tag) => (

@@ -85,6 +85,7 @@ function toUserDto(row: typeof users.$inferSelect): UserDto {
     displayName: row.displayName,
     emailVerified: row.emailVerified,
     totpEnabled: row.totpEnabled,
+    maxOpenPanels: row.maxOpenPanels,
     createdAt: row.createdAt,
   };
 }
@@ -100,37 +101,42 @@ export class IdentityService {
       .get();
     if (existing) throw conflict("Email already registered");
 
-    const passwordHash = await hashPassword(input.password);
-    const id = generateId();
-    const user = this.db
-      .insert(users)
-      .values({
-        id,
-        email: input.email,
-        passwordHash,
-        displayName: input.displayName,
-      })
-      .returning()
-      .get();
-    if (!user) throw new Error("Failed to create user");
+    try {
+      const passwordHash = await hashPassword(input.password);
+      const id = generateId();
+      const user = this.db
+        .insert(users)
+        .values({
+          id,
+          email: input.email,
+          passwordHash,
+          displayName: input.displayName,
+        })
+        .returning()
+        .get();
+      if (!user) throw new Error("Failed to create user");
 
-    // Send verification email (fire-and-forget — don't block registration)
-    const rawToken = generateToken();
-    const hashedToken = hashToken(rawToken);
-    this.db
-      .insert(emailVerifications)
-      .values({
-        id: generateId(),
-        userId: id,
-        hashedToken,
-        expiresAt: expiresAtHours(VERIFY_TTL_HOURS),
-      })
-      .run();
-    void sendVerificationEmail(input.email, rawToken).catch((err) => {
-      console.error("[mailer] Failed to send verification email:", err);
-    });
+      // Send verification email (fire-and-forget — don't block registration)
+      const rawToken = generateToken();
+      const hashedToken = hashToken(rawToken);
+      this.db
+        .insert(emailVerifications)
+        .values({
+          id: generateId(),
+          userId: id,
+          hashedToken,
+          expiresAt: expiresAtHours(VERIFY_TTL_HOURS),
+        })
+        .run();
+      void sendVerificationEmail(input.email, rawToken).catch((err) => {
+        console.error("[mailer] Failed to send verification email:", err);
+      });
 
-    return toUserDto(user);
+      return toUserDto(user);
+    } catch (err) {
+      console.error("[IdentityService] Register failed:", err);
+      throw err;
+    }
   }
 
   async verifyEmail(rawToken: string): Promise<void> {
@@ -467,6 +473,24 @@ export class IdentityService {
       .set({ totpEnabled: false, totpSecret: null })
       .where(eq(users.id, userId))
       .run();
+  }
+
+  async updateSettings(
+    userId: string,
+    settings: { maxOpenPanels?: number | undefined },
+  ): Promise<UserDto> {
+    const user = this.db
+      .update(users)
+      .set({
+        ...(settings.maxOpenPanels !== undefined && {
+          maxOpenPanels: Math.min(10, Math.max(1, settings.maxOpenPanels)),
+        }),
+      })
+      .where(eq(users.id, userId))
+      .returning()
+      .get();
+    if (!user) throw unauthorized("User not found");
+    return toUserDto(user);
   }
 }
 

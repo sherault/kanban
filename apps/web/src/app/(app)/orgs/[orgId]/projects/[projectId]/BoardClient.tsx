@@ -34,6 +34,7 @@ interface Props {
   projectId: string;
   orgId: string;
   currentUserId: string;
+  maxOpenPanels: number;
 }
 
 export function BoardClient({
@@ -42,10 +43,36 @@ export function BoardClient({
   projectId,
   orgId,
   currentUserId,
+  maxOpenPanels,
 }: Props) {
   const [tasks, setTasks] = useState<TaskDto[]>(initialTasks);
   const [activeTask, setActiveTask] = useState<TaskDto | null>(null);
-  const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null);
+  const [openTasks, setOpenTasks] = useState<
+    Array<{ id: string; archived?: boolean; data?: TaskDto }>
+  >([]);
+  const [isMounted, setIsMounted] = useState(false);
+  const [isHydrated, setIsHydrated] = useState(false);
+
+  useEffect(() => {
+    setIsMounted(true);
+    const saved = localStorage.getItem("kanban_open_tasks");
+    if (saved) {
+      try {
+        setOpenTasks(JSON.parse(saved));
+      } catch (e) {
+        console.error("Failed to parse open tasks", e);
+      }
+    }
+    setIsHydrated(true);
+  }, []);
+
+  // Sync tasks when navigating between projects (React component reuse)
+  useEffect(() => {
+    setTasks(initialTasks);
+  }, [initialTasks]);
+
+  const [panelWidths, setPanelWidths] = useState<Record<string, number>>({});
+  const [archiveRevision, setArchiveRevision] = useState(0);
   const [newTaskColumn, setNewTaskColumn] = useState<Column | null>(null);
   const [showImport, setShowImport] = useState(false);
   const [ideasCollapsed, setIdeasCollapsed] = useState(true);
@@ -58,10 +85,6 @@ export function BoardClient({
   const [activeTag, setActiveTag] = useState<string | null>(null);
   const [activeObjective, setActiveObjective] = useState<string | null>(null);
   const [activeDoerId, setActiveDoerId] = useState<string | null>(null);
-  const [selectedArchivedTask, setSelectedArchivedTask] =
-    useState<TaskDto | null>(null);
-  const [archiveRevision, setArchiveRevision] = useState(0);
-
   const objectives = useMemo(
     () => [
       ...new Set(tasks.flatMap((t) => (t.objective ? [t.objective] : []))),
@@ -78,11 +101,27 @@ export function BoardClient({
     : null;
   const [, startTransition] = useTransition();
 
-  // Stable ref to selectedTaskId for WS callbacks
-  const selectedTaskIdRef = useRef<string | null>(null);
+  // Stable ref to openTasks for WS callbacks
+  const openTasksRef = useRef<Array<{ id: string; archived?: boolean }>>([]);
   useEffect(() => {
-    selectedTaskIdRef.current = selectedTaskId;
-  }, [selectedTaskId]);
+    openTasksRef.current = openTasks;
+  }, [openTasks]);
+
+  // Persist open tasks to localStorage ONLY (SPA behavior as requested)
+  useEffect(() => {
+    if (isHydrated) {
+      localStorage.setItem("kanban_open_tasks", JSON.stringify(openTasks));
+    }
+  }, [openTasks, isHydrated]);
+
+  // Stable shell map to prevent redundant sidebar fetches for external tasks
+  const stableShells = useMemo(() => {
+    const map = new Map<string, { taskId: string }>();
+    openTasks.forEach((ot) => {
+      map.set(ot.id, { taskId: ot.id });
+    });
+    return map;
+  }, [openTasks]);
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
@@ -111,7 +150,8 @@ export function BoardClient({
       // If the updated task is open in the sidebar, bump the revision to
       // remount it with fresh values — but only when no sidebar field has focus
       // (i.e. the user isn't actively typing).
-      if (selectedTaskIdRef.current === task.id) {
+      const isOpen = openTasksRef.current.some((t) => t.id === task.id);
+      if (isOpen) {
         const focused = document.activeElement;
         const sidebarHasFocus =
           focused?.closest('[data-sidebar="true"]') ?? false;
@@ -119,6 +159,12 @@ export function BoardClient({
           setSidebarRevision((v) => v + 1);
         }
       }
+
+      // Sync data to openTasks for localStorage persistence
+      setOpenTasks((prev) =>
+        prev.map((ot) => (ot.id === task.id ? { ...ot, data: task } : ot)),
+      );
+
       setArchiveRevision((v) => v + 1);
     },
     onTaskDeleted(taskId) {
@@ -128,15 +174,67 @@ export function BoardClient({
         next.delete(taskId);
         return next;
       });
-      if (selectedTaskIdRef.current === taskId) setSelectedTaskId(null);
+      setOpenTasks((prev) => prev.filter((t) => t.id !== taskId));
       setArchiveRevision((v) => v + 1);
     },
   });
 
   // ── Drag and drop ─────────────────────────────────────────────────────────
 
-  const selectedBoardTask = tasks.find((t) => t.id === selectedTaskId) ?? null;
-  const selectedTask = selectedArchivedTask ?? selectedBoardTask;
+  const handleOpenTask = (taskId: string, archived?: boolean) => {
+    setOpenTasks((prev) => {
+      const existing = prev.find((t) => t.id === taskId);
+      if (existing) {
+        // Move to the end (top-most)
+        return [...prev.filter((t) => t.id !== taskId), existing];
+      }
+      const next = [...prev, { id: taskId, archived }];
+      // Apply the user-configured limit
+      if (next.length > maxOpenPanels) {
+        return next.slice(next.length - maxOpenPanels);
+      }
+      return next;
+    });
+  };
+
+  const handleActivateTask = (taskId: string) => {
+    setOpenTasks((prev) => {
+      const target = prev.find((t) => t.id === taskId);
+      if (!target) return prev;
+      return [...prev.filter((t) => t.id !== taskId), target];
+    });
+  };
+
+  const handleCloseTask = (taskId: string) => {
+    setOpenTasks((prev) => prev.filter((t) => t.id !== taskId));
+  };
+
+  const handleCloseAllTasks = () => {
+    setOpenTasks([]);
+  };
+
+  const calculatePanelTranslateX = (index: number) => {
+    if (index >= openTasks.length - 1) return 0;
+
+    let x = 0;
+    for (let j = openTasks.length - 1; j > index; j--) {
+      const nextId = openTasks[j].id;
+      const currentId = openTasks[j - 1].id;
+      const nextWidth = panelWidths[nextId] || 384;
+      const currentWidth = panelWidths[currentId] || 384;
+      x += nextWidth - currentWidth + 48;
+    }
+    return x;
+  };
+
+  // Calculate total offset for the bottom "Live" label and board content
+  const sidebarTotalWidth = useMemo(() => {
+    if (openTasks.length === 0) return 0;
+    const topPanelId = openTasks[openTasks.length - 1].id;
+    const topPanelWidth = panelWidths[topPanelId] || 384;
+    // Total width = top panel width + 48px for every other panel
+    return topPanelWidth + (openTasks.length - 1) * 48;
+  }, [openTasks, panelWidths]);
 
   function handleDragStart(event: DragStartEvent) {
     setActiveTask(tasks.find((t) => t.id === event.active.id) ?? null);
@@ -288,7 +386,10 @@ export function BoardClient({
           )}
 
           {/* Board columns */}
-          <div className="flex gap-4 p-6 overflow-x-auto flex-1 items-start">
+          <div
+            className="flex gap-4 p-6 overflow-x-auto flex-1 items-start transition-all duration-300"
+            style={{ paddingRight: `${sidebarTotalWidth + 24}px` }}
+          >
             {COLUMNS.map(({ id, label }) => {
               const columnTasks = tasks
                 .filter(
@@ -321,8 +422,7 @@ export function BoardClient({
                       : undefined
                   }
                   onTaskClick={(taskId) => {
-                    setSelectedArchivedTask(null);
-                    setSelectedTaskId(taskId);
+                    handleOpenTask(taskId);
                   }}
                   onNewTask={() => setNewTaskColumn(id)}
                   onTagClick={(tag) => setActiveTag(tag)}
@@ -348,7 +448,10 @@ export function BoardClient({
           </div>
 
           {/* Toolbar */}
-          <div className="px-6 pb-3 flex items-center justify-between shrink-0">
+          <div
+            className="px-6 pb-3 flex items-center justify-between shrink-0 transition-all duration-300"
+            style={{ paddingRight: `${sidebarTotalWidth + 24}px` }}
+          >
             <div className="flex items-center gap-2">
               <button
                 onClick={() => setShowImport(true)}
@@ -392,11 +495,9 @@ export function BoardClient({
                 }
                 return [...prev, task];
               });
-              setSelectedArchivedTask(null);
             }}
             onTaskClick={(task) => {
-              setSelectedTaskId(null);
-              setSelectedArchivedTask(task);
+              handleOpenTask(task.id, true);
             }}
             refreshTrigger={archiveRevision}
           />
@@ -409,33 +510,66 @@ export function BoardClient({
         </DragOverlay>
       </DndContext>
 
-      {selectedTask && (
-        <TaskDetailSidebar
-          key={selectedTask.id}
-          task={selectedTask}
-          orgMembers={orgMembers}
-          projectId={projectId}
-          revision={sidebarRevision}
-          objectives={objectives}
-          allTags={allTags}
-          onClose={() => {
-            setSelectedTaskId(null);
-            setSelectedArchivedTask(null);
-          }}
-          onUpdated={(updated) => {
-            setTasks((prev) =>
-              prev.map((t) => (t.id === updated.id ? updated : t)),
+      {isMounted && openTasks.length > 0 && (
+        <div className="fixed top-0 bottom-0 right-0 z-[60] w-full pointer-events-none">
+          {openTasks.map((ot, index) => {
+            const task = tasks.find((t) => t.id === ot.id);
+            const isActive = index === openTasks.length - 1;
+            const translateX = calculatePanelTranslateX(index);
+
+            return (
+              <div
+                key={ot.id}
+                className="pointer-events-auto h-full absolute top-0"
+                style={{
+                  right: 0,
+                  transform: `translateX(-${translateX}px)`,
+                  zIndex: index + 10,
+                  boxShadow: "-10px 0 30px rgba(0,0,0,0.15)",
+                  transition: "transform 0.3s cubic-bezier(0.4, 0, 0.2, 1)",
+                }}
+              >
+                <TaskDetailSidebar
+                  task={
+                    task ||
+                    ot.data ||
+                    stableShells.get(ot.id) || { taskId: ot.id }
+                  }
+                  key={ot.id}
+                  orgMembers={orgMembers}
+                  projectId={projectId}
+                  orgId={orgId}
+                  currentOpenTaskIds={openTasks.map((ot) => ot.id)}
+                  revision={sidebarRevision}
+                  objectives={objectives}
+                  allTags={allTags}
+                  isActive={isActive}
+                  onActivate={() => handleActivateTask(ot.id)}
+                  onClose={() => handleCloseTask(ot.id)}
+                  showCloseAll={
+                    index === openTasks.length - 1 && openTasks.length > 1
+                  }
+                  onCloseAll={handleCloseAllTasks}
+                  width={panelWidths[ot.id] || 384}
+                  onWidthChange={(w) => {
+                    setPanelWidths((prev) => ({ ...prev, [ot.id]: w }));
+                  }}
+                  onUpdated={(updated) => {
+                    setTasks((prev) =>
+                      prev.map((t) => (t.id === updated.id ? updated : t)),
+                    );
+                  }}
+                  onDeleted={(taskId) => {
+                    setTasks((prev) => prev.filter((t) => t.id !== taskId));
+                    handleCloseTask(taskId);
+                    setArchiveRevision((v) => v + 1);
+                  }}
+                  onOpenRelatedTask={(relatedId) => handleOpenTask(relatedId)}
+                />
+              </div>
             );
-            if (selectedArchivedTask?.id === updated.id)
-              setSelectedArchivedTask(updated);
-          }}
-          onDeleted={(taskId) => {
-            setTasks((prev) => prev.filter((t) => t.id !== taskId));
-            setSelectedTaskId(null);
-            setSelectedArchivedTask(null);
-            setArchiveRevision((v) => v + 1);
-          }}
-        />
+          })}
+        </div>
       )}
 
       {showImport && (

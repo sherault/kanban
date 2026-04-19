@@ -1,4 +1,4 @@
-import { eq, and, or, max, sql, isNull, isNotNull } from "drizzle-orm";
+import { eq, and, or, max, sql, isNull, isNotNull, like } from "drizzle-orm";
 import type { AppDb, Broadcaster } from "../../types.js";
 import { noopBroadcaster } from "../../types.js";
 import type { TaskDto, TaskHistoryDto, Column } from "@kanban/shared";
@@ -74,9 +74,16 @@ function assembleTaskDto(db: AppDb, row: typeof tasks.$inferSelect): TaskDto {
     .where(eq(taskAdvisors.taskId, row.id))
     .all();
 
+  const project = db
+    .select({ name: projects.name })
+    .from(projects)
+    .where(eq(projects.id, row.projectId))
+    .get();
+
   return {
     id: row.id,
     projectId: row.projectId,
+    projectName: project?.name ?? "",
     column: row.column as Column,
     title: row.title,
     description: row.description,
@@ -396,8 +403,22 @@ export class TaskService {
 
   addLink(taskId: string, linkedTaskId: string): TaskDto {
     const row = this.getRow(taskId);
-    const linkedRow = this.getRow(linkedTaskId); // verify exists
-    if (linkedRow.projectId !== row.projectId) throw notFound("Task not found");
+    const linkedRow = this.getRow(linkedTaskId);
+
+    // Verify both tasks belong to the same organization
+    const getOrg = (projectId: string) => {
+      const p = this.db
+        .select({ organizationId: projects.organizationId })
+        .from(projects)
+        .where(eq(projects.id, projectId))
+        .get();
+      return p?.organizationId;
+    };
+
+    if (getOrg(row.projectId) !== getOrg(linkedRow.projectId)) {
+      throw notFound("Task not found");
+    }
+
     try {
       this.db.insert(taskLinks).values({ taskId, linkedTaskId }).run();
     } catch {
@@ -882,5 +903,41 @@ export class TaskService {
     // No per-task broadcast — bulk import is treated as a silent batch operation.
     // Clients should refresh their task list after the import completes.
     return { imported, skipped };
+  }
+
+  searchTasksInOrg(
+    orgId: string,
+    query: string,
+    limit: number = 20,
+  ): Array<TaskDto & { projectName: string }> {
+    const rows = this.db
+      .select({
+        task: tasks,
+        projectName: projects.name,
+      })
+      .from(tasks)
+      .innerJoin(projects, eq(tasks.projectId, projects.id))
+      .where(
+        and(
+          eq(projects.organizationId, orgId),
+          isNull(tasks.archivedAt),
+          or(
+            like(tasks.title, `%${query}%`),
+            eq(tasks.id, query), // exact ID match
+          ),
+        ),
+      )
+      .limit(limit)
+      .all();
+
+    return rows.map((r) => ({
+      ...assembleTaskDto(this.db, r.task),
+      projectName: r.projectName,
+    }));
+  }
+
+  getTaskGlobal(taskId: string): TaskDto | undefined {
+    const row = this.db.select().from(tasks).where(eq(tasks.id, taskId)).get();
+    return row ? assembleTaskDto(this.db, row) : undefined;
   }
 }

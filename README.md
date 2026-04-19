@@ -151,6 +151,12 @@ Click any card to open the full detail panel — description, dates, assignees, 
 
 ![Task Detail](docs/screenshots/05-task-sidebar.png)
 
+### Stacking Task Panels
+
+Open multiple tasks simultaneously. Inactive panels stack to the left, keeping their titles visible vertically for quick switching. The board remains accessible via horizontal scrolling.
+
+![Stacking Panels](docs/screenshots/11-stacking-panels.png)
+
 ### Tag Filtering
 
 Click any tag chip to filter the board. Active filters shown as removable chips.

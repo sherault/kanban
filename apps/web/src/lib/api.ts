@@ -138,6 +138,13 @@ export const api = {
         token,
       });
     },
+    updateSettings(token: string, body: { maxOpenPanels?: number }) {
+      return apiFetch<{ user: UserDto }>("/auth/me/settings", {
+        method: "PATCH",
+        body: JSON.stringify(body),
+        token,
+      });
+    },
     refresh(refreshToken: string) {
       return apiFetch<{ accessToken: string }>("/auth/refresh", {
         method: "POST",
@@ -427,6 +434,37 @@ export const api = {
         `/projects/${projectId}/tasks/${taskId}/advisors/${userId}`,
         { method: "DELETE", token },
       );
+    },
+    addLink(
+      token: string,
+      projectId: string,
+      taskId: string,
+      linkedTaskId: string,
+    ) {
+      return apiFetch<TaskDto>(
+        `/projects/${projectId}/tasks/${taskId}/links/${linkedTaskId}`,
+        { method: "POST", token },
+      );
+    },
+    removeLink(
+      token: string,
+      projectId: string,
+      taskId: string,
+      linkedTaskId: string,
+    ) {
+      return apiFetch<TaskDto>(
+        `/projects/${projectId}/tasks/${taskId}/links/${linkedTaskId}`,
+        { method: "DELETE", token },
+      );
+    },
+    search(token: string, orgId: string, q: string) {
+      return apiFetch<Array<TaskDto & { projectName: string }>>(
+        `/projects/search/${orgId}?q=${encodeURIComponent(q)}`,
+        { token },
+      );
+    },
+    getById(token: string, taskId: string) {
+      return apiFetch<TaskDto>(`/projects/by-id/${taskId}`, { token });
     },
   },
 
