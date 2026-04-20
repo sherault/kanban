@@ -1,25 +1,20 @@
 import { Hono } from "hono";
+import type { Context } from "hono";
 import { randomUUID } from "node:crypto";
 import type { HttpBindings } from "@hono/node-server";
-import { SSEServerTransport } from "@modelcontextprotocol/sdk/server/sse.js";
-import { StreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/streamableHttp.js";
+import { StreamableHTTPTransport } from "@hono/mcp";
 import type { AppDb, Broadcaster } from "../../types.js";
 import { ApiKeyService } from "../api-key/api-key.service.js";
 import { createMcpServer } from "./mcp.server.js";
 import { unauthorized } from "../../lib/errors.js";
+import { logger } from "../../lib/logger.js";
 
 type NodeEnv = { Bindings: HttpBindings };
 
-// ── Session stores ─────────────────────────────────────────────────────────
-
-/** Legacy SSE sessions: sessionId → transport */
-const sseSessions = new Map<string, SSEServerTransport>();
-
 /** Streamable HTTP sessions: sessionId → transport */
-const httpSessions = new Map<string, StreamableHTTPServerTransport>();
+const httpSessions = new Map<string, StreamableHTTPTransport>();
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-export function mcpRoutes(db: AppDb, broadcast: Broadcaster): Hono<any> {
+export function mcpRoutes(db: AppDb, broadcast: Broadcaster): Hono<NodeEnv> {
   const app = new Hono<NodeEnv>();
   const apiKeySvc = new ApiKeyService(db);
 
@@ -33,39 +28,56 @@ export function mcpRoutes(db: AppDb, broadcast: Broadcaster): Hono<any> {
     return userId;
   }
 
-  // ── Streamable HTTP transport (modern — MCP spec 2025-03-26) ─────────────
-  //
-  // Single endpoint handles GET (SSE notifications) and POST (messages).
-  // Session negotiated via Mcp-Session-Id header.
-  // DELETE terminates a session.
+  /**
+   * Surgical fix for Hono Node.js adapter (V3):
+   * Inspects the raw response state to prevent ERR_HTTP_HEADERS_SENT.
+   */
+  async function finalize(
+    c: Context<NodeEnv>,
+    response: Response,
+  ): Promise<Response> {
+    const nodeRes = c.env?.outgoing;
+    const headersSent = nodeRes?.headersSent ?? false;
+
+    logger.info(
+      `[MCP V3] Finalizing ${c.req.path}. headersSent=${headersSent}`,
+    );
+
+    if (headersSent) {
+      logger.info(
+        `[MCP V3] Bypassing Hono finalizer for ${c.req.path} because headers were already sent.`,
+      );
+      return new Response(null);
+    }
+
+    return response;
+  }
 
   app.post("/", async (c) => {
-    const nodeReq = c.env.incoming;
-    const nodeRes = c.env.outgoing;
-
-    const sessionId = nodeReq.headers["mcp-session-id"] as string | undefined;
+    logger.info(`[MCP V3] POST ${c.req.path} received`);
+    const sessionId = c.req.header("mcp-session-id");
 
     if (sessionId) {
-      // Existing session
       const transport = httpSessions.get(sessionId);
       if (!transport) {
-        console.warn(`[MCP] POST / — session not found: ${sessionId}`);
+        logger.warn(`[MCP V3] session not found: ${sessionId}`);
         return c.json({ error: "Session not found" }, 404);
       }
-      console.log(`[MCP] POST / — session ${sessionId}`);
-      await transport.handleRequest(nodeReq, nodeRes);
+      const response = await transport.handleRequest(c);
+      if (!response)
+        return c.json({ error: "No response from transport" }, 500);
+      return await finalize(c, response);
     } else {
-      // New session — authenticate and create transport
-      const userId = await resolveApiKey(nodeReq.headers["authorization"]);
-      console.log(`[MCP] POST / — new session for user ${userId}`);
+      const userId = await resolveApiKey(c.req.header("authorization"));
+      logger.info(`[MCP V3] new session user ${userId}`);
 
-      const transport = new StreamableHTTPServerTransport({
+      const transport = new StreamableHTTPTransport({
         sessionIdGenerator: () => randomUUID(),
       });
 
       transport.onclose = () => {
         if (transport.sessionId) {
-          console.log(`[MCP] session closed: ${transport.sessionId}`);
+          logger.info(`[MCP V3] session closed: ${transport.sessionId}`);
           httpSessions.delete(transport.sessionId);
         }
       };
@@ -73,93 +85,51 @@ export function mcpRoutes(db: AppDb, broadcast: Broadcaster): Hono<any> {
       const server = createMcpServer(userId, db, broadcast);
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       await server.connect(transport as any);
-      await transport.handleRequest(nodeReq, nodeRes);
+
+      const response = await transport.handleRequest(c);
+      if (!response)
+        return c.json({ error: "No response from transport" }, 500);
 
       if (transport.sessionId) {
         httpSessions.set(transport.sessionId, transport);
-        console.log(`[MCP] session created: ${transport.sessionId}`);
+        logger.info(`[MCP V3] session created: ${transport.sessionId}`);
       }
-    }
 
-    return new Response(null, { status: 200 });
+      return await finalize(c, response);
+    }
   });
 
   app.get("/", async (c) => {
-    const nodeReq = c.env.incoming;
-    const nodeRes = c.env.outgoing;
-
-    const sessionId = nodeReq.headers["mcp-session-id"] as string | undefined;
+    const sessionId = c.req.header("mcp-session-id");
     if (!sessionId)
       return c.json({ error: "Missing Mcp-Session-Id header" }, 400);
 
     const transport = httpSessions.get(sessionId);
     if (!transport) {
-      console.warn(`[MCP] GET / — session not found: ${sessionId}`);
+      logger.warn(`[MCP V3] GET session not found: ${sessionId}`);
       return c.json({ error: "Session not found" }, 404);
     }
 
-    console.log(`[MCP] GET / SSE — session ${sessionId}`);
-    await transport.handleRequest(nodeReq, nodeRes);
-    return new Response(null, { status: 200 });
+    logger.info(`[MCP V3] GET SSE session ${sessionId}`);
+    const response = await transport.handleRequest(c);
+    if (!response) return c.json({ error: "No response from transport" }, 500);
+
+    return await finalize(c, response);
   });
 
   app.delete("/", async (c) => {
-    const nodeReq = c.env.incoming;
-    const nodeRes = c.env.outgoing;
-
-    const sessionId = nodeReq.headers["mcp-session-id"] as string | undefined;
+    const sessionId = c.req.header("mcp-session-id");
     if (!sessionId)
       return c.json({ error: "Missing Mcp-Session-Id header" }, 400);
 
     const transport = httpSessions.get(sessionId);
     if (!transport) return c.json({ error: "Session not found" }, 404);
 
-    console.log(`[MCP] DELETE / — closing session ${sessionId}`);
-    await transport.handleRequest(nodeReq, nodeRes);
-    return new Response(null, { status: 200 });
-  });
+    logger.info(`[MCP V3] DELETE session ${sessionId}`);
+    const response = await transport.handleRequest(c);
+    if (!response) return c.json({ error: "No response from transport" }, 500);
 
-  // ── Legacy SSE transport (for older clients) ─────────────────────────────
-  //
-  // GET /mcp/sse   → establishes SSE stream
-  // POST /mcp/message?sessionId=xxx → back-channel messages
-
-  app.get("/sse", async (c) => {
-    const userId = await resolveApiKey(c.req.header("Authorization"));
-    console.log(`[MCP] GET /sse — user ${userId}`);
-
-    const nodeRes = c.env.outgoing;
-    const transport = new SSEServerTransport("/mcp/message", nodeRes);
-    sseSessions.set(transport.sessionId, transport);
-
-    nodeRes.on("close", () => {
-      console.log(`[MCP] SSE closed — session ${transport.sessionId}`);
-      sseSessions.delete(transport.sessionId);
-      void transport.close();
-    });
-
-    const server = createMcpServer(userId, db, broadcast);
-    await server.connect(transport);
-
-    return new Response(null, { status: 200 });
-  });
-
-  app.post("/message", async (c) => {
-    const sessionId = c.req.query("sessionId");
-    if (!sessionId) return c.json({ error: "Missing sessionId" }, 400);
-
-    const transport = sseSessions.get(sessionId);
-    if (!transport) {
-      console.warn(`[MCP] POST /message — session not found: ${sessionId}`);
-      return c.json({ error: "Session not found" }, 404);
-    }
-
-    console.log(`[MCP] POST /message — session ${sessionId}`);
-    const nodeReq = c.env.incoming;
-    const nodeRes = c.env.outgoing;
-    await transport.handlePostMessage(nodeReq, nodeRes);
-
-    return new Response(null, { status: 200 });
+    return await finalize(c, response);
   });
 
   return app;

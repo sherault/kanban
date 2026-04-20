@@ -31,9 +31,9 @@ export function createMcpServer(
 
   // ── Organization tools ──────────────────────────────────────────────────
 
-  server.tool(
+  server.registerTool(
     "list_organizations",
-    "List all organizations the current user belongs to",
+    { description: "List all organizations the current user belongs to" },
     () => {
       const orgs = orgSvc.listOrgs(userId);
       return {
@@ -44,12 +44,14 @@ export function createMcpServer(
     },
   );
 
-  server.tool(
+  server.registerTool(
     "create_organization",
-    "Create a new organization",
     {
-      name: z.string().min(1).max(100).describe("Organization name"),
-      website: z.string().url().optional().describe("Optional website URL"),
+      description: "Create a new organization",
+      inputSchema: {
+        name: z.string().min(1).max(100).describe("Organization name"),
+        website: z.string().url().optional().describe("Optional website URL"),
+      },
     },
     ({ name, website }) => {
       const org = orgSvc.createOrg(userId, { name, website: website ?? null });
@@ -63,10 +65,12 @@ export function createMcpServer(
 
   // ── Project tools ───────────────────────────────────────────────────────
 
-  server.tool(
+  server.registerTool(
     "list_projects",
-    "List all projects in an organization",
-    { orgId: z.string().describe("Organization ID") },
+    {
+      description: "List all projects in an organization",
+      inputSchema: { orgId: z.string().describe("Organization ID") },
+    },
     ({ orgId }) => {
       const projects = projectSvc.listProjects(orgId);
       return {
@@ -77,12 +81,14 @@ export function createMcpServer(
     },
   );
 
-  server.tool(
+  server.registerTool(
     "create_project",
-    "Create a new project in an organization",
     {
-      orgId: z.string().describe("Organization ID"),
-      name: z.string().min(1).max(200).describe("Project name"),
+      description: "Create a new project in an organization",
+      inputSchema: {
+        orgId: z.string().describe("Organization ID"),
+        name: z.string().min(1).max(200).describe("Project name"),
+      },
     },
     ({ orgId, name }) => {
       const project = projectSvc.createProject(orgId, { name });
@@ -96,14 +102,16 @@ export function createMcpServer(
 
   // ── Task tools ──────────────────────────────────────────────────────────
 
-  server.tool(
+  server.registerTool(
     "list_tasks",
-    "List tasks in a project, with optional filters",
     {
-      projectId: z.string().describe("Project ID"),
-      column: z.enum(COLUMN_VALUES).optional().describe("Filter by column"),
-      tag: z.string().optional().describe("Filter by tag"),
-      doerId: z.string().optional().describe("Filter by doer user ID"),
+      description: "List tasks in a project, with optional filters",
+      inputSchema: {
+        projectId: z.string().describe("Project ID"),
+        column: z.enum(COLUMN_VALUES).optional().describe("Filter by column"),
+        tag: z.string().optional().describe("Filter by tag"),
+        doerId: z.string().optional().describe("Filter by doer user ID"),
+      },
     },
     ({ projectId, column, tag, doerId }) => {
       let tasks = taskSvc.listTasks(projectId);
@@ -118,34 +126,36 @@ export function createMcpServer(
     },
   );
 
-  server.tool(
+  server.registerTool(
     "create_task",
-    "Create a new task in a project",
     {
-      projectId: z.string().describe("Project ID"),
-      title: z.string().min(1).max(500).describe("Task title"),
-      description: z
-        .string()
-        .optional()
-        .describe("Task description (markdown)"),
-      objective: z.string().optional().describe("Task objective"),
-      startDate: z
-        .string()
-        .regex(/^\d{4}-\d{2}-\d{2}$/)
-        .describe("Start date (YYYY-MM-DD)"),
-      endDate: z
-        .string()
-        .regex(/^\d{4}-\d{2}-\d{2}$/)
-        .describe("End date (YYYY-MM-DD)"),
-      column: z
-        .enum(["ideas", "todo"] as const)
-        .optional()
-        .describe("Target column (default: todo)"),
-      backgroundColor: z
-        .string()
-        .optional()
-        .describe("Background color hex e.g. #f97316"),
-      globalSubject: z.string().optional().describe("Global subject / epic"),
+      description: "Create a new task in a project",
+      inputSchema: {
+        projectId: z.string().describe("Project ID"),
+        title: z.string().min(1).max(500).describe("Task title"),
+        description: z
+          .string()
+          .optional()
+          .describe("Task description (markdown)"),
+        objective: z.string().optional().describe("Task objective"),
+        startDate: z
+          .string()
+          .regex(/^\d{4}-\d{2}-\d{2}$/)
+          .describe("Start date (YYYY-MM-DD)"),
+        endDate: z
+          .string()
+          .regex(/^\d{4}-\d{2}-\d{2}$/)
+          .describe("End date (YYYY-MM-DD)"),
+        column: z
+          .enum(["ideas", "todo"] as const)
+          .optional()
+          .describe("Target column (default: todo)"),
+        backgroundColor: z
+          .string()
+          .optional()
+          .describe("Background color hex e.g. #f97316"),
+        globalSubject: z.string().optional().describe("Global subject / epic"),
+      },
     },
     ({
       projectId,
@@ -176,54 +186,56 @@ export function createMcpServer(
     },
   );
 
-  server.tool(
+  server.registerTool(
     "update_task",
-    "Update one or more fields of an existing task",
     {
-      taskId: z.string().describe("Task ID"),
-      title: z.string().min(1).max(500).optional().describe("New title"),
-      description: z
-        .string()
-        .nullable()
-        .optional()
-        .describe(
-          "New description in Markdown (null to clear). Supports GFM: **bold**, *italic*, `code`, ## headings, - lists, ```code blocks```",
-        ),
-      objective: z
-        .string()
-        .nullable()
-        .optional()
-        .describe("New objective (null to clear)"),
-      startDate: z
-        .string()
-        .regex(/^\d{4}-\d{2}-\d{2}$/)
-        .optional()
-        .describe("New start date"),
-      endDate: z
-        .string()
-        .regex(/^\d{4}-\d{2}-\d{2}$/)
-        .optional()
-        .describe("New end date"),
-      backgroundColor: z
-        .string()
-        .nullable()
-        .optional()
-        .describe("Background color (null to clear)"),
-      globalSubject: z
-        .string()
-        .nullable()
-        .optional()
-        .describe("Global subject (null to clear)"),
-      doerId: z
-        .string()
-        .nullable()
-        .optional()
-        .describe("Doer user ID (null to unassign)"),
-      validatorId: z
-        .string()
-        .nullable()
-        .optional()
-        .describe("Validator user ID (null to unassign)"),
+      description: "Update one or more fields of an existing task",
+      inputSchema: {
+        taskId: z.string().describe("Task ID"),
+        title: z.string().min(1).max(500).optional().describe("New title"),
+        description: z
+          .string()
+          .nullable()
+          .optional()
+          .describe(
+            "New description in Markdown (null to clear). Supports GFM: **bold**, *italic*, `code`, ## headings, - lists, ```code blocks```",
+          ),
+        objective: z
+          .string()
+          .nullable()
+          .optional()
+          .describe("New objective (null to clear)"),
+        startDate: z
+          .string()
+          .regex(/^\d{4}-\d{2}-\d{2}$/)
+          .optional()
+          .describe("New start date"),
+        endDate: z
+          .string()
+          .regex(/^\d{4}-\d{2}-\d{2}$/)
+          .optional()
+          .describe("New end date"),
+        backgroundColor: z
+          .string()
+          .nullable()
+          .optional()
+          .describe("Background color (null to clear)"),
+        globalSubject: z
+          .string()
+          .nullable()
+          .optional()
+          .describe("Global subject (null to clear)"),
+        doerId: z
+          .string()
+          .nullable()
+          .optional()
+          .describe("Doer user ID (null to unassign)"),
+        validatorId: z
+          .string()
+          .nullable()
+          .optional()
+          .describe("Validator user ID (null to unassign)"),
+      },
     },
     ({ taskId, ...fields }) => {
       const task = taskSvc.updateTask(taskId, userId, fields);
@@ -235,12 +247,15 @@ export function createMcpServer(
     },
   );
 
-  server.tool(
+  server.registerTool(
     "move_task",
-    'Move a task to a different column. Moving to "doing" requires a doer assigned.',
     {
-      taskId: z.string().describe("Task ID"),
-      column: z.enum(COLUMN_VALUES).describe("Target column"),
+      description:
+        'Move a task to a different column. Moving to "doing" requires a doer assigned.',
+      inputSchema: {
+        taskId: z.string().describe("Task ID"),
+        column: z.enum(COLUMN_VALUES).describe("Target column"),
+      },
     },
     ({ taskId, column }) => {
       const task = taskSvc.moveTask(taskId, userId, {
@@ -254,10 +269,12 @@ export function createMcpServer(
     },
   );
 
-  server.tool(
+  server.registerTool(
     "delete_task",
-    "Delete a task",
-    { taskId: z.string().describe("Task ID") },
+    {
+      description: "Delete a task",
+      inputSchema: { taskId: z.string().describe("Task ID") },
+    },
     ({ taskId }) => {
       taskSvc.deleteTask(taskId);
       return {

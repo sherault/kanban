@@ -1,5 +1,5 @@
-import type { Role } from "../enums/roles.js";
-import type { UserDto } from "./identity.js";
+import type { Role } from "../enums/roles";
+import type { UserDto } from "./identity";
 
 export interface OrganizationDto {
   id: string;

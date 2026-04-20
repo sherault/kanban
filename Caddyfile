@@ -5,14 +5,14 @@
 
 # Unified entry point for Kanban
 # Uses {$DOMAIN} env var, defaults to localhost
-{$DOMAIN:localhost} {
+{$DOMAIN:http://localhost} {
     # WebSocket (Browser to API)
     handle /ws {
         reverse_proxy api:3001
     }
 
     # MCP Endpoints (Claude to API)
-    handle /mcp/* {
+    handle /mcp* {
         reverse_proxy api:3001
     }
 

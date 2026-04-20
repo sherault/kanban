@@ -10,6 +10,7 @@ export default [
       ".turbo/**",
       "apps/web/.next/**",
       "apps/api/drizzle/migrations/**",
+      "packages/shared/tsdown.config.ts",
     ],
   },
   ...baseConfig,
@@ -41,7 +42,7 @@ export default [
   },
   // Shared settings
   {
-    files: ["packages/shared/**/*.ts"],
+    files: ["packages/shared/src/**/*.ts"],
     languageOptions: {
       parserOptions: {
         project: "./packages/shared/tsconfig.json",

@@ -117,8 +117,7 @@ Each task has a rich detail sidebar with:
 ### MCP Server (Model Context Protocol)
 
 - Exposes your board as an MCP server for AI tools
-- **Streamable HTTP** transport (modern, recommended)
-- **Legacy SSE** transport (for older MCP clients)
+- **Streamable HTTP** transport
 - Authenticated via API key (`Authorization: Bearer <key>`)
 - Tools available to AI:
   - `list_organizations`, `create_organization`

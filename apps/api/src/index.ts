@@ -27,7 +27,7 @@ async function start() {
   const { injectWebSocket, upgradeWebSocket } = createNodeWebSocket({ app });
   app.route("/ws", wsRoutes(db, wsRooms, upgradeWebSocket));
 
-  const port = Number(process.env["API_PORT"] ?? process.env["PORT"] ?? 3001);
+  const port = Number(process.env["PORT"] ?? 3001);
   const hostname = "0.0.0.0";
 
   const server = serve({ fetch: app.fetch, port, hostname }, () => {

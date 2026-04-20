@@ -10,7 +10,6 @@
       "cache": false,
       "persistent": true,
       "env": [
-        "API_PORT",
         "PORT",
         "DATABASE_URL",
         "JWT_SECRET",

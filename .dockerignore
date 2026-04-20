@@ -18,3 +18,7 @@ node_modules
 .env.*
 **/.env
 **/.env.*
+*.tsbuildinfo
+**/*.tsbuildinfo
+dist
+**/dist

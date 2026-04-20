@@ -34,25 +34,25 @@ export class Logger {
     }
   }
 
-  debug(message: string, ...args: any[]) {
+  debug(message: string, ...args: unknown[]) {
     if (this.level <= LogLevel.DEBUG) {
       console.log(`[DEBUG] [${this.prefix}] ${message}`, ...args);
     }
   }
 
-  info(message: string, ...args: any[]) {
+  info(message: string, ...args: unknown[]) {
     if (this.level <= LogLevel.INFO) {
       console.log(`[INFO]  [${this.prefix}] ${message}`, ...args);
     }
   }
 
-  warn(message: string, ...args: any[]) {
+  warn(message: string, ...args: unknown[]) {
     if (this.level <= LogLevel.WARN) {
       console.warn(`[WARN]  [${this.prefix}] ${message}`, ...args);
     }
   }
 
-  error(message: string, ...args: any[]) {
+  error(message: string, ...args: unknown[]) {
     if (this.level <= LogLevel.ERROR) {
       console.error(`[ERROR] [${this.prefix}] ${message}`, ...args);
     }

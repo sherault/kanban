@@ -195,27 +195,12 @@ export function ProfileModal({ onClose }: { onClose: () => void }) {
   "mcpServers": {
     "kanban": {
       "type": "http",
-      "url": "${data.publicApiUrl}/mcp/",
+      "url": "${data.publicApiUrl}/mcp",
       "headers": { "Authorization": "Bearer <your-key>" }
     }
   }
 }`}</pre>
                       </div>
-                    </div>
-
-                    <div>
-                      <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">
-                        Legacy SSE (older clients)
-                      </p>
-                      <pre className="bg-gray-900 border border-gray-800 rounded-xl px-5 py-4 text-xs font-mono text-gray-300 overflow-x-auto leading-relaxed shadow-lg">{`{
-  "mcpServers": {
-    "kanban": {
-      "type": "sse",
-      "url": "${data.publicApiUrl}/mcp/sse",
-      "headers": { "Authorization": "Bearer <your-key>" }
-    }
-  }
-}`}</pre>
                     </div>
                   </div>
 

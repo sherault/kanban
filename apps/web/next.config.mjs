@@ -7,11 +7,10 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const nextConfig = {
   reactStrictMode: true,
   output: 'standalone',
-  // Removed transpilePackages for @kanban/shared to rely on pre-built dist
-  // which is much more stable in Docker environments.
-  turbopack: {
-    root: path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../../'),
+  transpilePackages: ["@kanban/shared"],
+  experimental: {
+    // Standard Next.js 16 settings
   },
-}
+};
 
-export default nextConfig
+export default nextConfig;

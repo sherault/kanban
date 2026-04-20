@@ -2,10 +2,21 @@
   "name": "@kanban/shared",
   "version": "0.0.1",
   "type": "module",
-  "main": "./dist/index.js",
-  "types": "./dist/index.d.ts",
+  "main": "./dist/index.mjs",
+  "module": "./dist/index.mjs",
+  "types": "./dist/index.d.mts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.mts",
+      "browser": "./src/index.ts",
+      "next": "./src/index.ts",
+      "import": "./dist/index.mjs",
+      "default": "./dist/index.mjs"
+    }
+  },
   "scripts": {
-    "build": "tsc -b",
+    "build": "tsdown",
+    "dev": "tsdown --watch",
     "lint": "eslint src",
     "typecheck": "tsc --noEmit"
   },

@@ -10,6 +10,7 @@
     "declaration": true,
     "declarationMap": false,
     "sourceMap": false,
-    "composite": true
+    "composite": true,
+    "baseUrl": "."
   }
 }

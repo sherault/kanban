@@ -770,7 +770,7 @@ export class TaskService {
           .get();
         if (!updated) throw notFound("Task not found after update");
 
-        const dto = assembleTaskDto(tx as any, updated);
+        const dto = assembleTaskDto(tx as unknown as AppDb, updated);
 
         this.broadcast(`project:${row.projectId}`, {
           type: "task.created",

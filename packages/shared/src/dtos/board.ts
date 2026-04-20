@@ -1,5 +1,5 @@
-import type { Column } from "../enums/columns.js";
-import type { UserDto } from "./identity.js";
+import type { Column } from "../enums/columns";
+import type { UserDto } from "./identity";
 
 export interface TaskDto {
   id: string;

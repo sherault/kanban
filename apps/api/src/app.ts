@@ -5,6 +5,7 @@ import { secureHeaders } from "hono/secure-headers";
 import { HTTPException } from "hono/http-exception";
 import type { AppDb, Broadcaster, HonoEnv } from "./types.js";
 import { noopBroadcaster } from "./types.js";
+import { logger } from "./lib/logger.js";
 import { identityRoutes } from "./features/identity/identity.routes.js";
 import { organizationRoutes } from "./features/organization/organization.routes.js";
 import { invitationRoutes } from "./features/invitation/invitation.routes.js";
@@ -26,23 +27,56 @@ export function createApp(
     process.env["ENABLE_HSTS"] === "true" ||
     (isProd && process.env["ENABLE_HSTS"] !== "false");
 
-  app.use(
-    "*",
-    secureHeaders({
+  // Global middleware configuration
+  app.use("*", async (c, next) => {
+    // Skip browser-security middlewares for MCP routes
+    // MCP uses Bearer tokens and its own protocol, so it doesn't need CSRF/Secure Headers
+    // and they often conflict with SSE streaming.
+    if (c.req.path.startsWith("/mcp")) {
+      logger.info(
+        `[Middleware V3] Skipping global middlewares for path: ${c.req.path}`,
+      );
+      return await next();
+    }
+
+    // Apply security headers
+    const secureMiddleware = secureHeaders({
       strictTransportSecurity: hstsEnabled
         ? "max-age=31536000; includeSubDomains; preload"
         : false,
-    }),
-  );
-  app.use(
-    "*",
-    cors({
+    });
+
+    // Apply CORS
+    const corsMiddleware = cors({
       origin: frontendUrl,
       credentials: true,
-    }),
-  );
+    });
+
+    // Apply CSRF (only for non-test)
+    if (!isTest) {
+      const csrfMiddleware = csrf({
+        origin: frontendUrl,
+      });
+
+      // Execute in sequence
+      await secureMiddleware(c, async () => {
+        await corsMiddleware(c, async () => {
+          await csrfMiddleware(c, next);
+        });
+      });
+      return;
+    }
+
+    await secureMiddleware(c, async () => {
+      await corsMiddleware(c, next);
+    });
+  });
+
+  // CSRF logging middleware (if needed, but already handled above if we skip /mcp)
   if (!isTest) {
     app.use("*", async (c, next) => {
+      if (c.req.path.startsWith("/mcp")) return await next();
+
       const origin = c.req.header("Origin");
       if (
         c.req.method !== "GET" &&
@@ -55,12 +89,6 @@ export function createApp(
       }
       await next();
     });
-    app.use(
-      "*",
-      csrf({
-        origin: frontendUrl,
-      }),
-    );
   }
 
   app.onError((err, c) => {
