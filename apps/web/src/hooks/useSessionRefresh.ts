@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect } from "react";
+import { usePathname } from "next/navigation";
 
 /**
  * Periodically hits /api/auth/token to keep the session alive.
@@ -9,27 +10,28 @@ import { useEffect } from "react";
  * before it expires.
  */
 export function useSessionRefresh() {
+  const pathname = usePathname();
+
   useEffect(() => {
-    // Refresh every 10 minutes (access token is 15 minutes)
-    const interval = setInterval(
-      async () => {
-        try {
-          const res = await fetch("/api/auth/token");
-          if (res.status === 401) {
-            // Token couldn't be refreshed (refresh token probably expired too)
-            // We could redirect to login here, but let's be passive for now
-            // as the next navigation will handle it.
-            console.warn(
-              "[session] Access token expired and couldn't be refreshed.",
-            );
-          }
-        } catch (err) {
-          console.error("[session] Failed to refresh session:", err);
+    const refresh = async () => {
+      try {
+        const res = await fetch("/api/auth/token");
+        if (res.status === 401) {
+          console.warn(
+            "[session] Access token expired and couldn't be refreshed.",
+          );
         }
-      },
-      10 * 60 * 1000,
-    );
+      } catch (err) {
+        console.error("[session] Failed to refresh session:", err);
+      }
+    };
+
+    // Refresh on mount OR on navigation
+    void refresh();
+
+    // Refresh every 10 minutes (access token is 15 minutes)
+    const interval = setInterval(refresh, 10 * 60 * 1000);
 
     return () => clearInterval(interval);
-  }, []);
+  }, [pathname]);
 }
