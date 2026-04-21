@@ -321,6 +321,18 @@ Connect Claude (or any other MCP client) to your board from the **Profile** page
 }
 ```
 
+### Available Tools
+
+- `list_organizations`: List all organizations the current user belongs to.
+- `create_organization`: Create a new organization.
+- `list_projects`: List all projects within an organization.
+- `create_project`: Create a new project.
+- `list_tasks`: List tasks in a project with filtering and pagination.
+- `create_task`: Create a new task.
+- `update_task`: Update task details.
+- `move_task`: Change task column.
+- `delete_task`: Remove a task.
+
 ---
 
 ## Architecture

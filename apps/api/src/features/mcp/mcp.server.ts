@@ -105,22 +105,55 @@ export function createMcpServer(
   server.registerTool(
     "list_tasks",
     {
-      description: "List tasks in a project, with optional filters",
+      description:
+        "List tasks in a project, with optional filters and pagination",
       inputSchema: {
         projectId: z.string().describe("Project ID"),
         column: z.enum(COLUMN_VALUES).optional().describe("Filter by column"),
         tag: z.string().optional().describe("Filter by tag"),
         doerId: z.string().optional().describe("Filter by doer user ID"),
+        page: z
+          .number()
+          .int()
+          .min(1)
+          .default(1)
+          .describe("Page number for pagination"),
+        limit: z
+          .number()
+          .int()
+          .min(1)
+          .max(20)
+          .default(10)
+          .describe("Max elements per call (1-20, default 10)"),
       },
     },
-    ({ projectId, column, tag, doerId }) => {
+    ({ projectId, column, tag, doerId, page, limit }) => {
       let tasks = taskSvc.listTasks(projectId);
       if (column) tasks = tasks.filter((t) => t.column === column);
       if (tag) tasks = tasks.filter((t) => t.tags.includes(tag));
       if (doerId) tasks = tasks.filter((t) => t.doer?.id === doerId);
+
+      const offset = (page - 1) * limit;
+      const paginatedTasks = tasks.slice(offset, offset + limit);
+
       return {
         content: [
-          { type: "text" as const, text: JSON.stringify(tasks, null, 2) },
+          {
+            type: "text" as const,
+            text: JSON.stringify(
+              {
+                tasks: paginatedTasks,
+                pagination: {
+                  total: tasks.length,
+                  page,
+                  limit,
+                  totalPages: Math.ceil(tasks.length / limit),
+                },
+              },
+              null,
+              2,
+            ),
+          },
         ],
       };
     },
