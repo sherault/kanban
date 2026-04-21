@@ -168,6 +168,7 @@ export class TaskService {
       doerId?: string | null | undefined;
       validatorId?: string | null | undefined;
     },
+    isMcp?: boolean,
   ): TaskDto {
     const column: Column = input.column ?? "todo";
     const id = generateId();
@@ -198,6 +199,7 @@ export class TaskService {
       type: "task.created",
       payload: dto,
       actorId: reporterId,
+      isMcp,
     });
     return dto;
   }
@@ -230,6 +232,7 @@ export class TaskService {
       doerId?: string | null | undefined;
       validatorId?: string | null | undefined;
     },
+    isMcp?: boolean,
   ): TaskDto {
     const existing = this.getRow(taskId);
     const batchId = generateId();
@@ -290,11 +293,12 @@ export class TaskService {
       type: "task.updated",
       payload: dto,
       actorId: actorId,
+      isMcp,
     });
     return dto;
   }
 
-  deleteTask(taskId: string, actorId?: string): void {
+  deleteTask(taskId: string, actorId?: string, isMcp?: boolean): void {
     try {
       this.logger.info(`Deleting task: ${taskId}`);
       const existing = this.getRow(taskId);
@@ -309,6 +313,7 @@ export class TaskService {
         type: "task.deleted",
         payload: { id: taskId, projectId: existing.projectId },
         actorId: actorId,
+        isMcp,
       });
       this.logger.info(`Successfully deleted task: ${taskId}`);
     } catch (err) {
@@ -610,6 +615,7 @@ export class TaskService {
     taskId: string,
     actorId: string,
     input: { column: Column; position?: number },
+    isMcp?: boolean,
   ): TaskDto {
     const row = this.getRow(taskId);
     const oldColumn = row.column as Column;
@@ -688,6 +694,7 @@ export class TaskService {
       type: "task.updated",
       payload: dto,
       actorId: actorId,
+      isMcp,
     });
     return dto;
   }
@@ -710,7 +717,12 @@ export class TaskService {
     return dto;
   }
 
-  archiveTasks(projectId: string, taskIds: string[], actorId: string): void {
+  archiveTasks(
+    projectId: string,
+    taskIds: string[],
+    actorId: string,
+    isMcp?: boolean,
+  ): void {
     const now = new Date().toISOString();
     for (const taskId of taskIds) {
       const row = this.db
@@ -740,11 +752,12 @@ export class TaskService {
         type: "task.deleted",
         payload: { id: taskId, projectId },
         actorId: actorId,
+        isMcp,
       });
     }
   }
 
-  restoreTask(taskId: string, actorId: string): TaskDto {
+  restoreTask(taskId: string, actorId: string, isMcp?: boolean): TaskDto {
     try {
       this.logger.info(`Restoring task: ${taskId} by actor: ${actorId}`);
       const row = this.getRow(taskId);
@@ -790,6 +803,7 @@ export class TaskService {
           type: "task.created",
           payload: dto,
           actorId: actorId,
+          isMcp,
         });
 
         return dto;

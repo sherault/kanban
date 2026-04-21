@@ -5,27 +5,41 @@ import { useEffect, useState } from "react";
 export interface NotificationData {
   id: string; // unique
   type: "task.created" | "task.updated" | "task.deleted";
+  taskId?: string;
   message: string;
   duration: number; // in seconds
+  isSelfMcp?: boolean;
 }
 
 export function NotificationsOverlay({
   notifications,
   maxNotifications,
   onClose,
+  onClickTask,
+  rightOffset = 0,
 }: {
   notifications: NotificationData[];
   maxNotifications: number;
   onClose: (id: string) => void;
+  onClickTask?: (taskId: string) => void;
+  rightOffset?: number;
 }) {
   // Stack oldest at bottom.
   // In `notifications` array, suppose the end is the newest.
   const displayNotifs = notifications.slice(-maxNotifications);
 
   return (
-    <div className="absolute bottom-4 right-4 z-50 flex flex-col-reverse gap-2 pointer-events-none">
+    <div
+      className="absolute bottom-4 flex flex-col-reverse gap-2 pointer-events-none transition-[right] duration-300 ease-in-out z-50"
+      style={{ right: `calc(1rem + ${rightOffset}px)` }}
+    >
       {displayNotifs.map((n) => (
-        <NotificationItem key={n.id} notification={n} onClose={onClose} />
+        <NotificationItem
+          key={n.id}
+          notification={n}
+          onClose={onClose}
+          onClickTask={onClickTask}
+        />
       ))}
     </div>
   );
@@ -34,9 +48,11 @@ export function NotificationsOverlay({
 function NotificationItem({
   notification,
   onClose,
+  onClickTask,
 }: {
   notification: NotificationData;
   onClose: (id: string) => void;
+  onClickTask?: (taskId: string) => void;
 }) {
   const [timeLeft, setTimeLeft] = useState(notification.duration);
   const [isHovered, setIsHovered] = useState(false);
@@ -82,7 +98,23 @@ function NotificationItem({
           />
         </svg>
       </button>
-      <div className="text-sm font-medium">{notification.message}</div>
+      <div className="text-sm font-medium">
+        {notification.taskId && notification.type !== "task.deleted" ? (
+          <button
+            onClick={() => onClickTask?.(notification.taskId!)}
+            className="text-left hover:underline focus:outline-none"
+          >
+            {notification.message}
+          </button>
+        ) : (
+          notification.message
+        )}
+      </div>
+      {notification.isSelfMcp && (
+        <div className="text-[10px] uppercase tracking-wider font-bold opacity-60 mt-0.5">
+          by your MCP client
+        </div>
+      )}
       <div className="text-xs opacity-75 mt-1">{timeLeft}s remaining</div>
     </div>
   );

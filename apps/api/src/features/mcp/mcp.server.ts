@@ -201,16 +201,21 @@ export function createMcpServer(
       backgroundColor,
       globalSubject,
     }) => {
-      const task = taskSvc.createTask(projectId, userId, {
-        title,
-        description: description ?? null,
-        objective: objective ?? null,
-        startDate,
-        endDate,
-        column: (column as Column | undefined) ?? "todo",
-        backgroundColor: backgroundColor ?? null,
-        globalSubject: globalSubject ?? null,
-      });
+      const task = taskSvc.createTask(
+        projectId,
+        userId,
+        {
+          title,
+          description: description ?? null,
+          objective: objective ?? null,
+          startDate,
+          endDate,
+          column: (column as Column | undefined) ?? "todo",
+          backgroundColor: backgroundColor ?? null,
+          globalSubject: globalSubject ?? null,
+        },
+        true,
+      );
       return {
         content: [
           { type: "text" as const, text: JSON.stringify(task, null, 2) },
@@ -271,7 +276,7 @@ export function createMcpServer(
       },
     },
     ({ taskId, ...fields }) => {
-      const task = taskSvc.updateTask(taskId, userId, fields);
+      const task = taskSvc.updateTask(taskId, userId, fields, true);
       return {
         content: [
           { type: "text" as const, text: JSON.stringify(task, null, 2) },
@@ -291,9 +296,14 @@ export function createMcpServer(
       },
     },
     ({ taskId, column }) => {
-      const task = taskSvc.moveTask(taskId, userId, {
-        column: column as Column,
-      });
+      const task = taskSvc.moveTask(
+        taskId,
+        userId,
+        {
+          column: column as Column,
+        },
+        true,
+      );
       return {
         content: [
           { type: "text" as const, text: JSON.stringify(task, null, 2) },
@@ -309,7 +319,7 @@ export function createMcpServer(
       inputSchema: { taskId: z.string().describe("Task ID") },
     },
     ({ taskId }) => {
-      taskSvc.deleteTask(taskId);
+      taskSvc.deleteTask(taskId, userId, true);
       return {
         content: [
           { type: "text" as const, text: JSON.stringify({ deleted: taskId }) },

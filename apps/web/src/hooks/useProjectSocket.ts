@@ -7,18 +7,29 @@ import type { TaskDto } from "@kanban/shared";
 
 /** Subset of WsEvent from apps/api/src/types.ts — only task events needed here. */
 type IncomingEvent =
-  | { type: "task.created"; payload: TaskDto; actorId?: string | undefined }
-  | { type: "task.updated"; payload: TaskDto; actorId?: string | undefined }
+  | {
+      type: "task.created";
+      payload: TaskDto;
+      actorId?: string | undefined;
+      isMcp?: boolean | undefined;
+    }
+  | {
+      type: "task.updated";
+      payload: TaskDto;
+      actorId?: string | undefined;
+      isMcp?: boolean | undefined;
+    }
   | {
       type: "task.deleted";
       payload: { id: string; projectId: string };
       actorId?: string | undefined;
+      isMcp?: boolean | undefined;
     };
 
 export interface ProjectSocketCallbacks {
-  onTaskCreated: (task: TaskDto, actorId?: string) => void;
-  onTaskUpdated: (task: TaskDto, actorId?: string) => void;
-  onTaskDeleted: (taskId: string, actorId?: string) => void;
+  onTaskCreated: (task: TaskDto, actorId?: string, isMcp?: boolean) => void;
+  onTaskUpdated: (task: TaskDto, actorId?: string, isMcp?: boolean) => void;
+  onTaskDeleted: (taskId: string, actorId?: string, isMcp?: boolean) => void;
 }
 
 async function fetchConfig(): Promise<{ token: string; wsUrl: string } | null> {
@@ -94,13 +105,25 @@ export function useProjectSocket(
 
         switch (msg.type) {
           case "task.created":
-            callbacksRef.current.onTaskCreated(msg.payload, msg.actorId);
+            callbacksRef.current.onTaskCreated(
+              msg.payload,
+              msg.actorId,
+              msg.isMcp,
+            );
             break;
           case "task.updated":
-            callbacksRef.current.onTaskUpdated(msg.payload, msg.actorId);
+            callbacksRef.current.onTaskUpdated(
+              msg.payload,
+              msg.actorId,
+              msg.isMcp,
+            );
             break;
           case "task.deleted":
-            callbacksRef.current.onTaskDeleted(msg.payload.id, msg.actorId);
+            callbacksRef.current.onTaskDeleted(
+              msg.payload.id,
+              msg.actorId,
+              msg.isMcp,
+            );
             break;
         }
       };

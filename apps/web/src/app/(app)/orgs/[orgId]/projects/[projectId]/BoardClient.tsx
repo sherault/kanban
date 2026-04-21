@@ -177,7 +177,7 @@ export function BoardClient({
   // ── WebSocket real-time ───────────────────────────────────────────────────
 
   const { isConnected } = useProjectSocket(projectId, {
-    onTaskCreated(task, actorId) {
+    onTaskCreated(task, actorId, isMcp) {
       setTasks((prev) => {
         const idx = prev.findIndex((t) => t.id === task.id);
         if (idx >= 0) {
@@ -188,19 +188,21 @@ export function BoardClient({
         return [...prev, task];
       });
       setArchiveRevision((v) => v + 1);
-      if (enableNotifications && actorId !== currentUserId) {
+      if (enableNotifications && (actorId !== currentUserId || isMcp)) {
         setNotifications((prev) => [
           ...prev,
           {
             id: Math.random().toString(36).substring(7),
             type: "task.created",
+            taskId: task.id,
             message: `Task "${task.title}" was created.`,
             duration: notificationDuration,
+            isSelfMcp: actorId === currentUserId && isMcp,
           },
         ]);
       }
     },
-    onTaskUpdated(task, actorId) {
+    onTaskUpdated(task, actorId, isMcp) {
       // Always update state — the sidebar uses uncontrolled inputs (defaultValue)
       // so in-progress text edits are preserved automatically.
       setTasks((prev) => prev.map((t) => (t.id !== task.id ? t : task)));
@@ -225,19 +227,21 @@ export function BoardClient({
 
       setArchiveRevision((v) => v + 1);
 
-      if (enableNotifications && actorId !== currentUserId) {
+      if (enableNotifications && (actorId !== currentUserId || isMcp)) {
         setNotifications((prev) => [
           ...prev,
           {
             id: Math.random().toString(36).substring(7),
             type: "task.updated",
+            taskId: task.id,
             message: `Task "${task.title}" was updated.`,
             duration: notificationDuration,
+            isSelfMcp: actorId === currentUserId && isMcp,
           },
         ]);
       }
     },
-    onTaskDeleted(taskId, actorId) {
+    onTaskDeleted(taskId, actorId, isMcp) {
       setTasks((prev) => prev.filter((t) => t.id !== taskId));
       setSelectedDoneIds((prev) => {
         const next = new Set(prev);
@@ -248,15 +252,17 @@ export function BoardClient({
       setExpandedIds((prev) => prev.filter((id) => id !== taskId));
       setArchiveRevision((v) => v + 1);
 
-      if (enableNotifications && actorId !== currentUserId) {
+      if (enableNotifications && (actorId !== currentUserId || isMcp)) {
         const t = tasks.find((tsk) => tsk.id === taskId);
         setNotifications((prev) => [
           ...prev,
           {
             id: Math.random().toString(36).substring(7),
             type: "task.deleted",
+            taskId: taskId,
             message: `Task "${t?.title || taskId}" was deleted.`,
             duration: notificationDuration,
+            isSelfMcp: actorId === currentUserId && isMcp,
           },
         ]);
       }
@@ -421,10 +427,24 @@ export function BoardClient({
     }
   }
 
+  // Calculate total width of all open panels (folded strips + expanded panels)
+  // to avoid covering notifications.
+  const panelsRightOffset = useMemo(() => {
+    if (!isMounted || openTasks.length === 0) return 0;
+    const foldedCount = openTasks.filter(
+      (ot) => !expandedIds.includes(ot.id),
+    ).length;
+    const expandedWidth = expandedIds.reduce(
+      (sum, id) => sum + (panelWidths[id] || 384),
+      0,
+    );
+    return foldedCount * 48 + expandedWidth;
+  }, [isMounted, openTasks, expandedIds, panelWidths]);
+
   // ── Render ────────────────────────────────────────────────────────────────
 
   return (
-    <div className="flex h-full overflow-hidden">
+    <div className="flex h-full overflow-hidden relative">
       <DndContext
         id="board-dnd"
         sensors={sensors}
@@ -818,6 +838,8 @@ export function BoardClient({
           notifications={notifications}
           maxNotifications={maxNotifications}
           onClose={removeNotification}
+          onClickTask={handleOpenTask}
+          rightOffset={panelsRightOffset}
         />
       )}
     </div>
