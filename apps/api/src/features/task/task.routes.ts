@@ -183,7 +183,7 @@ export function taskRoutes(
     const task = svc.getTask(c.req.param("taskId"));
     if (!task || task.projectId !== c.req.param("projectId"))
       throw notFound("Task not found");
-    svc.deleteTask(c.req.param("taskId"));
+    svc.deleteTask(c.req.param("taskId"), c.get("userId"));
     return c.json({ success: true });
   });
 
@@ -218,7 +218,11 @@ export function taskRoutes(
     // Permission check for the target task (linkedTaskId) is done in the service (org check)
     // but we still rely on the projectId check for the source task.
     return c.json(
-      svc.addLink(c.req.param("taskId"), c.req.param("linkedTaskId")),
+      svc.addLink(
+        c.req.param("taskId"),
+        c.req.param("linkedTaskId"),
+        c.get("userId"),
+      ),
     );
   });
 
@@ -227,7 +231,11 @@ export function taskRoutes(
     if (!task || task.projectId !== c.req.param("projectId"))
       throw notFound("Task not found");
     return c.json(
-      svc.removeLink(c.req.param("taskId"), c.req.param("linkedTaskId")),
+      svc.removeLink(
+        c.req.param("taskId"),
+        c.req.param("linkedTaskId"),
+        c.get("userId"),
+      ),
     );
   });
 
@@ -315,7 +323,11 @@ export function taskRoutes(
       if (!task || task.projectId !== c.req.param("projectId"))
         throw notFound("Task not found");
       return c.json(
-        svc.reorderTask(c.req.param("taskId"), c.req.valid("json").position),
+        svc.reorderTask(
+          c.req.param("taskId"),
+          c.req.valid("json").position,
+          c.get("userId"),
+        ),
       );
     },
   );

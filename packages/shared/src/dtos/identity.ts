@@ -6,6 +6,9 @@ export interface UserDto {
   totpEnabled: boolean;
   createdAt: string;
   maxOpenPanels: number;
+  enableNotifications: boolean;
+  maxNotifications: number;
+  notificationDuration: number;
 }
 
 export interface ApiKeyDto {

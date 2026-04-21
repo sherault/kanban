@@ -19,9 +19,13 @@ export type WsEvent =
   | { type: "project.created"; payload: ProjectDto }
   | { type: "project.updated"; payload: ProjectDto }
   | { type: "project.deleted"; payload: { id: string } }
-  | { type: "task.created"; payload: TaskDto }
-  | { type: "task.updated"; payload: TaskDto }
-  | { type: "task.deleted"; payload: { id: string; projectId: string } }
+  | { type: "task.created"; payload: TaskDto; actorId?: string | undefined }
+  | { type: "task.updated"; payload: TaskDto; actorId?: string | undefined }
+  | {
+      type: "task.deleted";
+      payload: { id: string; projectId: string };
+      actorId?: string | undefined;
+    }
   | { type: "member.updated"; payload: { userId: string; role: string } };
 
 /** Function that broadcasts a WsEvent to all subscribers of a room. */

@@ -16,6 +16,11 @@ export const users = sqliteTable("users", {
   failedLoginAttempts: integer("failed_login_attempts").notNull().default(0),
   lockoutUntil: text("lockout_until"),
   maxOpenPanels: integer("max_open_panels").notNull().default(5),
+  enableNotifications: integer("enable_notifications", { mode: "boolean" })
+    .notNull()
+    .default(true),
+  maxNotifications: integer("max_notifications").notNull().default(3),
+  notificationDuration: integer("notification_duration").notNull().default(5),
   createdAt: text("created_at")
     .notNull()
     .default(sql`(datetime('now'))`),

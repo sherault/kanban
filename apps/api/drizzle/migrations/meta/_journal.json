@@ -43,6 +43,13 @@
       "when": 1776332400000,
       "tag": "0005_max_open_panels",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "6",
+      "when": 1776756542241,
+      "tag": "0006_mute_nightmare",
+      "breakpoints": true
     }
   ]
 }

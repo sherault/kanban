@@ -197,6 +197,7 @@ export class TaskService {
     this.broadcast(`project:${projectId}`, {
       type: "task.created",
       payload: dto,
+      actorId: reporterId,
     });
     return dto;
   }
@@ -288,11 +289,12 @@ export class TaskService {
     this.broadcast(`project:${updated.projectId}`, {
       type: "task.updated",
       payload: dto,
+      actorId: actorId,
     });
     return dto;
   }
 
-  deleteTask(taskId: string): void {
+  deleteTask(taskId: string, actorId?: string): void {
     try {
       this.logger.info(`Deleting task: ${taskId}`);
       const existing = this.getRow(taskId);
@@ -306,6 +308,7 @@ export class TaskService {
       this.broadcast(`project:${existing.projectId}`, {
         type: "task.deleted",
         payload: { id: taskId, projectId: existing.projectId },
+        actorId: actorId,
       });
       this.logger.info(`Successfully deleted task: ${taskId}`);
     } catch (err) {
@@ -368,6 +371,7 @@ export class TaskService {
     this.broadcast(`project:${row.projectId}`, {
       type: "task.updated",
       payload: dto,
+      actorId: actorId,
     });
     return dto;
   }
@@ -397,11 +401,12 @@ export class TaskService {
     this.broadcast(`project:${row.projectId}`, {
       type: "task.updated",
       payload: dto,
+      actorId: actorId,
     });
     return dto;
   }
 
-  addLink(taskId: string, linkedTaskId: string): TaskDto {
+  addLink(taskId: string, linkedTaskId: string, actorId?: string): TaskDto {
     const row = this.getRow(taskId);
     const linkedRow = this.getRow(linkedTaskId);
 
@@ -428,11 +433,12 @@ export class TaskService {
     this.broadcast(`project:${row.projectId}`, {
       type: "task.updated",
       payload: dto,
+      actorId: actorId,
     });
     return dto;
   }
 
-  removeLink(taskId: string, linkedTaskId: string): TaskDto {
+  removeLink(taskId: string, linkedTaskId: string, actorId?: string): TaskDto {
     const row = this.getRow(taskId);
     this.db
       .delete(taskLinks)
@@ -453,6 +459,7 @@ export class TaskService {
     this.broadcast(`project:${row.projectId}`, {
       type: "task.updated",
       payload: dto,
+      actorId: actorId,
     });
     return dto;
   }
@@ -485,6 +492,7 @@ export class TaskService {
     this.broadcast(`project:${row.projectId}`, {
       type: "task.updated",
       payload: dto,
+      actorId: actorId,
     });
     return dto;
   }
@@ -522,6 +530,7 @@ export class TaskService {
     this.broadcast(`project:${row.projectId}`, {
       type: "task.updated",
       payload: dto,
+      actorId: actorId,
     });
     return dto;
   }
@@ -554,6 +563,7 @@ export class TaskService {
     this.broadcast(`project:${row.projectId}`, {
       type: "task.updated",
       payload: dto,
+      actorId: actorId,
     });
     return dto;
   }
@@ -591,6 +601,7 @@ export class TaskService {
     this.broadcast(`project:${row.projectId}`, {
       type: "task.updated",
       payload: dto,
+      actorId: actorId,
     });
     return dto;
   }
@@ -676,11 +687,12 @@ export class TaskService {
     this.broadcast(`project:${row.projectId}`, {
       type: "task.updated",
       payload: dto,
+      actorId: actorId,
     });
     return dto;
   }
 
-  reorderTask(taskId: string, position: number): TaskDto {
+  reorderTask(taskId: string, position: number, actorId?: string): TaskDto {
     const row = this.getRow(taskId);
     this.db
       .update(tasks)
@@ -693,6 +705,7 @@ export class TaskService {
     this.broadcast(`project:${row.projectId}`, {
       type: "task.updated",
       payload: dto,
+      actorId: actorId,
     });
     return dto;
   }
@@ -726,6 +739,7 @@ export class TaskService {
       this.broadcast(`project:${projectId}`, {
         type: "task.deleted",
         payload: { id: taskId, projectId },
+        actorId: actorId,
       });
     }
   }
@@ -775,6 +789,7 @@ export class TaskService {
         this.broadcast(`project:${row.projectId}`, {
           type: "task.created",
           payload: dto,
+          actorId: actorId,
         });
 
         return dto;

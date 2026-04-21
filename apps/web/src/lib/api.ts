@@ -138,7 +138,15 @@ export const api = {
         token,
       });
     },
-    updateSettings(token: string, body: { maxOpenPanels?: number }) {
+    updateSettings(
+      token: string,
+      body: {
+        maxOpenPanels?: number;
+        enableNotifications?: boolean;
+        maxNotifications?: number;
+        notificationDuration?: number;
+      },
+    ) {
       return apiFetch<{ user: UserDto }>("/auth/me/settings", {
         method: "PATCH",
         body: JSON.stringify(body),

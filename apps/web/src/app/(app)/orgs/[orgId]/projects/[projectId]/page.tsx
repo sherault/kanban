@@ -28,6 +28,9 @@ export default async function ProjectBoardPage({
       orgId={orgId}
       currentUserId={currentUserId ?? ""}
       maxOpenPanels={me.maxOpenPanels}
+      enableNotifications={me.enableNotifications}
+      maxNotifications={me.maxNotifications}
+      notificationDuration={me.notificationDuration}
     />
   );
 }

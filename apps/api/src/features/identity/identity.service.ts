@@ -86,6 +86,9 @@ function toUserDto(row: typeof users.$inferSelect): UserDto {
     emailVerified: row.emailVerified,
     totpEnabled: row.totpEnabled,
     maxOpenPanels: row.maxOpenPanels,
+    enableNotifications: row.enableNotifications,
+    maxNotifications: row.maxNotifications,
+    notificationDuration: row.notificationDuration,
     createdAt: row.createdAt,
   };
 }
@@ -477,13 +480,30 @@ export class IdentityService {
 
   async updateSettings(
     userId: string,
-    settings: { maxOpenPanels?: number | undefined },
+    settings: {
+      maxOpenPanels?: number | undefined;
+      enableNotifications?: boolean | undefined;
+      maxNotifications?: number | undefined;
+      notificationDuration?: number | undefined;
+    },
   ): Promise<UserDto> {
     const user = this.db
       .update(users)
       .set({
         ...(settings.maxOpenPanels !== undefined && {
           maxOpenPanels: Math.min(10, Math.max(1, settings.maxOpenPanels)),
+        }),
+        ...(settings.enableNotifications !== undefined && {
+          enableNotifications: settings.enableNotifications,
+        }),
+        ...(settings.maxNotifications !== undefined && {
+          maxNotifications: Math.min(5, Math.max(1, settings.maxNotifications)),
+        }),
+        ...(settings.notificationDuration !== undefined && {
+          notificationDuration: Math.min(
+            30,
+            Math.max(1, settings.notificationDuration),
+          ),
         }),
       })
       .where(eq(users.id, userId))

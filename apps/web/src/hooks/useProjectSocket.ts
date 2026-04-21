@@ -7,14 +7,18 @@ import type { TaskDto } from "@kanban/shared";
 
 /** Subset of WsEvent from apps/api/src/types.ts — only task events needed here. */
 type IncomingEvent =
-  | { type: "task.created"; payload: TaskDto }
-  | { type: "task.updated"; payload: TaskDto }
-  | { type: "task.deleted"; payload: { id: string; projectId: string } };
+  | { type: "task.created"; payload: TaskDto; actorId?: string | undefined }
+  | { type: "task.updated"; payload: TaskDto; actorId?: string | undefined }
+  | {
+      type: "task.deleted";
+      payload: { id: string; projectId: string };
+      actorId?: string | undefined;
+    };
 
 export interface ProjectSocketCallbacks {
-  onTaskCreated: (task: TaskDto) => void;
-  onTaskUpdated: (task: TaskDto) => void;
-  onTaskDeleted: (taskId: string) => void;
+  onTaskCreated: (task: TaskDto, actorId?: string) => void;
+  onTaskUpdated: (task: TaskDto, actorId?: string) => void;
+  onTaskDeleted: (taskId: string, actorId?: string) => void;
 }
 
 async function fetchConfig(): Promise<{ token: string; wsUrl: string } | null> {
@@ -90,13 +94,13 @@ export function useProjectSocket(
 
         switch (msg.type) {
           case "task.created":
-            callbacksRef.current.onTaskCreated(msg.payload);
+            callbacksRef.current.onTaskCreated(msg.payload, msg.actorId);
             break;
           case "task.updated":
-            callbacksRef.current.onTaskUpdated(msg.payload);
+            callbacksRef.current.onTaskUpdated(msg.payload, msg.actorId);
             break;
           case "task.deleted":
-            callbacksRef.current.onTaskDeleted(msg.payload.id);
+            callbacksRef.current.onTaskDeleted(msg.payload.id, msg.actorId);
             break;
         }
       };

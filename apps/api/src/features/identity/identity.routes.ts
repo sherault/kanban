@@ -7,6 +7,7 @@ import { authnMiddleware } from "../../middleware/authn.js";
 import { rateLimit } from "../../middleware/rate-limit.js";
 import { KB_REFRESH_TOKEN_COOKIE } from "@kanban/shared";
 import { IdentityService, TotpRequiredError } from "./identity.service.js";
+import { unauthorized } from "../../lib/errors.js";
 
 const COOKIE_NAME = KB_REFRESH_TOKEN_COOKIE;
 const COOKIE_MAX_AGE = 7 * 24 * 60 * 60; // 7 days in seconds
@@ -147,41 +148,60 @@ export function identityRoutes(db: AppDb): Hono<HonoEnv> {
   // ── Authenticated ──────────────────────────────────────────────────────────
 
   router.use("/me", authnMiddleware);
-  router.get("/me", (c) => c.json(svc.getUser(c.get("userId"))));
-
+  router.use("/me/*", authnMiddleware);
   router.use("/resend-verification", authnMiddleware);
+  router.use("/totp/*", authnMiddleware);
+
+  router.get("/me", (c) => {
+    const userId = c.get("userId");
+    if (!userId) throw unauthorized("Not authenticated");
+    return c.json(svc.getUser(userId));
+  });
+
   router.post("/resend-verification", async (c) => {
-    await svc.resendVerification(c.get("userId"));
+    const userId = c.get("userId");
+    if (!userId) throw unauthorized("Not authenticated");
+    await svc.resendVerification(userId);
     return c.json({ success: true });
   });
 
-  router.use("/totp/*", authnMiddleware);
-
   router.post("/totp/setup", async (c) => {
-    const result = await svc.setupTotp(c.get("userId"));
+    const userId = c.get("userId");
+    if (!userId) throw unauthorized("Not authenticated");
+    const result = await svc.setupTotp(userId);
     return c.json(result);
   });
 
   router.post("/totp/enable", zValidator("json", totpCodeSchema), (c) => {
-    svc.enableTotp(c.get("userId"), c.req.valid("json").code);
+    const userId = c.get("userId");
+    if (!userId) throw unauthorized("Not authenticated");
+    svc.enableTotp(userId, c.req.valid("json").code);
     return c.json({ success: true });
   });
 
   router.delete("/totp", zValidator("json", totpCodeSchema), (c) => {
-    svc.disableTotp(c.get("userId"), c.req.valid("json").code);
+    const userId = c.get("userId");
+    if (!userId) throw unauthorized("Not authenticated");
+    svc.disableTotp(userId, c.req.valid("json").code);
     return c.json({ success: true });
   });
 
-  router.use("/me/settings", authnMiddleware);
   router.patch(
     "/me/settings",
     zValidator(
       "json",
-      z.object({ maxOpenPanels: z.number().min(1).max(10).optional() }),
+      z.object({
+        maxOpenPanels: z.number().min(1).max(10).optional(),
+        enableNotifications: z.boolean().optional(),
+        maxNotifications: z.number().min(1).max(5).optional(),
+        notificationDuration: z.number().min(1).max(30).optional(),
+      }),
     ),
     async (c) => {
+      const userId = c.get("userId");
+      if (!userId) throw unauthorized("Not authenticated");
       const body = c.req.valid("json");
-      const user = await svc.updateSettings(c.get("userId"), body);
+      const user = await svc.updateSettings(userId, body);
       return c.json({ user });
     },
   );

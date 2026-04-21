@@ -5,7 +5,6 @@ import { secureHeaders } from "hono/secure-headers";
 import { HTTPException } from "hono/http-exception";
 import type { AppDb, Broadcaster, HonoEnv } from "./types.js";
 import { noopBroadcaster } from "./types.js";
-import { logger } from "./lib/logger.js";
 import { identityRoutes } from "./features/identity/identity.routes.js";
 import { organizationRoutes } from "./features/organization/organization.routes.js";
 import { invitationRoutes } from "./features/invitation/invitation.routes.js";
@@ -27,52 +26,43 @@ export function createApp(
     process.env["ENABLE_HSTS"] === "true" ||
     (isProd && process.env["ENABLE_HSTS"] !== "false");
 
-  // Global middleware configuration
-  app.use("*", async (c, next) => {
-    // Skip browser-security middlewares for MCP routes
-    // MCP uses Bearer tokens and its own protocol, so it doesn't need CSRF/Secure Headers
-    // and they often conflict with SSE streaming.
-    if (c.req.path.startsWith("/mcp")) {
-      logger.info(
-        `[Middleware V3] Skipping global middlewares for path: ${c.req.path}`,
-      );
-      return await next();
-    }
+  // ── Global Middlewares ──────────────────────────────────────────────────
 
-    // Apply security headers
-    const secureMiddleware = secureHeaders({
+  // Skip browser-security middlewares for MCP routes
+  app.use("/mcp/*", async (c, next) => {
+    return await next();
+  });
+
+  // Apply Security Headers
+  app.use("*", async (c, next) => {
+    if (c.req.path.startsWith("/mcp")) return await next();
+    return await secureHeaders({
       strictTransportSecurity: hstsEnabled
         ? "max-age=31536000; includeSubDomains; preload"
         : false,
-    });
-
-    // Apply CORS
-    const corsMiddleware = cors({
-      origin: frontendUrl,
-      credentials: true,
-    });
-
-    // Apply CSRF (only for non-test)
-    if (!isTest) {
-      const csrfMiddleware = csrf({
-        origin: frontendUrl,
-      });
-
-      // Execute in sequence
-      await secureMiddleware(c, async () => {
-        await corsMiddleware(c, async () => {
-          await csrfMiddleware(c, next);
-        });
-      });
-      return;
-    }
-
-    await secureMiddleware(c, async () => {
-      await corsMiddleware(c, next);
-    });
+    })(c, next);
   });
 
-  // CSRF logging middleware (if needed, but already handled above if we skip /mcp)
+  // Apply CORS
+  app.use("*", async (c, next) => {
+    if (c.req.path.startsWith("/mcp")) return await next();
+    return await cors({
+      origin: frontendUrl,
+      credentials: true,
+    })(c, next);
+  });
+
+  // Apply CSRF (non-test only)
+  if (!isTest) {
+    app.use("*", async (c, next) => {
+      if (c.req.path.startsWith("/mcp")) return await next();
+      return await csrf({
+        origin: frontendUrl,
+      })(c, next);
+    });
+  }
+
+  // CSRF logging middleware
   if (!isTest) {
     app.use("*", async (c, next) => {
       if (c.req.path.startsWith("/mcp")) return await next();
@@ -87,16 +77,25 @@ export function createApp(
           `[CSRF] Rejected request from origin: "${origin}" (expected: "${frontendUrl}") for ${c.req.method} ${c.req.path}`,
         );
       }
-      await next();
+      return await next();
     });
   }
 
   app.onError((err, c) => {
+    console.error(`[API Error] ${c.req.method} ${c.req.path}:`, err);
     if (err instanceof HTTPException) {
       return c.json({ error: err.message }, err.status);
     }
-    console.error(err);
     return c.json({ error: "Internal server error" }, 500);
+  });
+
+  app.use("*", async (c, next) => {
+    await next();
+    if (!c.res) {
+      console.warn(
+        `[API Warning] Context NOT finalized for ${c.req.method} ${c.req.path}`,
+      );
+    }
   });
 
   app.get("/health", (c) => c.json({ status: "ok" }));

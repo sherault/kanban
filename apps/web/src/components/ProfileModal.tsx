@@ -172,6 +172,9 @@ export function ProfileModal({ onClose }: { onClose: () => void }) {
               <div className="animate-in fade-in slide-in-from-bottom-2 duration-300">
                 <SettingsSection
                   initialMaxOpenPanels={data.me.maxOpenPanels}
+                  initialEnableNotifications={data.me.enableNotifications}
+                  initialMaxNotifications={data.me.maxNotifications}
+                  initialNotificationDuration={data.me.notificationDuration}
                   token={data.token}
                 />
               </div>

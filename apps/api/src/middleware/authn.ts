@@ -4,6 +4,10 @@ import { unauthorized } from "../lib/errors.js";
 import type { HonoEnv } from "../types.js";
 
 export const authnMiddleware: MiddlewareHandler<HonoEnv> = async (c, next) => {
+  if (c.req.method === "OPTIONS") {
+    return await next();
+  }
+
   const authHeader = c.req.header("Authorization");
   if (!authHeader?.startsWith("Bearer ")) {
     throw unauthorized();
@@ -16,5 +20,5 @@ export const authnMiddleware: MiddlewareHandler<HonoEnv> = async (c, next) => {
   } catch {
     throw unauthorized();
   }
-  await next();
+  return await next();
 };

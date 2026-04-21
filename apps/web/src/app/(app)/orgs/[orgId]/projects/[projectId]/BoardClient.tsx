@@ -20,6 +20,10 @@ import { NewTaskModal } from "./NewTaskModal";
 import { TaskDetailSidebar } from "./TaskDetailSidebar";
 import { CsvImportModal } from "./CsvImportModal";
 import { ArchivePanel } from "./ArchivePanel";
+import {
+  NotificationsOverlay,
+  type NotificationData,
+} from "@/components/NotificationsOverlay";
 
 const COLUMNS: { id: Column; label: string }[] = [
   { id: Column.IDEAS, label: "Ideas" },
@@ -35,6 +39,9 @@ interface Props {
   orgId: string;
   currentUserId: string;
   maxOpenPanels: number;
+  enableNotifications: boolean;
+  maxNotifications: number;
+  notificationDuration: number;
 }
 
 export function BoardClient({
@@ -44,6 +51,9 @@ export function BoardClient({
   orgId,
   currentUserId,
   maxOpenPanels,
+  enableNotifications,
+  maxNotifications,
+  notificationDuration,
 }: Props) {
   const [tasks, setTasks] = useState<TaskDto[]>(initialTasks);
   const [activeTask, setActiveTask] = useState<TaskDto | null>(null);
@@ -54,6 +64,11 @@ export function BoardClient({
   const [expandedIds, setExpandedIds] = useState<string[]>([]);
   const [isMounted, setIsMounted] = useState(false);
   const [isHydrated, setIsHydrated] = useState(false);
+  const [notifications, setNotifications] = useState<NotificationData[]>([]);
+
+  const removeNotification = (id: string) => {
+    setNotifications((prev) => prev.filter((n) => n.id !== id));
+  };
 
   useEffect(() => {
     setIsHydrated(false);
@@ -162,7 +177,7 @@ export function BoardClient({
   // ── WebSocket real-time ───────────────────────────────────────────────────
 
   const { isConnected } = useProjectSocket(projectId, {
-    onTaskCreated(task) {
+    onTaskCreated(task, actorId) {
       setTasks((prev) => {
         const idx = prev.findIndex((t) => t.id === task.id);
         if (idx >= 0) {
@@ -173,8 +188,19 @@ export function BoardClient({
         return [...prev, task];
       });
       setArchiveRevision((v) => v + 1);
+      if (enableNotifications && actorId !== currentUserId) {
+        setNotifications((prev) => [
+          ...prev,
+          {
+            id: Math.random().toString(36).substring(7),
+            type: "task.created",
+            message: `Task "${task.title}" was created.`,
+            duration: notificationDuration,
+          },
+        ]);
+      }
     },
-    onTaskUpdated(task) {
+    onTaskUpdated(task, actorId) {
       // Always update state — the sidebar uses uncontrolled inputs (defaultValue)
       // so in-progress text edits are preserved automatically.
       setTasks((prev) => prev.map((t) => (t.id !== task.id ? t : task)));
@@ -198,8 +224,20 @@ export function BoardClient({
       );
 
       setArchiveRevision((v) => v + 1);
+
+      if (enableNotifications && actorId !== currentUserId) {
+        setNotifications((prev) => [
+          ...prev,
+          {
+            id: Math.random().toString(36).substring(7),
+            type: "task.updated",
+            message: `Task "${task.title}" was updated.`,
+            duration: notificationDuration,
+          },
+        ]);
+      }
     },
-    onTaskDeleted(taskId) {
+    onTaskDeleted(taskId, actorId) {
       setTasks((prev) => prev.filter((t) => t.id !== taskId));
       setSelectedDoneIds((prev) => {
         const next = new Set(prev);
@@ -209,6 +247,19 @@ export function BoardClient({
       setOpenTasks((prev) => prev.filter((t) => t.id !== taskId));
       setExpandedIds((prev) => prev.filter((id) => id !== taskId));
       setArchiveRevision((v) => v + 1);
+
+      if (enableNotifications && actorId !== currentUserId) {
+        const t = tasks.find((tsk) => tsk.id === taskId);
+        setNotifications((prev) => [
+          ...prev,
+          {
+            id: Math.random().toString(36).substring(7),
+            type: "task.deleted",
+            message: `Task "${t?.title || taskId}" was deleted.`,
+            duration: notificationDuration,
+          },
+        ]);
+      }
     },
   });
 
@@ -759,6 +810,14 @@ export function BoardClient({
             );
             setNewTaskColumn(null);
           }}
+        />
+      )}
+
+      {enableNotifications && notifications.length > 0 && (
+        <NotificationsOverlay
+          notifications={notifications}
+          maxNotifications={maxNotifications}
+          onClose={removeNotification}
         />
       )}
     </div>
