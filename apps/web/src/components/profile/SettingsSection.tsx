@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { api } from "../../lib/api";
+import { updateSettingsAction } from "../../actions/profile";
 import { useRouter } from "next/navigation";
 
 interface Props {
@@ -9,7 +9,6 @@ interface Props {
   initialEnableNotifications: boolean;
   initialMaxNotifications: number;
   initialNotificationDuration: number;
-  token: string;
 }
 
 export function SettingsSection({
@@ -17,7 +16,6 @@ export function SettingsSection({
   initialEnableNotifications,
   initialMaxNotifications,
   initialNotificationDuration,
-  token,
 }: Props) {
   const [maxPanels, setMaxPanels] = useState(initialMaxOpenPanels);
   const [enableNotifications, setEnableNotifications] = useState(
@@ -42,7 +40,11 @@ export function SettingsSection({
     setSaving(true);
     setError(null);
     try {
-      await api.auth.updateSettings(token, updates);
+      const res = await updateSettingsAction(updates);
+      if (res.error) {
+        setError(res.error);
+        return;
+      }
       if (updates.maxOpenPanels !== undefined)
         setMaxPanels(updates.maxOpenPanels);
       if (updates.enableNotifications !== undefined)
@@ -52,10 +54,8 @@ export function SettingsSection({
       if (updates.notificationDuration !== undefined)
         setNotificationDuration(updates.notificationDuration);
       router.refresh();
-    } catch (err: unknown) {
-      setError(
-        err instanceof Error ? err.message : "Failed to update settings",
-      );
+    } catch {
+      setError("An unexpected error occurred");
     } finally {
       setSaving(false);
     }

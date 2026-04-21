@@ -111,6 +111,26 @@ export async function revokeApiKeyAction(
   }
 }
 
+export async function updateSettingsAction(updates: {
+  maxOpenPanels?: number;
+  enableNotifications?: boolean;
+  maxNotifications?: number;
+  notificationDuration?: number;
+}) {
+  const token = await getAccessToken();
+  if (!token) return { error: "Unauthorized" };
+
+  try {
+    await api.auth.updateSettings(token, updates);
+    revalidatePath("/profile");
+    return { success: true };
+  } catch (e) {
+    return {
+      error: e instanceof ApiError ? e.message : "Failed to update settings",
+    };
+  }
+}
+
 export async function getProfileDataAction() {
   const token = await getAccessToken();
   if (!token) return null;
