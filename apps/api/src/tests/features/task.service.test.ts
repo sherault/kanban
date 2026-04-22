@@ -89,6 +89,59 @@ describe("TaskService.listTasks", () => {
     expect(list.length).toBe(2);
     testDb.close();
   });
+
+  it("filters by search query across fields", async () => {
+    const { user, project, taskSvc, testDb } = await setup();
+    taskSvc.createTask(project.id, user.id, {
+      ...baseTask,
+      title: "FOO in title",
+    });
+    taskSvc.createTask(project.id, user.id, {
+      ...baseTask,
+      description: "FOO in description",
+    });
+    taskSvc.createTask(project.id, user.id, {
+      ...baseTask,
+      globalSubject: "FOO in subject",
+    });
+    taskSvc.createTask(project.id, user.id, {
+      ...baseTask,
+      objective: "FOO in objective",
+    });
+    taskSvc.createTask(project.id, user.id, { ...baseTask, title: "No bar" });
+
+    expect(taskSvc.listTasks(project.id, { search: "FOO" }).length).toBe(4);
+    expect(taskSvc.listTasks(project.id, { search: "title" }).length).toBe(1);
+    expect(
+      taskSvc.listTasks(project.id, { search: "description" }).length,
+    ).toBe(1);
+    testDb.close();
+  });
+
+  it("sorts by endDate asc", async () => {
+    const { user, project, taskSvc, testDb } = await setup();
+    taskSvc.createTask(project.id, user.id, {
+      ...baseTask,
+      title: "Late",
+      endDate: "2026-12-31",
+    });
+    taskSvc.createTask(project.id, user.id, {
+      ...baseTask,
+      title: "Early",
+      endDate: "2026-01-01",
+    });
+    taskSvc.createTask(project.id, user.id, {
+      ...baseTask,
+      title: "Middle",
+      endDate: "2026-06-01",
+    });
+
+    const list = taskSvc.listTasks(project.id);
+    expect(list[0]!.title).toBe("Early");
+    expect(list[1]!.title).toBe("Middle");
+    expect(list[2]!.title).toBe("Late");
+    testDb.close();
+  });
 });
 
 describe("TaskService.updateTask", () => {

@@ -295,11 +295,6 @@ export function taskRoutes(
 
   const moveSchema = z.object({
     column: columnEnum,
-    position: z.number().positive().optional(),
-  });
-
-  const reorderSchema = z.object({
-    position: z.number().positive(),
   });
 
   router.post(
@@ -309,25 +304,9 @@ export function taskRoutes(
       const task = svc.getTask(c.req.param("taskId"));
       if (!task || task.projectId !== c.req.param("projectId"))
         throw notFound("Task not found");
-      const { column, position } = c.req.valid("json");
-      const move = position !== undefined ? { column, position } : { column };
-      return c.json(svc.moveTask(c.req.param("taskId"), c.get("userId"), move));
-    },
-  );
-
-  router.post(
-    "/:projectId/tasks/:taskId/reorder",
-    zValidator("json", reorderSchema),
-    (c) => {
-      const task = svc.getTask(c.req.param("taskId"));
-      if (!task || task.projectId !== c.req.param("projectId"))
-        throw notFound("Task not found");
+      const { column } = c.req.valid("json");
       return c.json(
-        svc.reorderTask(
-          c.req.param("taskId"),
-          c.req.valid("json").position,
-          c.get("userId"),
-        ),
+        svc.moveTask(c.req.param("taskId"), c.get("userId"), { column }),
       );
     },
   );

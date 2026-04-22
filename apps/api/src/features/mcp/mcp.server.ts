@@ -106,12 +106,18 @@ export function createMcpServer(
     "list_tasks",
     {
       description:
-        "List tasks in a project, with optional filters and pagination",
+        "List tasks in a project, with optional filters and pagination. Tasks are always ordered by due date (endDate) ascending.",
       inputSchema: {
         projectId: z.string().describe("Project ID"),
         column: z.enum(COLUMN_VALUES).optional().describe("Filter by column"),
         tag: z.string().optional().describe("Filter by tag"),
         doerId: z.string().optional().describe("Filter by doer user ID"),
+        search: z
+          .string()
+          .optional()
+          .describe(
+            "Search in title, description, globalSubject and objective",
+          ),
         page: z
           .number()
           .int()
@@ -127,8 +133,8 @@ export function createMcpServer(
           .describe("Max elements per call (1-20, default 10)"),
       },
     },
-    ({ projectId, column, tag, doerId, page, limit }) => {
-      let tasks = taskSvc.listTasks(projectId);
+    ({ projectId, column, tag, doerId, page, limit, search }) => {
+      let tasks = taskSvc.listTasks(projectId, { search });
       if (column) tasks = tasks.filter((t) => t.column === column);
       if (tag) tasks = tasks.filter((t) => t.tags.includes(tag));
       if (doerId) tasks = tasks.filter((t) => t.doer?.id === doerId);

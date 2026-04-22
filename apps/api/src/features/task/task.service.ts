@@ -1,4 +1,14 @@
-import { eq, and, or, max, sql, isNull, isNotNull, like } from "drizzle-orm";
+import {
+  eq,
+  and,
+  or,
+  max,
+  sql,
+  isNull,
+  isNotNull,
+  like,
+  asc,
+} from "drizzle-orm";
 import type { AppDb, Broadcaster } from "../../types.js";
 import { noopBroadcaster } from "../../types.js";
 import type { TaskDto, TaskHistoryDto, Column } from "@kanban/shared";
@@ -209,12 +219,34 @@ export class TaskService {
     return row ? assembleTaskDto(this.db, row) : undefined;
   }
 
-  listTasks(projectId: string): TaskDto[] {
+  listTasks(
+    projectId: string,
+    options: { search?: string | undefined } = {},
+  ): TaskDto[] {
+    const { search } = options;
+    const conditions = [
+      eq(tasks.projectId, projectId),
+      isNull(tasks.archivedAt),
+    ];
+
+    if (search) {
+      conditions.push(
+        or(
+          like(tasks.title, `%${search}%`),
+          like(tasks.description, `%${search}%`),
+          like(tasks.globalSubject, `%${search}%`),
+          like(tasks.objective, `%${search}%`),
+        )!,
+      );
+    }
+
     const rows = this.db
       .select()
       .from(tasks)
-      .where(and(eq(tasks.projectId, projectId), isNull(tasks.archivedAt)))
+      .where(and(...conditions))
+      .orderBy(asc(tasks.endDate))
       .all();
+
     return rows.map((r) => assembleTaskDto(this.db, r));
   }
 
@@ -614,7 +646,7 @@ export class TaskService {
   moveTask(
     taskId: string,
     actorId: string,
-    input: { column: Column; position?: number },
+    input: { column: Column },
     isMcp?: boolean,
   ): TaskDto {
     const row = this.getRow(taskId);
@@ -625,8 +657,7 @@ export class TaskService {
     const clearsDoer =
       (input.column === "ideas" || input.column === "todo") &&
       row.doerId !== null;
-    const position =
-      input.position ?? this.nextPosition(row.projectId, input.column);
+    const position = this.nextPosition(row.projectId, input.column);
 
     this.db
       .update(tasks)
@@ -695,24 +726,6 @@ export class TaskService {
       payload: dto,
       actorId: actorId,
       isMcp,
-    });
-    return dto;
-  }
-
-  reorderTask(taskId: string, position: number, actorId?: string): TaskDto {
-    const row = this.getRow(taskId);
-    this.db
-      .update(tasks)
-      .set({ position, updatedAt: sql`(datetime('now'))` })
-      .where(eq(tasks.id, taskId))
-      .run();
-    const updated = this.getRow(taskId);
-    const dto = assembleTaskDto(this.db, updated);
-    // Position changes are cosmetic ordering; no audit history row needed.
-    this.broadcast(`project:${row.projectId}`, {
-      type: "task.updated",
-      payload: dto,
-      actorId: actorId,
     });
     return dto;
   }
@@ -843,7 +856,7 @@ export class TaskService {
       .select()
       .from(tasks)
       .where(baseWhere)
-      .orderBy(tasks.archivedAt)
+      .orderBy(asc(tasks.endDate))
       .all();
     let allDtos = allRows.map((r) => assembleTaskDto(this.db, r));
 

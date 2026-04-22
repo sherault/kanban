@@ -174,26 +174,3 @@ describe("POST /projects/:projectId/tasks/:taskId/move", () => {
     close();
   });
 });
-
-describe("POST /projects/:projectId/tasks/:taskId/reorder", () => {
-  it("updates the position", async () => {
-    const { app, token, projectId, createTask, close } = await setup();
-    const t1 = await createTask("T1");
-    const t2 = await createTask("T2");
-
-    // Reorder t2 between position 0 and t1.position (fractional: 0.5)
-    const newPos = t1.position / 2;
-    const res = await app.request(
-      `/projects/${projectId}/tasks/${t2.id}/reorder`,
-      {
-        method: "POST",
-        headers: { ...auth(token), "Content-Type": "application/json" },
-        body: JSON.stringify({ position: newPos }),
-      },
-    );
-    expect(res.status).toBe(200);
-    const body = (await res.json()) as { position: number };
-    expect(body.position).toBeCloseTo(newPos);
-    close();
-  });
-});
