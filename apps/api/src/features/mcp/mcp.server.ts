@@ -194,6 +194,12 @@ export function createMcpServer(
           .optional()
           .describe("Background color hex e.g. #f97316"),
         globalSubject: z.string().optional().describe("Global subject / epic"),
+        doerId: z.string().optional().describe("Assign a doer user ID"),
+        validatorId: z
+          .string()
+          .optional()
+          .describe("Assign a validator user ID"),
+        tags: z.array(z.string()).optional().describe("List of tags"),
       },
     },
     ({
@@ -206,6 +212,9 @@ export function createMcpServer(
       column,
       backgroundColor,
       globalSubject,
+      doerId,
+      validatorId,
+      tags,
     }) => {
       const task = taskSvc.createTask(
         projectId,
@@ -219,6 +228,9 @@ export function createMcpServer(
           column: (column as Column | undefined) ?? "todo",
           backgroundColor: backgroundColor ?? null,
           globalSubject: globalSubject ?? null,
+          doerId: doerId ?? null,
+          validatorId: validatorId ?? null,
+          tags,
         },
         true,
       );
@@ -279,6 +291,7 @@ export function createMcpServer(
           .nullable()
           .optional()
           .describe("Validator user ID (null to unassign)"),
+        tags: z.array(z.string()).optional().describe("New list of tags"),
       },
     },
     ({ taskId, ...fields }) => {
@@ -310,6 +323,112 @@ export function createMcpServer(
         },
         true,
       );
+      return {
+        content: [
+          { type: "text" as const, text: JSON.stringify(task, null, 2) },
+        ],
+      };
+    },
+  );
+
+  server.registerTool(
+    "archive_task",
+    {
+      description: "Archive a task (only works for tasks in 'done' column)",
+      inputSchema: {
+        projectId: z.string().describe("Project ID"),
+        taskId: z.string().describe("Task ID"),
+      },
+    },
+    ({ projectId, taskId }) => {
+      taskSvc.archiveTasks(projectId, [taskId], userId, true);
+      return {
+        content: [
+          { type: "text" as const, text: JSON.stringify({ archived: taskId }) },
+        ],
+      };
+    },
+  );
+
+  server.registerTool(
+    "list_archived_tasks",
+    {
+      description: "List archived tasks in a project",
+      inputSchema: {
+        projectId: z.string().describe("Project ID"),
+        search: z.string().optional().describe("Search in archived tasks"),
+        page: z.number().int().min(1).default(1).describe("Page number"),
+        limit: z
+          .number()
+          .int()
+          .min(1)
+          .max(50)
+          .default(20)
+          .describe("Max elements per call"),
+      },
+    },
+    ({ projectId, search, page, limit }) => {
+      const result = taskSvc.listArchivedTasks(projectId, {
+        ...(search !== undefined ? { search } : {}),
+        page,
+        limit,
+      });
+      return {
+        content: [
+          { type: "text" as const, text: JSON.stringify(result, null, 2) },
+        ],
+      };
+    },
+  );
+
+  server.registerTool(
+    "restore_task",
+    {
+      description: "Restore an archived task",
+      inputSchema: {
+        taskId: z.string().describe("Task ID"),
+      },
+    },
+    ({ taskId }) => {
+      const task = taskSvc.restoreTask(taskId, userId, true);
+      return {
+        content: [
+          { type: "text" as const, text: JSON.stringify(task, null, 2) },
+        ],
+      };
+    },
+  );
+
+  server.registerTool(
+    "link_tasks",
+    {
+      description: "Add a link between two tasks",
+      inputSchema: {
+        taskId: z.string().describe("Task ID"),
+        linkedTaskId: z.string().describe("ID of the task to link to"),
+      },
+    },
+    ({ taskId, linkedTaskId }) => {
+      const task = taskSvc.addLink(taskId, linkedTaskId, userId);
+      return {
+        content: [
+          { type: "text" as const, text: JSON.stringify(task, null, 2) },
+        ],
+      };
+    },
+  );
+
+  server.registerTool(
+    "unlink_tasks",
+    {
+      description: "Remove a link between two tasks",
+      inputSchema: {
+        taskId: z.string().describe("Task ID"),
+        linkedTaskId: z.string().describe("ID of the linked task to remove"),
+      },
+    },
+    ({ taskId, linkedTaskId }) => {
+      const task = taskSvc.removeLink(taskId, linkedTaskId, userId);
       return {
         content: [
           { type: "text" as const, text: JSON.stringify(task, null, 2) },

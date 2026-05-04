@@ -328,10 +328,15 @@ Connect Claude (or any other MCP client) to your board from the **Profile** page
 - `list_projects`: List all projects within an organization.
 - `create_project`: Create a new project.
 - `list_tasks`: List tasks in a project with filtering and pagination.
-- `create_task`: Create a new task.
-- `update_task`: Update task details.
+- `create_task`: Create a new task (now supports tags, doer, and validator assignment).
+- `update_task`: Update task details (now supports modifying tags).
 - `move_task`: Change task column.
 - `delete_task`: Remove a task.
+- `link_tasks`: Add a bidirectional link between two tasks.
+- `unlink_tasks`: Remove a link between two tasks.
+- `archive_task`: Archive a task in the 'done' column.
+- `list_archived_tasks`: Retrieve and search through archived tasks.
+- `restore_task`: Restore an archived task back to the 'todo' column.
 
 ---
 

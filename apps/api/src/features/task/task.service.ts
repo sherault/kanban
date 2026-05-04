@@ -177,6 +177,7 @@ export class TaskService {
       column?: Column | undefined;
       doerId?: string | null | undefined;
       validatorId?: string | null | undefined;
+      tags?: string[] | undefined;
     },
     isMcp?: boolean,
   ): TaskDto {
@@ -204,6 +205,13 @@ export class TaskService {
       .returning()
       .get();
     if (!row) throw new Error("Failed to create task");
+
+    if (input.tags && input.tags.length > 0) {
+      for (const tag of input.tags) {
+        this.db.insert(taskTags).values({ taskId: id, tag }).run();
+      }
+    }
+
     const dto = assembleTaskDto(this.db, row);
     this.broadcast(`project:${projectId}`, {
       type: "task.created",
@@ -263,6 +271,7 @@ export class TaskService {
       globalSubject?: string | null | undefined;
       doerId?: string | null | undefined;
       validatorId?: string | null | undefined;
+      tags?: string[] | undefined;
     },
     isMcp?: boolean,
   ): TaskDto {
@@ -317,6 +326,26 @@ export class TaskService {
       for (const entry of historyEntries) {
         this.db.insert(taskHistory).values(entry).run();
       }
+    }
+
+    if (input.tags !== undefined) {
+      // Simple replace for now
+      this.db.delete(taskTags).where(eq(taskTags.taskId, taskId)).run();
+      for (const tag of input.tags) {
+        this.db.insert(taskTags).values({ taskId, tag }).run();
+      }
+      this.db
+        .insert(taskHistory)
+        .values({
+          id: generateId(),
+          taskId,
+          userId: actorId,
+          field: "tags",
+          oldValue: "REST_REPLACED",
+          newValue: input.tags.join(", "),
+          batchId,
+        })
+        .run();
     }
 
     const updated = this.getRow(taskId);
