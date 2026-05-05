@@ -8,8 +8,10 @@
   "exports": {
     ".": {
       "types": "./dist/index.d.mts",
-      "import": "./src/index.ts",
-      "default": "./src/index.ts"
+      "browser": "./src/index.ts",
+      "next": "./src/index.ts",
+      "import": "./dist/index.mjs",
+      "default": "./dist/index.mjs"
     }
   },
   "scripts": {

@@ -12,8 +12,7 @@ import {
 } from "react";
 import { useWiki } from "@/context/WikiContext";
 import { useWikiSocket } from "@/hooks/useWikiSocket";
-import { api } from "@/lib/api";
-import { getClientAccessToken } from "@/lib/auth-client";
+import { getWikiPageAction, updateWikiPageAction } from "@/actions/wiki";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { marked } from "marked";
@@ -380,10 +379,13 @@ export function WikiEditor({ pageId, orgId }: Props) {
     void (async () => {
       setIsFetching(true);
       try {
-        const token = await getClientAccessToken();
-        if (!token) return;
-        const { data } = await api.wiki.getPage(token, pageId);
-        setPageContent(pageId, data.content || "");
+        const result = await getWikiPageAction(pageId);
+        if (!result.page) {
+          if (result.error)
+            console.error("[WikiEditor] Fetch failed:", result.error);
+          return;
+        }
+        setPageContent(pageId, result.page.content || "");
         setStatus("saved");
       } catch (e) {
         console.error("[WikiEditor] Fetch failed:", e);
@@ -424,9 +426,10 @@ export function WikiEditor({ pageId, orgId }: Props) {
       if (!val) return;
       setStatus("saving");
       try {
-        const token = await getClientAccessToken();
-        if (!token) return;
-        await api.wiki.updatePage(token, pageId, { content: val });
+        const result = await updateWikiPageAction(pageId, { content: val });
+        if (result.error) {
+          throw new Error(result.error);
+        }
         setStatus("saved");
       } catch {
         setStatus("unsaved");

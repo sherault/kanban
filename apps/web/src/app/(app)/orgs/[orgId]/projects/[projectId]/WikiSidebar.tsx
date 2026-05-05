@@ -1,8 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { api } from "@/lib/api";
-import { getClientAccessToken } from "@/lib/auth-client";
+import { createWikiPageAction, updateWikiPageAction } from "@/actions/wiki";
 import { useWiki } from "@/context/WikiContext";
 import type { WikiPageSummaryDto } from "@kanban/shared";
 import * as DndKit from "@dnd-kit/core";
@@ -29,15 +28,18 @@ export function WikiSidebar({ orgId, onRefresh }: Props) {
   useEffect(() => {
     const handleCreatePage = async () => {
       try {
-        const token = await getClientAccessToken();
-        if (!token) return;
-        const { data: newPage } = await api.wiki.createPage(token, orgId, {
+        const result = await createWikiPageAction(orgId, {
           title: "New Page",
           content: "# New Page\n\nEdit this page content...",
         });
+        if (!result.page) {
+          if (result.error)
+            console.error("Failed to create wiki page", result.error);
+          return;
+        }
         onRefresh();
         window.dispatchEvent(
-          new CustomEvent("kanban_open_wiki_page", { detail: newPage.id }),
+          new CustomEvent("kanban_open_wiki_page", { detail: result.page.id }),
         );
       } catch (e) {
         console.error("Failed to create wiki page", e);
@@ -55,16 +57,17 @@ export function WikiSidebar({ orgId, onRefresh }: Props) {
     // If dropped on another item, set it as parent
     if (over && active.id !== over.id) {
       try {
-        const token = await getClientAccessToken();
-        if (!token) return;
-
         // If dropped on "root-droppable", move to root
         const newParentId =
           over.id === "root-droppable" ? null : String(over.id);
 
-        await api.wiki.updatePage(token, String(active.id), {
+        const result = await updateWikiPageAction(String(active.id), {
           parentId: newParentId,
         });
+        if (result.error) {
+          console.error("Failed to move page", result.error);
+          return;
+        }
         onRefresh();
 
         // Auto-expand the new parent

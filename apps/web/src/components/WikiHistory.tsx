@@ -1,8 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { api } from "@/lib/api";
-import { getClientAccessToken } from "@/lib/auth-client";
+import { getWikiHistoryAction } from "@/actions/wiki";
 import type { WikiHistoryDto, WikiPageDto } from "@kanban/shared";
 import ReactDiffViewer, { DiffMethod } from "react-diff-viewer-continued";
 import { format } from "date-fns";
@@ -21,10 +20,12 @@ export function WikiHistory({ pageId, onClose }: Props) {
   useEffect(() => {
     async function fetchHistory() {
       try {
-        const token = await getClientAccessToken();
-        if (!token) return;
-        const { data } = await api.wiki.getHistory(token, pageId);
-        setHistory(data);
+        const result = await getWikiHistoryAction(pageId);
+        if (result.history) {
+          setHistory(result.history);
+        } else if (result.error) {
+          console.error("Failed to fetch history", result.error);
+        }
       } catch (e) {
         console.error("Failed to fetch history", e);
       } finally {

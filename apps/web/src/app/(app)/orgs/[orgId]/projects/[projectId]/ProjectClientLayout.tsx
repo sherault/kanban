@@ -5,8 +5,7 @@ import { ProjectSidebar } from "./ProjectSidebar";
 import { WikiSidebar } from "./WikiSidebar";
 import { WikiProvider, useWiki } from "@/context/WikiContext";
 import type { ProjectDto } from "@kanban/shared";
-import { api } from "@/lib/api";
-import { getClientAccessToken } from "@/lib/auth-client";
+import { listWikiPagesAction } from "@/actions/wiki";
 
 interface Props {
   projects: ProjectDto[];
@@ -38,10 +37,12 @@ function ProjectClientLayoutInner({
   const fetchPages = React.useCallback(async () => {
     try {
       setIsLoadingPages(true);
-      const token = await getClientAccessToken();
-      if (!token) return;
-      const { data } = await api.wiki.listPages(token, orgId);
-      setPages(data);
+      const result = await listWikiPagesAction(orgId);
+      if (result.pages) {
+        setPages(result.pages);
+      } else if (result.error) {
+        console.error("Failed to fetch wiki pages", result.error);
+      }
     } catch (e) {
       console.error("Failed to fetch wiki pages", e);
     } finally {
