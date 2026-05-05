@@ -3,8 +3,8 @@
 import { useState } from "react";
 
 interface Props {
-  properties: Record<string, any>;
-  onChange: (properties: Record<string, any>) => void;
+  properties: Record<string, unknown>;
+  onChange: (properties: Record<string, unknown>) => void;
   readOnly?: boolean;
 }
 
@@ -12,7 +12,7 @@ export function WikiPropertiesPanel({ properties, onChange, readOnly }: Props) {
   const [newKey, setNewKey] = useState("");
   const [focusKey, setFocusKey] = useState<string | null>(null);
 
-  const updateField = (key: string, value: any) => {
+  const updateField = (key: string, value: unknown) => {
     if (readOnly) return;
     onChange({ ...properties, [key]: value });
   };
@@ -102,7 +102,7 @@ export function WikiPropertiesPanel({ properties, onChange, readOnly }: Props) {
               <div className="relative group/input">
                 <input
                   type="text"
-                  value={value || ""}
+                  value={(value as string | number) || ""}
                   autoFocus={focusKey === key}
                   onFocus={() => {
                     if (focusKey === key) setFocusKey(null);

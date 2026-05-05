@@ -585,11 +585,25 @@ export function DescriptionEditor({
   }, []); // Run ONLY on unmount
 
   // ── MENTIONS (@ for tasks, [[ for wiki) ──────────────────────────────────────
-  useEffect(() => {
-    if (mentionSearch === null) {
+  const wikiMentionResults = useMemo(() => {
+    if (mentionSearch === null || mentionType !== "wiki") return [];
+    return pages
+      .filter((p) =>
+        p.title.toLowerCase().includes(mentionSearch.toLowerCase()),
+      )
+      .slice(0, 8);
+  }, [mentionSearch, mentionType, pages]);
+
+  const [prevMentionSearch, setPrevMentionSearch] = useState(mentionSearch);
+  if (mentionSearch !== prevMentionSearch) {
+    setPrevMentionSearch(mentionSearch);
+    if (mentionSearch === null && mentionResults.length > 0) {
       setMentionResults([]);
-      return;
     }
+  }
+
+  useEffect(() => {
+    if (mentionSearch === null) return;
 
     if (mentionType === "task") {
       const timer = setTimeout(async () => {
@@ -601,15 +615,12 @@ export function DescriptionEditor({
       }, 200);
       return () => clearTimeout(timer);
     } else {
-      const filtered = pages
-        .filter((p) =>
-          p.title.toLowerCase().includes(mentionSearch.toLowerCase()),
-        )
-        .slice(0, 8);
-      setMentionResults(filtered);
-      setMentionIndex(0);
+      void Promise.resolve().then(() => setMentionIndex(0));
     }
-  }, [mentionSearch, mentionType, orgId, pages]);
+  }, [mentionSearch, mentionType, orgId, setMentionResults, setMentionIndex]);
+
+  const activeResults =
+    mentionType === "task" ? mentionResults : wikiMentionResults;
 
   const insertMention = (item: TaskDto | WikiPageSummaryDto) => {
     if (!textareaRef.current) return;
@@ -643,20 +654,27 @@ export function DescriptionEditor({
   };
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (mentionSearch !== null && mentionResults.length > 0) {
+    if (mentionSearch !== null && activeResults.length > 0) {
       if (e.key === "ArrowDown") {
         e.preventDefault();
-        setMentionIndex((i) => (i + 1) % mentionResults.length);
-      } else if (e.key === "ArrowUp") {
+        setMentionIndex((i) => (i + 1) % activeResults.length);
+        return;
+      }
+      if (e.key === "ArrowUp") {
         e.preventDefault();
         setMentionIndex(
-          (i) => (i - 1 + mentionResults.length) % mentionResults.length,
+          (i) => (i - 1 + activeResults.length) % activeResults.length,
         );
-      } else if (e.key === "Enter" || e.key === "Tab") {
+        return;
+      }
+      if (e.key === "Enter" || e.key === "Tab") {
         e.preventDefault();
-        insertMention(mentionResults[mentionIndex]);
-      } else if (e.key === "Escape") {
+        insertMention(activeResults[mentionIndex]);
+        return;
+      }
+      if (e.key === "Escape") {
         setMentionSearch(null);
+        return;
       }
     }
   };
@@ -701,18 +719,18 @@ export function DescriptionEditor({
     setMentionSearch(null);
   };
 
-  const startEditing = useCallback(() => {
+  const startEditing = () => {
     setIsEditing(true);
     setShowPreview(false);
     setTimeout(() => textareaRef.current?.focus(), 0);
     _onFocus();
-  }, [_onFocus]);
+  };
 
-  const finishEditing = useCallback(() => {
+  const finishEditing = () => {
     setIsEditing(false);
     onBlur(value);
     setMentionSearch(null);
-  }, [onBlur, value]);
+  };
 
   function handleTextareaBlur() {
     // delay to allow clicks on toolbar or modals
@@ -743,7 +761,7 @@ export function DescriptionEditor({
   }
 
   const renderMentionList = () => {
-    if (mentionSearch === null || mentionResults.length === 0) return null;
+    if (mentionSearch === null || activeResults.length === 0) return null;
     return createPortal(
       <div
         className="fixed z-[9999] bg-white border border-gray-200 rounded-lg shadow-2xl overflow-hidden w-72 max-h-60 flex flex-col animate-in fade-in slide-in-from-bottom-2 duration-200"
@@ -755,7 +773,7 @@ export function DescriptionEditor({
           </span>
         </div>
         <div className="overflow-y-auto py-1">
-          {mentionResults.map((t, i) => (
+          {activeResults.map((t, i) => (
             <button
               key={t.id}
               onMouseDown={(e) => {

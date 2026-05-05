@@ -5,6 +5,7 @@ import { createWikiPageAction, updateWikiPageAction } from "@/actions/wiki";
 import { useWiki } from "@/context/WikiContext";
 import type { WikiPageSummaryDto } from "@kanban/shared";
 import * as DndKit from "@dnd-kit/core";
+import { useRouter } from "next/navigation";
 
 interface Props {
   orgId: string;
@@ -12,7 +13,8 @@ interface Props {
   onRefresh: () => void;
 }
 
-export function WikiSidebar({ orgId, onRefresh }: Props) {
+export function WikiSidebar({ orgId, projectId, onRefresh }: Props) {
+  const router = useRouter();
   const { pages, isLoading } = useWiki();
   const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set());
   const [activeId, setActiveId] = useState<string | null>(null);
@@ -38,6 +40,9 @@ export function WikiSidebar({ orgId, onRefresh }: Props) {
           return;
         }
         onRefresh();
+        router.push(
+          `/orgs/${orgId}/projects/${projectId}/wiki/${result.page.id}`,
+        );
         window.dispatchEvent(
           new CustomEvent("kanban_open_wiki_page", { detail: result.page.id }),
         );
@@ -48,7 +53,7 @@ export function WikiSidebar({ orgId, onRefresh }: Props) {
     window.addEventListener("kanban_create_wiki_page", handleCreatePage);
     return () =>
       window.removeEventListener("kanban_create_wiki_page", handleCreatePage);
-  }, [orgId, onRefresh]);
+  }, [orgId, projectId, onRefresh, router]);
 
   const handleDragEnd = async (event: DndKit.DragEndEvent) => {
     const { active, over } = event;
@@ -88,6 +93,8 @@ export function WikiSidebar({ orgId, onRefresh }: Props) {
       <div key={page.id} className="mt-1">
         <TreeItem
           page={page}
+          orgId={orgId}
+          projectId={projectId}
           hasChildren={hasChildren}
           isExpanded={isExpanded}
           onToggle={() =>
@@ -227,12 +234,22 @@ function RootDroppable() {
 
 interface TreeItemProps {
   page: WikiPageSummaryDto;
+  orgId: string;
+  projectId: string;
   hasChildren: boolean;
   isExpanded: boolean;
   onToggle: () => void;
 }
 
-function TreeItem({ page, hasChildren, isExpanded, onToggle }: TreeItemProps) {
+function TreeItem({
+  page,
+  orgId,
+  projectId,
+  hasChildren,
+  isExpanded,
+  onToggle,
+}: TreeItemProps) {
+  const router = useRouter();
   const { attributes, listeners, setNodeRef, transform, isDragging } =
     DndKit.useDraggable({
       id: page.id,
@@ -285,6 +302,7 @@ function TreeItem({ page, hasChildren, isExpanded, onToggle }: TreeItemProps) {
         <div
           className="flex-1 text-sm text-gray-700 truncate font-medium select-none cursor-pointer"
           onClick={() => {
+            router.push(`/orgs/${orgId}/projects/${projectId}/wiki/${page.id}`);
             window.dispatchEvent(
               new CustomEvent("kanban_open_wiki_page", { detail: page.id }),
             );

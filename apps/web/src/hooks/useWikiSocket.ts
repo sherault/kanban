@@ -23,7 +23,7 @@ type IncomingEvent =
       type: "wiki.yjs_update";
       pageId: string;
       update?: string;
-      properties?: Record<string, any>;
+      properties?: Record<string, unknown>;
       actorId?: string;
       tabId?: string;
     }
@@ -42,7 +42,7 @@ export interface WikiSocketCallbacks {
   onYjsUpdate?: (
     pageId: string,
     update?: string,
-    properties?: Record<string, any>,
+    properties?: Record<string, unknown>,
     actorId?: string,
     tabId?: string,
   ) => void;

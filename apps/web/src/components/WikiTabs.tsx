@@ -36,7 +36,10 @@ export function WikiTabs({
               ? "bg-white border-t-2 border-t-blue-500 font-medium text-gray-900"
               : "text-gray-500 hover:bg-gray-100"
           }`}
-          onClick={() => onTabClick(id)}
+          onClick={(e) => {
+            e.stopPropagation();
+            onTabClick(id);
+          }}
         >
           <span className="truncate max-w-[120px]">
             {pageTitles[id] || `Page ${id.slice(0, 4)}...`}

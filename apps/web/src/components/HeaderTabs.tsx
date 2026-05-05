@@ -1,43 +1,46 @@
 "use client";
 
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter, useParams } from "next/navigation";
 import { useEffect, useState } from "react";
 
-export function HeaderTabs() {
+interface Props {
+  activeTab?: "board" | "wiki";
+  onTabChange?: (tab: "board" | "wiki") => void;
+}
+
+export function HeaderTabs({ activeTab: propActiveTab, onTabChange }: Props) {
   const pathname = usePathname();
-  const [activeTab, setActiveTab] = useState<"board" | "wiki">("board");
+  const router = useRouter();
+  const params = useParams();
+  const orgId = params.orgId as string;
+  const projectId = params.projectId as string;
 
+  const currentTab = pathname.includes("/wiki") ? "wiki" : "board";
+  const [internalActiveTab, setInternalActiveTab] = useState<"board" | "wiki">(
+    currentTab,
+  );
+
+  // Sync state if pathname changes
   useEffect(() => {
-    // Initial check
-    const saved = localStorage.getItem("kanban_active_tab");
-    if (saved === "wiki" || pathname.includes("/wiki")) {
-      setActiveTab("wiki");
-    } else {
-      setActiveTab("board");
-    }
+    setInternalActiveTab(currentTab);
+  }, [currentTab]);
 
-    const handleTabChangedEvent = (e: Event) => {
-      if (!(e instanceof CustomEvent)) return;
-      if (e.detail === "board" || e.detail === "wiki") {
-        setActiveTab(e.detail);
-      }
-    };
-
-    window.addEventListener("kanban_tab_changed", handleTabChangedEvent);
-    return () =>
-      window.removeEventListener("kanban_tab_changed", handleTabChangedEvent);
-  }, [pathname]);
+  const activeTab = propActiveTab ?? internalActiveTab;
 
   const handleTabChange = (tab: "board" | "wiki") => {
-    setActiveTab(tab);
-    localStorage.setItem("kanban_active_tab", tab);
-    // Dispatch a custom event to notify other components (like BoardClient/WikiClient)
-    window.dispatchEvent(
-      new CustomEvent("kanban_tab_changed", { detail: tab }),
-    );
+    if (onTabChange) {
+      onTabChange(tab);
+    } else {
+      setInternalActiveTab(tab);
+      if (tab === "board") {
+        router.push(`/orgs/${orgId}/projects/${projectId}`);
+      } else {
+        router.push(`/orgs/${orgId}/projects/${projectId}/wiki`);
+      }
+    }
   };
 
-  // Only show on project pages (not on the organization/project list pages)
+  // Only show on project pages
   if (!pathname.includes("/projects/")) return null;
 
   return (

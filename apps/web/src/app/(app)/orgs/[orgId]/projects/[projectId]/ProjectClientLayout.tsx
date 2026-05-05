@@ -1,22 +1,35 @@
 "use client";
 
-import React, { useEffect, useState, useRef } from "react";
+import React, { useEffect, useState, useRef, useCallback } from "react";
+import { usePathname, useRouter } from "next/navigation";
 import { ProjectSidebar } from "./ProjectSidebar";
 import { WikiSidebar } from "./WikiSidebar";
 import { WikiProvider, useWiki } from "@/context/WikiContext";
-import type { ProjectDto } from "@kanban/shared";
+import type { ProjectDto, TaskDto, MembershipDto } from "@kanban/shared";
 import { listWikiPagesAction } from "@/actions/wiki";
+import { searchTasksInOrgAction } from "@/actions/tasks";
+import { BoardClient } from "./BoardClient";
+import { WikiClient } from "./WikiClient";
 
 interface Props {
   projects: ProjectDto[];
   orgId: string;
   projectId: string;
   children: React.ReactNode;
+  initialTasks: TaskDto[];
+  orgMembers: MembershipDto[];
+  currentUserId: string;
+  userPreferences: {
+    maxOpenPanels: number;
+    enableNotifications: boolean;
+    maxNotifications: number;
+    notificationDuration: number;
+  };
 }
 
 export function ProjectClientLayout(props: Props) {
   return (
-    <WikiProvider>
+    <WikiProvider orgId={props.orgId}>
       <ProjectClientLayoutInner {...props} />
     </WikiProvider>
   );
@@ -27,21 +40,33 @@ function ProjectClientLayoutInner({
   orgId,
   projectId,
   children,
+  initialTasks,
+  orgMembers,
+  currentUserId,
+  userPreferences,
 }: Props) {
-  const [activeTab, setActiveTab] = useState<"board" | "wiki">("board");
+  const router = useRouter();
+  const pathname = usePathname();
+  const isWikiPath = pathname.includes("/wiki");
+
+  const [activeTab, setActiveTab] = useState<"board" | "wiki">(
+    isWikiPath ? "wiki" : "board",
+  );
   const [isHydrated, setIsHydrated] = useState(false);
   const { pages, setPages, setIsLoading: setIsLoadingPages } = useWiki();
   const [searchQuery, setSearchQuery] = useState("");
+  const [taskResults, setTaskResults] = useState<
+    Array<TaskDto & { projectName: string }>
+  >([]);
+  const [isSearchingTasks, setIsSearchingTasks] = useState(false);
   const searchInputRef = useRef<HTMLInputElement>(null);
 
-  const fetchPages = React.useCallback(async () => {
+  const fetchPages = useCallback(async () => {
     try {
       setIsLoadingPages(true);
       const result = await listWikiPagesAction(orgId);
       if (result.pages) {
         setPages(result.pages);
-      } else if (result.error) {
-        console.error("Failed to fetch wiki pages", result.error);
       }
     } catch (e) {
       console.error("Failed to fetch wiki pages", e);
@@ -51,13 +76,13 @@ function ProjectClientLayoutInner({
   }, [orgId, setIsLoadingPages, setPages]);
 
   useEffect(() => {
-    const saved = localStorage.getItem("kanban_active_tab") as "board" | "wiki";
-    if (saved) {
-      setActiveTab(saved);
-    }
+    setActiveTab(isWikiPath ? "wiki" : "board");
+  }, [isWikiPath]);
+
+  useEffect(() => {
     setIsHydrated(true);
 
-    const handleTabChange = (e: Event) => {
+    const handleTabChangeMessage = (e: Event) => {
       if (!(e instanceof CustomEvent)) return;
       if (e.detail === "board" || e.detail === "wiki") {
         setActiveTab(e.detail);
@@ -71,24 +96,47 @@ function ProjectClientLayoutInner({
       }
     };
 
-    window.addEventListener("kanban_tab_changed", handleTabChange);
+    window.addEventListener("kanban_tab_changed", handleTabChangeMessage);
     window.addEventListener("kanban_wiki_page_updated", fetchPages);
     window.addEventListener("keydown", handleKeyDown);
 
     void fetchPages();
 
     return () => {
-      window.removeEventListener("kanban_tab_changed", handleTabChange);
+      window.removeEventListener("kanban_tab_changed", handleTabChangeMessage);
       window.removeEventListener("kanban_wiki_page_updated", fetchPages);
       window.removeEventListener("keydown", handleKeyDown);
     };
   }, [fetchPages]);
 
+  useEffect(() => {
+    if (searchQuery.length < 2) {
+      setTaskResults([]);
+      return;
+    }
+
+    const timer = setTimeout(async () => {
+      setIsSearchingTasks(true);
+      try {
+        const res = await searchTasksInOrgAction(orgId, searchQuery);
+        if (res.tasks) {
+          setTaskResults(res.tasks);
+        }
+      } catch (e) {
+        console.error("Task search failed", e);
+      } finally {
+        setIsSearchingTasks(false);
+      }
+    }, 300);
+
+    return () => clearTimeout(timer);
+  }, [searchQuery, orgId]);
+
   if (!isHydrated) {
     return (
       <div className="flex h-full overflow-hidden">
         <aside className="w-56 bg-white border-r border-gray-200 shrink-0 h-full" />
-        <div className="flex-1 overflow-hidden">{children}</div>
+        <div className="flex-1 overflow-hidden" />
       </div>
     );
   }
@@ -114,7 +162,36 @@ function ProjectClientLayoutInner({
       )}
 
       <div className="flex-1 flex flex-col min-w-0 overflow-hidden relative">
-        <div className="flex-1 overflow-hidden">{children}</div>
+        <main className="flex-1 overflow-hidden relative">
+          {/* We keep Board and Wiki mounted at all times but only show the active one */}
+          <div
+            className={`h-full ${activeTab === "board" ? "block" : "hidden"}`}
+          >
+            <BoardClient
+              initialTasks={initialTasks}
+              orgMembers={orgMembers}
+              projectId={projectId}
+              orgId={orgId}
+              currentUserId={currentUserId}
+              maxOpenPanels={userPreferences.maxOpenPanels}
+              enableNotifications={userPreferences.enableNotifications}
+              maxNotifications={userPreferences.maxNotifications}
+              notificationDuration={userPreferences.notificationDuration}
+            />
+          </div>
+          <div
+            className={`h-full ${activeTab === "wiki" ? "block" : "hidden"}`}
+          >
+            <WikiClient
+              orgId={orgId}
+              projectId={projectId}
+              tasks={initialTasks}
+            />
+          </div>
+
+          {/* Children are rendered but hidden - they trigger route match */}
+          <div className="hidden">{children}</div>
+        </main>
 
         {/* Search Result Overlay */}
         {searchQuery && (
@@ -158,46 +235,9 @@ function ProjectClientLayoutInner({
               </button>
             </div>
             <div className="max-h-[400px] overflow-y-auto p-2">
-              {filteredPages.length > 0 ? (
-                filteredPages.map((p) => (
-                  <button
-                    key={p.id}
-                    onClick={() => {
-                      window.dispatchEvent(
-                        new CustomEvent("kanban_open_wiki_page", {
-                          detail: p.id,
-                        }),
-                      );
-                      setSearchQuery("");
-                    }}
-                    className="w-full text-left p-3 hover:bg-blue-50/50 rounded-lg flex items-start gap-3 transition-all group"
-                  >
-                    <div className="mt-1 p-1.5 bg-gray-100 rounded group-hover:bg-blue-100 transition-colors">
-                      <svg
-                        className="w-4 h-4 text-gray-500 group-hover:text-blue-600"
-                        fill="none"
-                        stroke="currentColor"
-                        viewBox="0 0 24 24"
-                      >
-                        <path
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          strokeWidth={2}
-                          d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
-                        />
-                      </svg>
-                    </div>
-                    <div className="flex flex-col min-w-0">
-                      <span className="text-sm font-semibold text-gray-900 group-hover:text-blue-700 transition-colors">
-                        {p.title}
-                      </span>
-                      <span className="text-xs text-gray-500 truncate mt-0.5">
-                        Wiki Page • {p.slug}
-                      </span>
-                    </div>
-                  </button>
-                ))
-              ) : (
+              {filteredPages.length === 0 &&
+              taskResults.length === 0 &&
+              !isSearchingTasks ? (
                 <div className="py-12 flex flex-col items-center gap-2">
                   <div className="p-3 bg-gray-50 rounded-full">
                     <svg
@@ -223,12 +263,117 @@ function ProjectClientLayoutInner({
                     </p>
                   </div>
                 </div>
+              ) : (
+                <div className="space-y-4">
+                  {filteredPages.length > 0 && (
+                    <div>
+                      <div className="px-3 py-1 text-[10px] font-bold text-gray-400 uppercase tracking-widest flex items-center gap-2">
+                        <span className="w-1 h-1 rounded-full bg-gray-300" />
+                        Wiki Pages
+                      </div>
+                      {filteredPages.map((p) => (
+                        <button
+                          key={p.id}
+                          onClick={() => {
+                            router.push(
+                              `/orgs/${orgId}/projects/${projectId}/wiki/${p.id}`,
+                            );
+                            setSearchQuery("");
+                          }}
+                          className="w-full text-left p-3 hover:bg-blue-50/50 rounded-lg flex items-start gap-3 transition-all group"
+                        >
+                          <div className="mt-1 p-1.5 bg-gray-100 rounded group-hover:bg-blue-100 transition-colors">
+                            <svg
+                              className="w-4 h-4 text-gray-500 group-hover:text-blue-600"
+                              fill="none"
+                              stroke="currentColor"
+                              viewBox="0 0 24 24"
+                            >
+                              <path
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                                strokeWidth={2}
+                                d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
+                              />
+                            </svg>
+                          </div>
+                          <div className="flex flex-col min-w-0">
+                            <span className="text-sm font-semibold text-gray-900 group-hover:text-blue-700 transition-colors">
+                              {p.title}
+                            </span>
+                            <span className="text-xs text-gray-500 truncate mt-0.5">
+                              Wiki • {p.slug}
+                            </span>
+                          </div>
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                  {(taskResults.length > 0 || isSearchingTasks) && (
+                    <div>
+                      <div className="px-3 py-1 text-[10px] font-bold text-gray-400 uppercase tracking-widest flex items-center gap-2">
+                        <span className="w-1 h-1 rounded-full bg-gray-300" />
+                        Tasks
+                      </div>
+                      {isSearchingTasks ? (
+                        <div className="p-8 text-center">
+                          <div className="w-5 h-5 border-2 border-blue-500 border-t-transparent rounded-full animate-spin mx-auto" />
+                        </div>
+                      ) : (
+                        taskResults.map((t) => (
+                          <button
+                            key={t.id}
+                            onClick={() => {
+                              setActiveTab("board");
+                              window.dispatchEvent(
+                                new CustomEvent("kanban_open_task", {
+                                  detail: t.id,
+                                }),
+                              );
+                              setSearchQuery("");
+                            }}
+                            className="w-full text-left p-3 hover:bg-emerald-50/50 rounded-lg flex items-start gap-3 transition-all group"
+                          >
+                            <div className="mt-1 p-1.5 bg-gray-100 rounded group-hover:bg-emerald-100 transition-colors">
+                              <svg
+                                className="w-4 h-4 text-gray-500 group-hover:text-emerald-600"
+                                fill="none"
+                                stroke="currentColor"
+                                viewBox="0 0 24 24"
+                              >
+                                <path
+                                  strokeLinecap="round"
+                                  strokeLinejoin="round"
+                                  strokeWidth={2}
+                                  d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"
+                                />
+                              </svg>
+                            </div>
+                            <div className="flex flex-col min-w-0">
+                              <span className="text-sm font-semibold text-gray-900 group-hover:text-emerald-700 transition-colors">
+                                {t.title}
+                              </span>
+                              <div className="flex items-center gap-2 mt-0.5">
+                                <span className="text-xs text-gray-500 truncate">
+                                  Task • {t.projectName}
+                                </span>
+                                <span className="text-[10px] text-gray-300 font-mono">
+                                  #{t.id.slice(0, 6)}
+                                </span>
+                              </div>
+                            </div>
+                          </button>
+                        ))
+                      )}
+                    </div>
+                  )}
+                </div>
               )}
             </div>
           </div>
         )}
 
-        {/* Chat / Search Bar at the bottom */}
+        {/* Footer Search Bar */}
         <div className="flex-none p-3 border-t border-gray-200 bg-white shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.05)]">
           <div className="max-w-3xl mx-auto relative">
             <input
@@ -236,7 +381,7 @@ function ProjectClientLayoutInner({
               type="text"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Search wiki or ask a question... (Cmd+K)"
+              placeholder="Search wiki, tasks or ask a question... (Cmd+K)"
               className="w-full bg-gray-100 border-none rounded-full px-5 py-2.5 text-sm focus:ring-2 focus:ring-blue-500/20 transition-all pl-11 shadow-inner"
             />
             <div className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400">
@@ -253,14 +398,6 @@ function ProjectClientLayoutInner({
                   d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
                 />
               </svg>
-            </div>
-            <div className="absolute right-3 top-1/2 -translate-y-1/2 flex items-center gap-1">
-              <kbd className="hidden sm:inline-block px-1.5 py-0.5 text-[10px] font-semibold text-gray-400 bg-white border border-gray-200 rounded shadow-sm">
-                ⌘
-              </kbd>
-              <kbd className="hidden sm:inline-block px-1.5 py-0.5 text-[10px] font-semibold text-gray-400 bg-white border border-gray-200 rounded shadow-sm">
-                K
-              </kbd>
             </div>
           </div>
         </div>

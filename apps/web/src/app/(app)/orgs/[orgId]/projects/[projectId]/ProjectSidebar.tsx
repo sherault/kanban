@@ -13,7 +13,12 @@ interface Props {
 }
 
 export function ProjectSidebar({ projects, orgId, projectId }: Props) {
-  const [isCollapsed, setIsCollapsed] = useState(false);
+  const [isCollapsed, setIsCollapsed] = useState(() => {
+    if (typeof window !== "undefined") {
+      return localStorage.getItem("kanban_sidebar_collapsed") === "true";
+    }
+    return false;
+  });
   const [isTempExpanded, setIsTempExpanded] = useState(false);
   const [isHydrated, setIsHydrated] = useState(false);
   const [activeOrgSettings, setActiveOrgSettings] = useState(false);
@@ -23,12 +28,8 @@ export function ProjectSidebar({ projects, orgId, projectId }: Props) {
   const hoverTimerRef = useRef<NodeJS.Timeout | null>(null);
 
   useEffect(() => {
-    const saved = localStorage.getItem("kanban_sidebar_collapsed");
-    if (saved === "true") {
-      // eslint-disable-next-line react-hooks/set-state-in-effect
-      setIsCollapsed(true);
-    }
-    setIsHydrated(true);
+    const timer = setTimeout(() => setIsHydrated(true), 0);
+    return () => clearTimeout(timer);
   }, []);
 
   const toggleCollapse = (e: React.MouseEvent) => {

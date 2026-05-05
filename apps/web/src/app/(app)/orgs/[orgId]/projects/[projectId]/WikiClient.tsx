@@ -1,9 +1,12 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useEffect, useRef } from "react";
 import type { TaskDto } from "@kanban/shared";
 import { WikiTabs } from "@/components/WikiTabs";
+import { useWiki } from "@/context/WikiContext";
 import dynamic from "next/dynamic";
+
+import { useRouter, useParams } from "next/navigation";
 
 const WikiEditor = dynamic(
   () => import("@/components/WikiEditor").then((m) => m.WikiEditor),
@@ -24,32 +27,33 @@ interface Props {
   tasks?: TaskDto[];
 }
 
-type WikiSplitState = {
-  activePageId: string | null;
-  openPageIds: string[];
-};
-
 export function WikiClient({ orgId, projectId, tasks }: Props) {
-  const [splits, setSplits] = useState<WikiSplitState[]>([
-    { activePageId: null, openPageIds: [] },
-  ]);
-  const [isSplit, setIsSplit] = useState(false);
-  const [activeSplitIndex, setActiveSplitIndex] = useState(0);
+  const router = useRouter();
+  const {
+    splits,
+    setSplits,
+    isSplit,
+    setIsSplit,
+    activeSplitIndex,
+    setActiveSplitIndex,
+    openPageInSplit,
+    closePageInSplit,
+  } = useWiki();
 
-  const openPageInSplit = useCallback((pageId: string, splitIndex: number) => {
-    setSplits((prev) => {
-      const next = [...prev];
-      const currentSplit = next[splitIndex];
-      if (!currentSplit) return prev;
-      const split = { ...currentSplit };
-      if (!split.openPageIds.includes(pageId)) {
-        split.openPageIds = [...split.openPageIds, pageId];
-      }
-      split.activePageId = pageId;
-      next[splitIndex] = split;
-      return next;
-    });
-  }, []);
+  const params = useParams();
+  const wikiParam = params.wikiPageId;
+  const urlWikiPageId = wikiParam as string | undefined;
+
+  const activeSplitRef = useRef(activeSplitIndex);
+  useEffect(() => {
+    activeSplitRef.current = activeSplitIndex;
+  }, [activeSplitIndex]);
+
+  useEffect(() => {
+    if (urlWikiPageId) {
+      openPageInSplit(urlWikiPageId, activeSplitRef.current);
+    }
+  }, [urlWikiPageId, openPageInSplit]);
 
   useEffect(() => {
     const handleOpenPage = (e: Event) => {
@@ -61,20 +65,6 @@ export function WikiClient({ orgId, projectId, tasks }: Props) {
     return () =>
       window.removeEventListener("kanban_open_wiki_page", handleOpenPage);
   }, [activeSplitIndex, openPageInSplit]);
-
-  const closePageInSplit = (pageId: string, splitIndex: number) => {
-    setSplits((prev) => {
-      const next = [...prev];
-      const split = { ...next[splitIndex] };
-      split.openPageIds = split.openPageIds.filter((id) => id !== pageId);
-      if (split.activePageId === pageId) {
-        split.activePageId =
-          split.openPageIds[split.openPageIds.length - 1] || null;
-      }
-      next[splitIndex] = split;
-      return next;
-    });
-  };
 
   const toggleSplit = () => {
     if (isSplit) {
@@ -121,12 +111,23 @@ export function WikiClient({ orgId, projectId, tasks }: Props) {
             className={`flex-1 flex flex-col min-w-0 border-l border-gray-200 first:border-l-0 ${
               activeSplitIndex === idx ? "bg-white" : "bg-gray-50/50"
             }`}
-            onClick={() => setActiveSplitIndex(idx)}
+            onClick={() => {
+              setActiveSplitIndex(idx);
+              if (split.activePageId) {
+                router.push(
+                  `/orgs/${orgId}/projects/${projectId}/wiki/${split.activePageId}`,
+                );
+              }
+            }}
           >
             <WikiTabs
               activePageId={split.activePageId}
               openPageIds={split.openPageIds}
-              onTabClick={(id) => openPageInSplit(id, idx)}
+              onTabClick={(id) => {
+                setActiveSplitIndex(idx);
+                openPageInSplit(id, idx);
+                router.push(`/orgs/${orgId}/projects/${projectId}/wiki/${id}`);
+              }}
               onTabClose={(id) => closePageInSplit(id, idx)}
             />
             <div className="flex-1 overflow-y-auto">

@@ -98,3 +98,31 @@ export async function getProjectSettingsDataAction(
     return null;
   }
 }
+
+export async function getProjectViewDataAction(
+  orgId: string,
+  projectId: string,
+) {
+  const token = await getAccessToken();
+  if (!token) redirect("/login");
+
+  try {
+    const [{ data: tasks }, { data: members }, { data: me }, currentUserId] =
+      await Promise.all([
+        api.tasks.list(token, projectId),
+        api.orgs.listMembers(token, orgId),
+        api.auth.me(token),
+        getUserId(),
+      ]);
+
+    return {
+      tasks,
+      members,
+      me,
+      currentUserId: currentUserId ?? "",
+    };
+  } catch (e) {
+    console.error("Failed to fetch project view data:", e);
+    throw e;
+  }
+}

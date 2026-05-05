@@ -42,8 +42,8 @@ export function TaskCard({
 
   const [isMounted, setIsMounted] = useState(false);
   useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    setIsMounted(true);
+    const timer = setTimeout(() => setIsMounted(true), 0);
+    return () => clearTimeout(timer);
   }, []);
 
   const endDateObj = task.endDate ? new Date(task.endDate) : null;

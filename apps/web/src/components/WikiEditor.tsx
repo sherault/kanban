@@ -12,7 +12,6 @@ import {
 } from "react";
 import { LinkModal } from "./LinkModal";
 import { useWiki } from "@/context/WikiContext";
-import { useWikiSocket } from "@/hooks/useWikiSocket";
 import { getWikiPageAction, updateWikiPageAction } from "@/actions/wiki";
 import { getTaskByIdAction } from "@/actions/tasks";
 import ReactMarkdown from "react-markdown";
@@ -21,6 +20,7 @@ import { marked } from "marked";
 import TurndownService from "turndown";
 import { WikiPropertiesPanel } from "./WikiPropertiesPanel";
 import type { WikiPageSummaryDto, TaskDto } from "@kanban/shared";
+import { useRouter } from "next/navigation";
 
 interface Props {
   pageId: string;
@@ -495,13 +495,16 @@ function MarkdownLink({
   href,
   children,
   currentOrgId,
+  projectId,
   pages,
 }: {
   href?: string;
   children: React.ReactNode;
   currentOrgId: string;
+  projectId: string;
   pages: WikiPageSummaryDto[];
 }) {
+  const router = useRouter();
   if (!href) return <span>{children}</span>;
 
   // Wiki links
@@ -545,6 +548,13 @@ function MarkdownLink({
         alert(`Wiki page does not exist: ${wikiPageId}`);
         return;
       }
+      // Update URL
+      const targetUrl = matchedProjectId
+        ? `/orgs/${currentOrgId}/projects/${matchedProjectId}/wiki/${wikiPageId}`
+        : `/orgs/${currentOrgId}/projects/${projectId}/wiki/${wikiPageId}`;
+
+      router.push(targetUrl);
+
       window.dispatchEvent(
         new CustomEvent("kanban_open_wiki_page", { detail: wikiPageId }),
       );
@@ -634,7 +644,7 @@ interface Props {
   tasks?: TaskDto[];
 }
 
-export function WikiEditor({ pageId, orgId, tasks = [] }: Props) {
+export function WikiEditor({ pageId, orgId, projectId, tasks = [] }: Props) {
   const {
     pages,
     pageModes,
@@ -761,21 +771,12 @@ export function WikiEditor({ pageId, orgId, tasks = [] }: Props) {
     return () => window.removeEventListener("keydown", onKey);
   }, [handleSave, content]);
 
-  // ── WebSocket collaboration ───────────────────────────────────────────────
-  const { ws, isConnected, tabId } = useWikiSocket(orgId, {
-    onYjsUpdate: (
-      receivedPageId,
-      rawContent,
-      rawProperties,
-      _actorId,
-      msgTabId,
-    ) => {
-      if (receivedPageId !== pageId || msgTabId === tabId) return;
+  const { ws, isConnected, tabId } = useWiki();
 
-      // Update properties if provided
-      if (rawProperties) {
-        setPageProperties(pageId, rawProperties);
-      }
+  useEffect(() => {
+    const handleRemoteUpdate = (e: Event) => {
+      if (!(e instanceof CustomEvent)) return;
+      const { content: rawContent } = e.detail;
 
       if (rawContent !== undefined) {
         // Snapshot textarea cursor, then trigger synchronous restore via useLayoutEffect
@@ -791,12 +792,18 @@ export function WikiEditor({ pageId, orgId, tasks = [] }: Props) {
           visualRef.current.setHtml(marked(rawContent) as string);
           isRemoteUpdateRef.current = false;
         }
-        setPageContent(pageId, rawContent);
         setRestoreTrigger((n) => n + 1);
       }
       setStatus("saved");
-    },
-  });
+    };
+
+    window.addEventListener(`wiki_remote_update_${pageId}`, handleRemoteUpdate);
+    return () =>
+      window.removeEventListener(
+        `wiki_remote_update_${pageId}`,
+        handleRemoteUpdate,
+      );
+  }, [pageId]);
 
   const broadcast = useCallback(
     (val?: string, props?: Record<string, unknown>) => {
@@ -905,7 +912,7 @@ export function WikiEditor({ pageId, orgId, tasks = [] }: Props) {
             <button
               key={m}
               onClick={() => setPageMode(pageId, m)}
-              className={`px-4 py-1.5 rounded-lg text-[9px] font-black uppercase tracking-widest transition-all capitalize ${
+              className={`px-4 py-1.5 rounded-lg text-[9px] font-black uppercase tracking-widest transition-all ${
                 mode === m
                   ? "bg-white text-blue-600 shadow-sm border border-gray-100"
                   : "text-gray-400 hover:text-gray-600"
@@ -1044,6 +1051,7 @@ export function WikiEditor({ pageId, orgId, tasks = [] }: Props) {
                     <MarkdownLink
                       href={href}
                       currentOrgId={orgId}
+                      projectId={projectId}
                       pages={pages}
                     >
                       {children}
@@ -1065,7 +1073,12 @@ export function WikiEditor({ pageId, orgId, tasks = [] }: Props) {
               urlTransform={(url) => url}
               components={{
                 a: ({ href, children }) => (
-                  <MarkdownLink href={href} currentOrgId={orgId} pages={pages}>
+                  <MarkdownLink
+                    href={href}
+                    currentOrgId={orgId}
+                    projectId={projectId}
+                    pages={pages}
+                  >
                     {children}
                   </MarkdownLink>
                 ),
