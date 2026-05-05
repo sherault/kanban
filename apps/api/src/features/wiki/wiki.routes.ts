@@ -11,12 +11,14 @@ const createPageSchema = z.object({
   content: z.string(),
   parentId: z.string().nullable().optional(),
   projectId: z.string().nullable().optional(),
+  properties: z.any().optional(),
 });
 
 const updatePageSchema = z.object({
   title: z.string().min(1).max(200).optional(),
   content: z.string().optional(),
   parentId: z.string().nullable().optional(),
+  properties: z.any().optional(),
 });
 
 export function wikiRoutes(
@@ -53,9 +55,14 @@ export function wikiRoutes(
   // Get a single page
   app.get("/wiki/pages/:pageId", async (c) => {
     const pageId = c.req.param("pageId");
-    const page = await wikiSvc.getPage(pageId);
-    if (!page) return c.json({ error: "Page not found" }, 404);
-    return c.json(page);
+    try {
+      const page = await wikiSvc.getPage(pageId);
+      if (!page) return c.json({ error: "Page not found" }, 404);
+      return c.json(page);
+    } catch (err) {
+      console.error(`[WikiRoutes] Error fetching page ${pageId}:`, err);
+      throw err; // Let global handler handle it, but now we have the log
+    }
   });
 
   // Update a page

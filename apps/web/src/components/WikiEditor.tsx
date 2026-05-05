@@ -17,6 +17,7 @@ import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { marked } from "marked";
 import TurndownService from "turndown";
+import { WikiPropertiesPanel } from "./WikiPropertiesPanel";
 
 interface Props {
   pageId: string;
@@ -353,13 +354,22 @@ const VisualEditor = memo(
 );
 
 export function WikiEditor({ pageId, orgId }: Props) {
-  const { pages, pageModes, setPageMode, pageContents, setPageContent } =
-    useWiki();
+  const {
+    pages,
+    pageModes,
+    setPageMode,
+    pageContents,
+    setPageContent,
+    pageProperties,
+    setPageProperties,
+  } = useWiki();
   const page = pages.find((p) => p.id === pageId);
-  const mode = pageModes[pageId] || "visual";
+  const mode = pageModes[pageId] || "view";
   const content = pageContents[pageId] || "";
+  const properties = pageProperties[pageId] || {};
 
   const [status, setStatus] = useState<SaveStatus>("saved");
+  const [showProperties, setShowProperties] = useState(false);
   const [isFetching, setIsFetching] = useState(false);
   // Incremented only on remote collaborative updates → triggers cursor restore
   const [restoreTrigger, setRestoreTrigger] = useState(0);
@@ -386,6 +396,7 @@ export function WikiEditor({ pageId, orgId }: Props) {
           return;
         }
         setPageContent(pageId, result.page.content || "");
+        setPageProperties(pageId, result.page.properties || {});
         setStatus("saved");
       } catch (e) {
         console.error("[WikiEditor] Fetch failed:", e);
@@ -422,11 +433,14 @@ export function WikiEditor({ pageId, orgId }: Props) {
 
   // ── Save ──────────────────────────────────────────────────────────────────
   const handleSave = useCallback(
-    async (val: string) => {
-      if (!val) return;
+    async (val: string, props?: Record<string, any>) => {
+      if (!val && !props) return;
       setStatus("saving");
       try {
-        const result = await updateWikiPageAction(pageId, { content: val });
+        const result = await updateWikiPageAction(pageId, {
+          content: val,
+          properties: props,
+        });
         if (result.error) {
           throw new Error(result.error);
         }
@@ -439,9 +453,9 @@ export function WikiEditor({ pageId, orgId }: Props) {
   );
 
   const scheduleSave = useCallback(
-    (val: string) => {
+    (val: string, props?: Record<string, any>) => {
       if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current);
-      saveTimeoutRef.current = setTimeout(() => handleSave(val), 2500);
+      saveTimeoutRef.current = setTimeout(() => handleSave(val, props), 2500);
     },
     [handleSave],
   );
@@ -460,29 +474,43 @@ export function WikiEditor({ pageId, orgId }: Props) {
 
   // ── WebSocket collaboration ───────────────────────────────────────────────
   const { ws, isConnected, tabId } = useWikiSocket(orgId, {
-    onYjsUpdate: (receivedPageId, rawContent, _actorId, msgTabId) => {
+    onYjsUpdate: (
+      receivedPageId,
+      rawContent,
+      rawProperties,
+      _actorId,
+      msgTabId,
+    ) => {
       if (receivedPageId !== pageId || msgTabId === tabId) return;
-      // Snapshot textarea cursor, then trigger synchronous restore via useLayoutEffect
-      if (textareaRef.current) {
-        remoteCursorRef.current = {
-          start: textareaRef.current.selectionStart,
-          end: textareaRef.current.selectionEnd,
-        };
+
+      // Update properties if provided
+      if (rawProperties) {
+        setPageProperties(pageId, rawProperties);
       }
-      // Update visual contenteditable imperatively
-      if (visualRef.current) {
-        visualRef.current.setHtml(marked(rawContent) as string);
+
+      if (rawContent !== undefined) {
+        // Snapshot textarea cursor, then trigger synchronous restore via useLayoutEffect
+        if (textareaRef.current) {
+          remoteCursorRef.current = {
+            start: textareaRef.current.selectionStart,
+            end: textareaRef.current.selectionEnd,
+          };
+        }
+        // Update visual contenteditable imperatively
+        if (visualRef.current) {
+          isRemoteUpdateRef.current = true;
+          visualRef.current.setHtml(marked(rawContent) as string);
+          isRemoteUpdateRef.current = false;
+        }
+        setPageContent(pageId, rawContent);
+        setRestoreTrigger((n) => n + 1);
       }
-      isRemoteUpdateRef.current = true;
-      setPageContent(pageId, rawContent);
       setStatus("saved");
-      isRemoteUpdateRef.current = false;
-      setRestoreTrigger((n) => n + 1);
     },
   });
 
   const broadcast = useCallback(
-    (val: string) => {
+    (val?: string, props?: Record<string, any>) => {
       if (ws && isConnected) {
         ws.send(
           JSON.stringify({
@@ -490,6 +518,7 @@ export function WikiEditor({ pageId, orgId }: Props) {
             room: `org:${orgId}`,
             pageId,
             update: val,
+            properties: props,
             tabId,
           }),
         );
@@ -510,13 +539,24 @@ export function WikiEditor({ pageId, orgId }: Props) {
   // ── Visual (contenteditable) input handler ────────────────────────────────
   const handleVisualInput = useCallback(
     (html: string) => {
+      if (isRemoteUpdateRef.current) return;
       const md = td.turndown(html);
       setPageContent(pageId, md);
       setStatus("unsaved");
       broadcast(md);
       scheduleSave(md);
     },
-    [pageId, broadcast, scheduleSave, setPageContent],
+    [pageId, broadcast, scheduleSave, setPageContent, content, properties],
+  );
+
+  const handlePropertiesChange = useCallback(
+    (newProps: Record<string, any>) => {
+      setPageProperties(pageId, newProps);
+      setStatus("unsaved");
+      broadcast(undefined, newProps);
+      scheduleSave(content, newProps);
+    },
+    [pageId, broadcast, scheduleSave, setPageProperties, content],
   );
 
   const handleVisualInputRef = useRef(handleVisualInput);
@@ -571,7 +611,7 @@ export function WikiEditor({ pageId, orgId }: Props) {
 
         {/* Mode switcher */}
         <div className="flex items-center bg-gray-50 p-1 rounded-xl border border-gray-100">
-          {(["visual", "edit", "split"] as const).map((m) => (
+          {(["view", "visual", "edit", "split"] as const).map((m) => (
             <button
               key={m}
               onClick={() => setPageMode(pageId, m)}
@@ -585,6 +625,17 @@ export function WikiEditor({ pageId, orgId }: Props) {
             </button>
           ))}
         </div>
+
+        <button
+          onClick={() => setShowProperties(!showProperties)}
+          className={`px-3 py-1.5 rounded-lg text-[9px] font-black uppercase tracking-widest transition-all ${
+            showProperties
+              ? "bg-blue-50 text-blue-600 border border-blue-100"
+              : "bg-gray-50 text-gray-400 border border-gray-100 hover:text-gray-600"
+          }`}
+        >
+          {showProperties ? "Hide Details" : "Details"}
+        </button>
       </div>
 
       {/* ── Formatting toolbar (Visual + Edit) ── */}
@@ -680,6 +731,23 @@ export function WikiEditor({ pageId, orgId }: Props) {
               </ReactMarkdown>
             </div>
           </>
+        )}
+
+        {/* View: simply display content */}
+        {mode === "view" && (
+          <div className="flex-1 h-full overflow-y-auto bg-white p-10 prose prose-slate max-w-none prose-headings:font-black prose-headings:tracking-tighter prose-pre:bg-gray-900 prose-pre:rounded-xl">
+            <ReactMarkdown remarkPlugins={[remarkGfm]}>
+              {content || "_No content yet._"}
+            </ReactMarkdown>
+          </div>
+        )}
+
+        {showProperties && (
+          <WikiPropertiesPanel
+            properties={properties}
+            onChange={handlePropertiesChange}
+            readOnly={mode === "view"}
+          />
         )}
       </div>
     </div>

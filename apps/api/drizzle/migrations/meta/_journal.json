@@ -57,6 +57,13 @@
       "when": 1777967639144,
       "tag": "0007_many_warpath",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "6",
+      "when": 1777989735533,
+      "tag": "0008_demonic_wildside",
+      "breakpoints": true
     }
   ]
 }

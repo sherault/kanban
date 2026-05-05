@@ -27,6 +27,10 @@ export class WikiService {
       title: row.title,
       slug: row.slug,
       content: row.content,
+      properties:
+        typeof row.properties === "string"
+          ? JSON.parse(row.properties)
+          : (row.properties ?? null),
       createdBy: row.createdBy,
       updatedBy: row.updatedBy,
       createdAt: row.createdAt,
@@ -43,6 +47,10 @@ export class WikiService {
       pageId: historyRow.pageId,
       title: historyRow.title,
       content: historyRow.content,
+      properties:
+        typeof historyRow.properties === "string"
+          ? JSON.parse(historyRow.properties)
+          : (historyRow.properties ?? null),
       changedBy: historyRow.changedBy,
       changedByName: userRow?.displayName,
       createdAt: historyRow.createdAt,
@@ -74,6 +82,7 @@ export class WikiService {
         title: data.title,
         slug,
         content: data.content,
+        properties: data.properties ? JSON.stringify(data.properties) : null,
         createdBy: userId,
         updatedBy: userId,
       })
@@ -85,6 +94,7 @@ export class WikiService {
       pageId: id,
       title: data.title,
       content: data.content,
+      properties: data.properties ? JSON.stringify(data.properties) : null,
       changedBy: userId,
     });
 
@@ -115,6 +125,11 @@ export class WikiService {
     if (data.content !== undefined) {
       updateData.content = data.content;
     }
+    if (data.properties !== undefined) {
+      updateData.properties = data.properties
+        ? JSON.stringify(data.properties)
+        : null;
+    }
     if (data.parentId !== undefined) {
       updateData.parentId = data.parentId;
     }
@@ -131,6 +146,7 @@ export class WikiService {
         pageId,
         title: updated!.title,
         content: updated!.content,
+        properties: updated!.properties,
         changedBy: userId,
       });
     }

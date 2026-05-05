@@ -18,6 +18,7 @@ export const wikiPages = sqliteTable("wiki_pages", {
   title: text("title").notNull(),
   slug: text("slug").notNull(),
   content: text("content").notNull(),
+  properties: text("properties"), // JSON string
   createdBy: text("created_by")
     .notNull()
     .references(() => users.id),
@@ -39,6 +40,7 @@ export const wikiPageHistory = sqliteTable("wiki_page_history", {
     .references(() => wikiPages.id, { onDelete: "cascade" }),
   title: text("title").notNull(),
   content: text("content").notNull(),
+  properties: text("properties"), // JSON string
   changedBy: text("changed_by")
     .notNull()
     .references(() => users.id),

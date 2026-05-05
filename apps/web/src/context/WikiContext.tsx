@@ -15,13 +15,15 @@ interface WikiContextType {
   setPages: (pages: WikiPageSummaryDto[]) => void;
   isLoading: boolean;
   setIsLoading: (loading: boolean) => void;
-  pageModes: Record<string, "edit" | "preview" | "split" | "visual">;
+  pageModes: Record<string, "edit" | "view" | "split" | "visual">;
   setPageMode: (
     pageId: string,
-    mode: "edit" | "preview" | "split" | "visual",
+    mode: "edit" | "view" | "split" | "visual",
   ) => void;
   pageContents: Record<string, string>;
   setPageContent: (pageId: string, content: string) => void;
+  pageProperties: Record<string, Record<string, any>>;
+  setPageProperties: (pageId: string, properties: Record<string, any>) => void;
 }
 
 const WikiContext = createContext<WikiContextType | undefined>(undefined);
@@ -30,12 +32,15 @@ export function WikiProvider({ children }: { children: ReactNode }) {
   const [pages, setPages] = useState<WikiPageSummaryDto[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [pageModes, setPageModes] = useState<
-    Record<string, "edit" | "preview" | "split" | "visual">
+    Record<string, "edit" | "view" | "split" | "visual">
   >({});
   const [pageContents, setPageContents] = useState<Record<string, string>>({});
+  const [pageProperties, setPagePropertiesState] = useState<
+    Record<string, Record<string, any>>
+  >({});
 
   const setPageMode = useCallback(
-    (pageId: string, mode: "edit" | "preview" | "split" | "visual") => {
+    (pageId: string, mode: "edit" | "view" | "split" | "visual") => {
       setPageModes((prev) => ({ ...prev, [pageId]: mode }));
     },
     [],
@@ -44,6 +49,13 @@ export function WikiProvider({ children }: { children: ReactNode }) {
   const setPageContent = useCallback((pageId: string, content: string) => {
     setPageContents((prev) => ({ ...prev, [pageId]: content }));
   }, []);
+
+  const setPageProperties = useCallback(
+    (pageId: string, properties: Record<string, any>) => {
+      setPagePropertiesState((prev) => ({ ...prev, [pageId]: properties }));
+    },
+    [],
+  );
 
   const value = useMemo(
     () => ({
@@ -55,8 +67,19 @@ export function WikiProvider({ children }: { children: ReactNode }) {
       setPageMode,
       pageContents,
       setPageContent,
+      pageProperties,
+      setPageProperties,
     }),
-    [pages, isLoading, pageModes, setPageMode, pageContents, setPageContent],
+    [
+      pages,
+      isLoading,
+      pageModes,
+      setPageMode,
+      pageContents,
+      setPageContent,
+      pageProperties,
+      setPageProperties,
+    ],
   );
 
   return <WikiContext.Provider value={value}>{children}</WikiContext.Provider>;

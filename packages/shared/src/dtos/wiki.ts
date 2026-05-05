@@ -6,6 +6,7 @@ export interface WikiPageDto {
   title: string;
   slug: string;
   content: string;
+  properties?: Record<string, any> | null;
   createdBy: string;
   updatedBy: string;
   createdAt: string;
@@ -17,6 +18,7 @@ export interface WikiHistoryDto {
   pageId: string;
   title: string;
   content: string;
+  properties?: Record<string, any> | null;
   changedBy: string;
   changedByName?: string;
   createdAt: string;
@@ -33,6 +35,7 @@ export interface WikiPageSummaryDto {
 export interface CreateWikiPageDto {
   title: string;
   content: string;
+  properties?: Record<string, any> | null;
   parentId?: string | null | undefined;
   projectId?: string | null | undefined;
 }
@@ -40,5 +43,6 @@ export interface CreateWikiPageDto {
 export interface UpdateWikiPageDto {
   title?: string | undefined;
   content?: string | undefined;
+  properties?: Record<string, any> | null | undefined;
   parentId?: string | null | undefined;
 }

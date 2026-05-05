@@ -508,14 +508,20 @@ export function createMcpServer(
           .string()
           .optional()
           .describe("Optional project ID mapping"),
+        properties: z
+          .record(z.string(), z.any())
+          .nullable()
+          .optional()
+          .describe("Optional page metadata properties (key-value)"),
       },
     },
-    async ({ orgId, title, content, parentId, projectId }) => {
+    async ({ orgId, title, content, parentId, projectId, properties }) => {
       const page = await wikiSvc.createPage(orgId, userId, {
         title,
         content,
         parentId,
         projectId,
+        properties: properties ?? null,
       });
       return {
         content: [
@@ -534,13 +540,19 @@ export function createMcpServer(
         title: z.string().min(1).max(200).optional().describe("New title"),
         content: z.string().optional().describe("New content"),
         parentId: z.string().optional().describe("New parent page ID"),
+        properties: z
+          .record(z.string(), z.any())
+          .nullable()
+          .optional()
+          .describe("New page metadata properties"),
       },
     },
-    async ({ pageId, title, content, parentId }) => {
+    async ({ pageId, title, content, parentId, properties }) => {
       const page = await wikiSvc.updatePage(pageId, userId, {
         title,
         content,
         parentId,
+        properties: properties ?? null,
       });
       return {
         content: [

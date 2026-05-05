@@ -22,7 +22,8 @@ type IncomingEvent =
   | {
       type: "wiki.yjs_update";
       pageId: string;
-      update: string;
+      update?: string;
+      properties?: Record<string, any>;
       actorId?: string;
       tabId?: string;
     }
@@ -40,7 +41,8 @@ export interface WikiSocketCallbacks {
   onPageDeleted?: (pageId: string, actorId?: string) => void;
   onYjsUpdate?: (
     pageId: string,
-    update: string,
+    update?: string,
+    properties?: Record<string, any>,
     actorId?: string,
     tabId?: string,
   ) => void;
@@ -147,6 +149,7 @@ export function useWikiSocket(
             callbacksRef.current.onYjsUpdate?.(
               msg.pageId,
               msg.update,
+              msg.properties,
               msg.actorId,
               msg.tabId,
             );
