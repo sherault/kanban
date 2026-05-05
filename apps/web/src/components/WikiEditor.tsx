@@ -10,18 +10,22 @@ import {
   forwardRef,
   useImperativeHandle,
 } from "react";
+import { LinkModal } from "./LinkModal";
 import { useWiki } from "@/context/WikiContext";
 import { useWikiSocket } from "@/hooks/useWikiSocket";
 import { getWikiPageAction, updateWikiPageAction } from "@/actions/wiki";
+import { getTaskByIdAction } from "@/actions/tasks";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { marked } from "marked";
 import TurndownService from "turndown";
 import { WikiPropertiesPanel } from "./WikiPropertiesPanel";
+import type { WikiPageSummaryDto, TaskDto } from "@kanban/shared";
 
 interface Props {
   pageId: string;
   orgId: string;
+  projectId: string;
 }
 
 type SaveStatus = "saved" | "unsaved" | "saving";
@@ -150,6 +154,25 @@ const TOOLBAR_ITEMS = [
     title: "Inline Code",
     wrap: ["`", "`"] as [string, string],
     className: "font-mono text-xs",
+  },
+  { label: "|" },
+  {
+    label: "Link",
+    title: "Simple Link",
+    special: "link",
+    className: "text-xs",
+  },
+  {
+    label: "Wiki",
+    title: "Wiki Page Link",
+    special: "wiki",
+    className: "text-xs font-bold",
+  },
+  {
+    label: "Task",
+    title: "Task Link",
+    special: "task",
+    className: "text-xs font-bold",
   },
 ];
 
@@ -295,6 +318,7 @@ function adjustCursorOffset(
 interface VisualEditorRef {
   setHtml: (html: string) => void;
   getHtml: () => string;
+  getEl: () => HTMLDivElement | null;
 }
 
 const VisualEditor = memo(
@@ -303,9 +327,73 @@ const VisualEditor = memo(
     {
       initialHtml: string;
       onInputRef: React.MutableRefObject<(html: string) => void>;
+      pages: WikiPageSummaryDto[];
+      tasks: TaskDto[];
     }
-  >(({ initialHtml, onInputRef }, ref) => {
+  >(({ initialHtml, onInputRef, pages, tasks }, ref) => {
     const divRef = useRef<HTMLDivElement>(null);
+
+    const [tooltip, setTooltip] = useState<{
+      href: string;
+      rect: Partial<DOMRect>;
+    } | null>(null);
+
+    const [taskCache, setTaskCache] = useState<Record<string, string>>({});
+
+    useEffect(() => {
+      const el = divRef.current;
+      if (!el) return;
+
+      const handleClick = (e: MouseEvent) => {
+        const target = e.target as HTMLElement;
+        const anchor = target.closest("a");
+        if (anchor && el.contains(anchor)) {
+          e.preventDefault();
+          // Instead of navigating, show a tooltip
+          const href = anchor.getAttribute("href") || "";
+          const rect = anchor.getBoundingClientRect();
+          const parentRect = el.getBoundingClientRect();
+
+          setTooltip({
+            href,
+            rect: {
+              ...rect,
+              // Adjust rect relative to the editor container
+              left: rect.left - parentRect.left,
+              top: rect.top - parentRect.top,
+              bottom: rect.bottom - parentRect.top,
+              right: rect.right - parentRect.left,
+            } as DOMRect,
+          });
+
+          // Fetch task title if missing
+          if (href.startsWith("task://")) {
+            const id = href.replace("task://", "");
+            const isKnown = tasks.some((t) => t.id === id) || taskCache[id];
+            if (!isKnown) {
+              void getTaskByIdAction(id).then((res) => {
+                if (res.task) {
+                  setTaskCache((prev) => ({ ...prev, [id]: res.task!.title }));
+                } else {
+                  setTaskCache((prev) => ({
+                    ...prev,
+                    [id]: `Unknown (${id.slice(0, 4)})`,
+                  }));
+                }
+              });
+            }
+          }
+
+          // Auto-hide after 2 seconds
+          setTimeout(() => setTooltip(null), 2000);
+        } else {
+          setTooltip(null);
+        }
+      };
+
+      el.addEventListener("click", handleClick);
+      return () => el.removeEventListener("click", handleClick);
+    }, [taskCache, tasks, pages]);
 
     useImperativeHandle(ref, () => ({
       setHtml: (html: string) => {
@@ -337,23 +425,216 @@ const VisualEditor = memo(
       getHtml: () => {
         return divRef.current?.innerHTML || "";
       },
+      getEl: () => divRef.current,
     }));
 
     return (
-      <div
-        ref={divRef}
-        contentEditable
-        suppressContentEditableWarning
-        onInput={(e) => onInputRef.current(e.currentTarget.innerHTML)}
-        className="w-full h-full overflow-y-auto p-10 prose prose-slate max-w-none focus:outline-none prose-headings:font-black prose-headings:tracking-tighter prose-pre:bg-gray-900 prose-pre:rounded-xl"
-        dangerouslySetInnerHTML={{ __html: initialHtml }}
-      />
+      <div className="relative w-full h-full min-h-0 flex flex-col">
+        <div
+          ref={divRef}
+          contentEditable
+          suppressContentEditableWarning
+          onInput={(e) => onInputRef.current(e.currentTarget.innerHTML)}
+          className="w-full h-full overflow-y-auto p-10 prose prose-slate max-w-none focus:outline-none prose-headings:font-black prose-headings:tracking-tighter prose-pre:bg-gray-900 prose-pre:rounded-xl"
+          dangerouslySetInnerHTML={{ __html: initialHtml }}
+        />
+        {tooltip &&
+          (() => {
+            let label = tooltip.href;
+            let isError = false;
+
+            if (tooltip.href.startsWith("wiki://")) {
+              const id = tooltip.href.replace("wiki://", "");
+              const p = pages.find((p) => p.id === id);
+              if (p) {
+                label = `Wiki: ${p.title}`;
+              } else {
+                label = "Error: Wiki page not found";
+                isError = true;
+              }
+            } else if (tooltip.href.startsWith("task://")) {
+              const id = tooltip.href.replace("task://", "");
+              const t = tasks.find((t) => t.id === id);
+              if (t) {
+                label = `Task: ${t.title}`;
+              } else if (taskCache[id]) {
+                if (taskCache[id].startsWith("Unknown")) {
+                  label = "Error: Task not found";
+                  isError = true;
+                } else {
+                  label = `Task: ${taskCache[id]}`;
+                }
+              } else {
+                label = "Task: Loading title...";
+              }
+            }
+
+            return (
+              <div
+                className={`absolute z-50 text-white text-[10px] px-2 py-1 rounded shadow-lg pointer-events-none whitespace-nowrap animate-in fade-in zoom-in duration-200 border ${
+                  isError
+                    ? "bg-red-600 border-red-400 font-bold"
+                    : "bg-gray-900 border-gray-700"
+                }`}
+                style={{
+                  top: (tooltip.rect.bottom || 0) + 5,
+                  left: Math.max(10, tooltip.rect.left || 0),
+                }}
+              >
+                {label}
+              </div>
+            );
+          })()}
+      </div>
     );
   }),
   () => true, // Never re-render!
 );
 
-export function WikiEditor({ pageId, orgId }: Props) {
+function MarkdownLink({
+  href,
+  children,
+  currentOrgId,
+  pages,
+}: {
+  href?: string;
+  children: React.ReactNode;
+  currentOrgId: string;
+  pages: WikiPageSummaryDto[];
+}) {
+  if (!href) return <span>{children}</span>;
+
+  // Wiki links
+  let wikiPageId: string | null = null;
+  let matchedProjectId = "";
+  if (href.startsWith("wiki://")) {
+    wikiPageId = href.replace("wiki://", "");
+    const page = pages.find((p) => p.id === wikiPageId);
+    if (page) matchedProjectId = page.projectId || "";
+  } else {
+    const wikiMatch = href.match(
+      /\/orgs\/([^/]+)\/projects\/([^/]+)\/wiki\/([^/]+)/,
+    );
+    if (wikiMatch) {
+      const [, matchedOrgId, projId, pageId] = wikiMatch;
+      if (matchedOrgId === currentOrgId) {
+        wikiPageId = pageId;
+        matchedProjectId = projId;
+      } else
+        return (
+          <span
+            className="opacity-50 cursor-not-allowed"
+            title="External Organization"
+          >
+            {children}
+          </span>
+        );
+    }
+  }
+
+  if (wikiPageId) {
+    const exists = pages.some((p) => p.id === wikiPageId);
+    const realHref = matchedProjectId
+      ? `/orgs/${currentOrgId}/projects/${matchedProjectId}/wiki/${wikiPageId}`
+      : href;
+
+    const handleClick = (e: React.MouseEvent) => {
+      if (e.metaKey || e.ctrlKey) return; // Allow new tab
+      e.preventDefault();
+      if (!exists) {
+        alert(`Wiki page does not exist: ${wikiPageId}`);
+        return;
+      }
+      window.dispatchEvent(
+        new CustomEvent("kanban_open_wiki_page", { detail: wikiPageId }),
+      );
+    };
+
+    return (
+      <a
+        href={realHref}
+        onClick={handleClick}
+        className="text-blue-600 hover:underline cursor-pointer"
+      >
+        {children}
+      </a>
+    );
+  }
+
+  // Task links
+  let taskId: string | null = null;
+  let taskProjectId = "";
+  if (href.startsWith("task://")) {
+    taskId = href.replace("task://", "");
+  } else {
+    const taskMatch = href.match(
+      /\/orgs\/([^/]+)\/projects\/([^/]+)\/tasks\/([^/]+)/,
+    );
+    if (taskMatch) {
+      const [, matchedOrgId, projId, tid] = taskMatch;
+      if (matchedOrgId === currentOrgId) {
+        taskId = tid;
+        taskProjectId = projId;
+      } else
+        return (
+          <span
+            className="opacity-50 cursor-not-allowed"
+            title="External Organization"
+          >
+            {children}
+          </span>
+        );
+    }
+  }
+
+  if (taskId) {
+    const realHref = taskProjectId
+      ? `/orgs/${currentOrgId}/projects/${taskProjectId}?taskId=${taskId}`
+      : href;
+
+    const handleClick = (e: React.MouseEvent) => {
+      if (e.metaKey || e.ctrlKey) return; // Allow new tab
+      e.preventDefault();
+      window.dispatchEvent(
+        new CustomEvent("kanban_tab_changed", { detail: "board" }),
+      );
+      window.dispatchEvent(
+        new CustomEvent("kanban_open_task", { detail: taskId }),
+      );
+    };
+
+    return (
+      <a
+        href={realHref}
+        onClick={handleClick}
+        className="text-blue-600 hover:underline cursor-pointer"
+      >
+        {children}
+      </a>
+    );
+  }
+
+  // External links
+  const isExternal = href.startsWith("http");
+  if (isExternal) {
+    return (
+      <a href={href} target="_blank" rel="noopener noreferrer">
+        {children}
+      </a>
+    );
+  }
+
+  return <a href={href}>{children}</a>;
+}
+
+interface Props {
+  pageId: string;
+  orgId: string;
+  projectId: string;
+  tasks?: TaskDto[];
+}
+
+export function WikiEditor({ pageId, orgId, tasks = [] }: Props) {
   const {
     pages,
     pageModes,
@@ -371,6 +652,14 @@ export function WikiEditor({ pageId, orgId }: Props) {
   const [status, setStatus] = useState<SaveStatus>("saved");
   const [showProperties, setShowProperties] = useState(false);
   const [isFetching, setIsFetching] = useState(false);
+  const [isLinkModalOpen, setIsLinkModalOpen] = useState(false);
+  const [linkModalType, setLinkModalType] = useState<"link" | "wiki" | "task">(
+    "link",
+  );
+  const [savedSelectionRange, setSavedSelectionRange] = useState<{
+    start: number;
+    end: number;
+  } | null>(null);
   // Incremented only on remote collaborative updates → triggers cursor restore
   const [restoreTrigger, setRestoreTrigger] = useState(0);
 
@@ -404,7 +693,7 @@ export function WikiEditor({ pageId, orgId }: Props) {
         setIsFetching(false);
       }
     })();
-  }, [pageId, pageContents, setPageContent]);
+  }, [pageId, pageContents, setPageContent, setPageProperties]);
 
   // ── Sync contenteditable on initial render, fetch complete, and mode switch ──
   useEffect(() => {
@@ -433,7 +722,7 @@ export function WikiEditor({ pageId, orgId }: Props) {
 
   // ── Save ──────────────────────────────────────────────────────────────────
   const handleSave = useCallback(
-    async (val: string, props?: Record<string, any>) => {
+    async (val: string, props?: Record<string, unknown>) => {
       if (!val && !props) return;
       setStatus("saving");
       try {
@@ -453,7 +742,7 @@ export function WikiEditor({ pageId, orgId }: Props) {
   );
 
   const scheduleSave = useCallback(
-    (val: string, props?: Record<string, any>) => {
+    (val: string, props?: Record<string, unknown>) => {
       if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current);
       saveTimeoutRef.current = setTimeout(() => handleSave(val, props), 2500);
     },
@@ -510,7 +799,7 @@ export function WikiEditor({ pageId, orgId }: Props) {
   });
 
   const broadcast = useCallback(
-    (val?: string, props?: Record<string, any>) => {
+    (val?: string, props?: Record<string, unknown>) => {
       if (ws && isConnected) {
         ws.send(
           JSON.stringify({
@@ -538,19 +827,20 @@ export function WikiEditor({ pageId, orgId }: Props) {
 
   // ── Visual (contenteditable) input handler ────────────────────────────────
   const handleVisualInput = useCallback(
-    (html: string) => {
+    (html?: string) => {
       if (isRemoteUpdateRef.current) return;
-      const md = td.turndown(html);
+      const contentToConvert = html ?? visualRef.current?.getHtml() ?? "";
+      const md = td.turndown(contentToConvert);
       setPageContent(pageId, md);
       setStatus("unsaved");
       broadcast(md);
       scheduleSave(md);
     },
-    [pageId, broadcast, scheduleSave, setPageContent, content, properties],
+    [pageId, broadcast, scheduleSave, setPageContent],
   );
 
   const handlePropertiesChange = useCallback(
-    (newProps: Record<string, any>) => {
+    (newProps: Record<string, unknown>) => {
       setPageProperties(pageId, newProps);
       setStatus("unsaved");
       broadcast(undefined, newProps);
@@ -651,6 +941,17 @@ export function WikiEditor({ pageId, orgId }: Props) {
                 onMouseDown={(e) => {
                   e.preventDefault(); // preserve focus
                   if (mode === "visual") {
+                    if (btn.special) {
+                      setSavedSelectionRange(
+                        saveSelection(
+                          visualRef.current?.getEl() as HTMLElement,
+                        ),
+                      );
+                      setLinkModalType(btn.special as "link" | "wiki" | "task");
+                      setIsLinkModalOpen(true);
+                      return;
+                    }
+
                     // execCommand for contenteditable
                     if (btn.execCmd) {
                       document.execCommand(
@@ -665,6 +966,13 @@ export function WikiEditor({ pageId, orgId }: Props) {
                     // Markdown injection for textarea
                     const ta = textareaRef.current;
                     if (!ta) return;
+
+                    if (btn.special) {
+                      setLinkModalType(btn.special as "link" | "wiki" | "task");
+                      setIsLinkModalOpen(true);
+                      return;
+                    }
+
                     const { newContent, start, end } = applyMarkdownToTextarea(
                       ta,
                       content,
@@ -697,6 +1005,8 @@ export function WikiEditor({ pageId, orgId }: Props) {
             ref={visualRef}
             initialHtml={content ? (marked(content) as string) : ""}
             onInputRef={handleVisualInputRef}
+            pages={pages}
+            tasks={tasks}
           />
         )}
 
@@ -726,7 +1036,21 @@ export function WikiEditor({ pageId, orgId }: Props) {
               />
             </div>
             <div className="flex-1 h-full overflow-y-auto bg-white p-10 prose prose-slate max-w-none prose-headings:font-black prose-headings:tracking-tighter prose-pre:bg-gray-900 prose-pre:rounded-xl">
-              <ReactMarkdown remarkPlugins={[remarkGfm]}>
+              <ReactMarkdown
+                remarkPlugins={[remarkGfm]}
+                urlTransform={(url) => url}
+                components={{
+                  a: ({ href, children }) => (
+                    <MarkdownLink
+                      href={href}
+                      currentOrgId={orgId}
+                      pages={pages}
+                    >
+                      {children}
+                    </MarkdownLink>
+                  ),
+                }}
+              >
                 {content || "_Start writing on the left..._"}
               </ReactMarkdown>
             </div>
@@ -736,7 +1060,17 @@ export function WikiEditor({ pageId, orgId }: Props) {
         {/* View: simply display content */}
         {mode === "view" && (
           <div className="flex-1 h-full overflow-y-auto bg-white p-10 prose prose-slate max-w-none prose-headings:font-black prose-headings:tracking-tighter prose-pre:bg-gray-900 prose-pre:rounded-xl">
-            <ReactMarkdown remarkPlugins={[remarkGfm]}>
+            <ReactMarkdown
+              remarkPlugins={[remarkGfm]}
+              urlTransform={(url) => url}
+              components={{
+                a: ({ href, children }) => (
+                  <MarkdownLink href={href} currentOrgId={orgId} pages={pages}>
+                    {children}
+                  </MarkdownLink>
+                ),
+              }}
+            >
               {content || "_No content yet._"}
             </ReactMarkdown>
           </div>
@@ -749,6 +1083,48 @@ export function WikiEditor({ pageId, orgId }: Props) {
             readOnly={mode === "view"}
           />
         )}
+
+        <LinkModal
+          isOpen={isLinkModalOpen}
+          onClose={() => setIsLinkModalOpen(false)}
+          type={linkModalType}
+          pages={pages}
+          orgId={orgId}
+          onSelect={(href, title) => {
+            setIsLinkModalOpen(false);
+            if (mode === "visual") {
+              const el = visualRef.current?.getEl();
+              if (el) {
+                el.focus();
+                restoreSelection(el, savedSelectionRange);
+                document.execCommand("createLink", false, href);
+                setTimeout(handleVisualInput, 0);
+              }
+            } else {
+              const ta = textareaRef.current;
+              if (!ta) return;
+              const selection = content.slice(
+                ta.selectionStart,
+                ta.selectionEnd,
+              );
+              const linkText = selection || title || "link";
+              const linkMd = `[${linkText}](${href})`;
+              const finalContent =
+                content.slice(0, ta.selectionStart) +
+                linkMd +
+                content.slice(ta.selectionEnd);
+              const finalStart = ta.selectionStart + linkMd.length;
+
+              setPageContent(pageId, finalContent);
+              setStatus("unsaved");
+              broadcast(finalContent);
+              scheduleSave(finalContent);
+              requestAnimationFrame(() =>
+                ta.setSelectionRange(finalStart, finalStart),
+              );
+            }
+          }}
+        />
       </div>
     </div>
   );

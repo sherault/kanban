@@ -82,7 +82,6 @@ function useConflictField(externalValue: string) {
 
   useEffect(() => {
     if (!isFocused) {
-      // eslint-disable-next-line react-hooks/set-state-in-effect
       setValue(externalValue || "");
     } else {
       pendingWsRef.current = externalValue;
@@ -389,7 +388,6 @@ export function TaskDetailSidebar({
       }
     } else {
       // Full task prop from parent board: sync immediately
-      // eslint-disable-next-line react-hooks/set-state-in-effect
       setTask(initialTask as TaskDto);
     }
   }, [taskId, initialTask, task]); // Restored initialTask to hear WebSocket updates
@@ -409,7 +407,6 @@ export function TaskDetailSidebar({
         },
       );
     } else {
-      // eslint-disable-next-line react-hooks/set-state-in-effect
       setLinkedTasks([]);
     }
   }, [task.id, linkedIdsString, task.linkedTaskIds]); // Stability: use stringified IDs, removed revision
@@ -775,6 +772,7 @@ export function TaskDetailSidebar({
                   Description
                 </label>
                 <DescriptionEditor
+                  key={task.id}
                   value={descField.value}
                   onChange={descField.setValue}
                   onFocus={descField.onFocus}

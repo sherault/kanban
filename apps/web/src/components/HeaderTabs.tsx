@@ -8,14 +8,24 @@ export function HeaderTabs() {
   const [activeTab, setActiveTab] = useState<"board" | "wiki">("board");
 
   useEffect(() => {
-    // Check if we are in wiki mode based on localStorage or URL if we decide to use routes
-    // For now, let's use localStorage to persist the choice per project/org
+    // Initial check
     const saved = localStorage.getItem("kanban_active_tab");
     if (saved === "wiki" || pathname.includes("/wiki")) {
-      queueMicrotask(() => setActiveTab("wiki"));
+      setActiveTab("wiki");
     } else {
-      queueMicrotask(() => setActiveTab("board"));
+      setActiveTab("board");
     }
+
+    const handleTabChangedEvent = (e: Event) => {
+      if (!(e instanceof CustomEvent)) return;
+      if (e.detail === "board" || e.detail === "wiki") {
+        setActiveTab(e.detail);
+      }
+    };
+
+    window.addEventListener("kanban_tab_changed", handleTabChangedEvent);
+    return () =>
+      window.removeEventListener("kanban_tab_changed", handleTabChangedEvent);
   }, [pathname]);
 
   const handleTabChange = (tab: "board" | "wiki") => {

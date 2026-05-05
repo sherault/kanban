@@ -1,6 +1,13 @@
 "use client";
 
-import { useState, useTransition, useRef, useEffect, useMemo } from "react";
+import {
+  useState,
+  useTransition,
+  useRef,
+  useEffect,
+  useMemo,
+  useCallback,
+} from "react";
 import {
   DndContext,
   type DragEndEvent,
@@ -271,29 +278,42 @@ export function BoardClient({
 
   // ── Drag and drop ─────────────────────────────────────────────────────────
 
-  const handleOpenTask = (taskId: string, archived?: boolean) => {
-    // Always track in openTasks (for strips / persistence)
-    setOpenTasks((prev) => {
-      const existing = prev.find((t) => t.id === taskId);
-      if (existing) {
-        return [...prev.filter((t) => t.id !== taskId), existing];
-      }
-      const next = [...prev, { id: taskId, archived }];
-      if (next.length > maxOpenPanels) {
-        return next.slice(next.length - maxOpenPanels);
-      }
-      return next;
-    });
+  const handleOpenTask = useCallback(
+    (taskId: string, archived?: boolean) => {
+      // Always track in openTasks (for strips / persistence)
+      setOpenTasks((prev) => {
+        const existing = prev.find((t) => t.id === taskId);
+        if (existing) {
+          return [...prev.filter((t) => t.id !== taskId), existing];
+        }
+        const next = [...prev, { id: taskId, archived }];
+        if (next.length > maxOpenPanels) {
+          return next.slice(next.length - maxOpenPanels);
+        }
+        return next;
+      });
 
-    // Expand:
-    // • Single mode (0–1 expanded): replace the single slot
-    // • Comparison mode (2 expanded): replace the RIGHT slot only, keep LEFT pinned
-    setExpandedIds((prev) => {
-      if (prev.includes(taskId)) return prev; // already shown, no change
-      if (prev.length >= 2) return [prev[0], taskId]; // comparison: replace right
-      return [taskId]; // single: replace
-    });
-  };
+      // Expand:
+      // • Single mode (0–1 expanded): replace the single slot
+      // • Comparison mode (2 expanded): replace the RIGHT slot only, keep LEFT pinned
+      setExpandedIds((prev) => {
+        if (prev.includes(taskId)) return prev; // already shown, no change
+        if (prev.length >= 2) return [prev[0], taskId]; // comparison: replace right
+        return [taskId]; // single: replace
+      });
+    },
+    [maxOpenPanels],
+  );
+
+  useEffect(() => {
+    const handleOpenEvent = (e: Event) => {
+      if (!(e instanceof CustomEvent) || typeof e.detail !== "string") return;
+      handleOpenTask(e.detail);
+    };
+    window.addEventListener("kanban_open_task", handleOpenEvent);
+    return () =>
+      window.removeEventListener("kanban_open_task", handleOpenEvent);
+  }, [handleOpenTask]);
 
   // Open a task explicitly as the LEFT comparison panel.
   // Current right panel (if any) stays as the right.

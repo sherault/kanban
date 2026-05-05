@@ -15,27 +15,50 @@ import { Prism as SyntaxHighlighter } from "react-syntax-highlighter";
 import { oneLight } from "react-syntax-highlighter/dist/esm/styles/prism";
 import { useParams } from "next/navigation";
 import { createPortal } from "react-dom";
+import { useWiki } from "@/context/WikiContext";
+import { LinkModal } from "@/components/LinkModal";
 import { searchTasksInOrgAction, getTaskByIdAction } from "@/actions/tasks";
-import type { TaskDto } from "@kanban/shared";
+import { getWikiPageAction } from "@/actions/wiki";
+import type { TaskDto, WikiPageDto, WikiPageSummaryDto } from "@kanban/shared";
 
-// ── Task Cache (Singleton for performance) ────────────────────────────────────
+// ── Cache (Singleton for performance) ─────────────────────────────────────────
 const taskCache = new Map<string, TaskDto>();
-const pendingRequests = new Map<
+const pendingTaskRequests = new Map<
   string,
   Promise<{ task?: TaskDto; error?: string }>
 >();
 
 async function getTaskCached(taskId: string) {
   if (taskCache.has(taskId)) return { task: taskCache.get(taskId) };
-  if (pendingRequests.has(taskId)) return pendingRequests.get(taskId);
+  if (pendingTaskRequests.has(taskId)) return pendingTaskRequests.get(taskId);
 
   const request = getTaskByIdAction(taskId).then((res) => {
     if (res.task) taskCache.set(taskId, res.task);
-    pendingRequests.delete(taskId);
+    pendingTaskRequests.delete(taskId);
     return res;
   });
 
-  pendingRequests.set(taskId, request);
+  pendingTaskRequests.set(taskId, request);
+  return request;
+}
+
+const wikiCache = new Map<string, WikiPageDto>();
+const pendingWikiRequests = new Map<
+  string,
+  Promise<{ page?: WikiPageDto; error?: string }>
+>();
+
+async function getWikiCached(pageId: string) {
+  if (wikiCache.has(pageId)) return { page: wikiCache.get(pageId) };
+  if (pendingWikiRequests.has(pageId)) return pendingWikiRequests.get(pageId);
+
+  const request = getWikiPageAction(pageId).then((res) => {
+    if (res.page) wikiCache.set(pageId, res.page);
+    pendingWikiRequests.delete(pageId);
+    return res;
+  });
+
+  pendingWikiRequests.set(pageId, request);
   return request;
 }
 
@@ -134,6 +157,31 @@ const TOOLBAR: ToolItem[] = [
     suffix: "",
     defaultText: "item",
     block: true,
+  },
+  { type: "divider" },
+  {
+    type: "action",
+    icon: "Wiki",
+    title: "Wiki Link",
+    prefix: "",
+    suffix: "",
+    defaultText: "",
+  },
+  {
+    type: "action",
+    icon: "Task",
+    title: "Task Link",
+    prefix: "",
+    suffix: "",
+    defaultText: "",
+  },
+  {
+    type: "action",
+    icon: "Link",
+    title: "External Link",
+    prefix: "",
+    suffix: "",
+    defaultText: "",
   },
   { type: "divider" },
   {
@@ -240,6 +288,59 @@ function TaskLink({
   );
 }
 
+function WikiLink({
+  pageId,
+  children,
+}: {
+  pageId: string;
+  children: React.ReactNode;
+}) {
+  const [page, setPage] = useState<WikiPageDto | null>(null);
+  const [error, setError] = useState(false);
+
+  useEffect(() => {
+    if (!pageId) return;
+    void getWikiCached(pageId).then((res) => {
+      if (res && res.page) setPage(res.page);
+      else if (res && res.error) setError(true);
+    });
+  }, [pageId]);
+
+  return (
+    <button
+      type="button"
+      disabled={error}
+      onClick={(e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        // Switch to wiki tab
+        window.dispatchEvent(
+          new CustomEvent("kanban_tab_changed", { detail: "wiki" }),
+        );
+        // Open the page
+        window.dispatchEvent(
+          new CustomEvent("kanban_open_wiki_page", { detail: pageId }),
+        );
+      }}
+      className={`inline-flex items-center gap-1.5 px-1.5 py-0.5 rounded text-[13px] font-medium transition-colors border ${
+        error
+          ? "bg-red-50 border-red-100 text-red-500 cursor-not-allowed"
+          : "bg-purple-50 hover:bg-purple-100 border-purple-100 text-purple-700"
+      }`}
+    >
+      <span className="text-[10px] opacity-70 italic font-serif">W</span>
+      {error ? (
+        <span className="flex items-center gap-1 uppercase text-[10px] font-bold">
+          <s>{children}</s>
+          <span className="text-[10px] font-bold text-red-600">NOT FOUND</span>
+        </span>
+      ) : (
+        page?.title || children
+      )}
+    </button>
+  );
+}
+
 function Preview({
   value,
   placeholder,
@@ -284,15 +385,38 @@ function Preview({
         const rawHref = href || "";
         const decodedHref = decodeURIComponent(rawHref);
 
-        // 2. Extract UUID
-        const uuidMatch = decodedHref.match(/([0-9a-fA-F-]{36})/);
-        const taskId = uuidMatch?.[1];
+        // 2. Extract UUID for tasks
+        const taskUuidMatch = decodedHref.match(
+          /task:(?:[^/]*\/)?([0-9a-fA-F-]{36})/,
+        );
+        const taskId =
+          taskUuidMatch?.[1] ||
+          (decodedHref.startsWith("task://")
+            ? decodedHref.replace("task://", "")
+            : null);
+        const isTaskLink =
+          !!taskId &&
+          (decodedHref.includes("task:") || decodedHref.startsWith("task://"));
 
-        // 3. Detect task protocol (very permissive to catch resolved URLs)
-        const isTaskLink = !!taskId && decodedHref.includes("task:");
+        // 3. Detect wiki protocol
+        const wikiIdMatch = decodedHref.match(
+          /wiki:(?:[^/]*\/)?([0-9a-fA-F-]{36})/,
+        );
+        const pageId =
+          wikiIdMatch?.[1] ||
+          (decodedHref.startsWith("wiki://")
+            ? decodedHref.replace("wiki://", "")
+            : null);
+        const isWikiLink =
+          !!pageId &&
+          (decodedHref.includes("wiki:") || decodedHref.startsWith("wiki://"));
 
         if (isTaskLink && taskId) {
           return <TaskLink taskId={taskId}>{children}</TaskLink>;
+        }
+
+        if (isWikiLink && pageId) {
+          return <WikiLink pageId={pageId}>{children}</WikiLink>;
         }
 
         // Everything else is a plain link
@@ -338,16 +462,18 @@ function Toolbar({
   onChange,
   showPreview,
   onTogglePreview,
+  onLink,
   extra,
 }: {
   textareaRef: React.RefObject<HTMLTextAreaElement | null>;
   onChange: (v: string) => void;
   showPreview: boolean;
   onTogglePreview: () => void;
+  onLink: (type: "link" | "wiki" | "task") => void;
   extra?: React.ReactNode;
 }) {
   return (
-    <div className="flex items-center gap-0.5 border-b border-gray-200 bg-gray-50 px-2 py-1 shrink-0">
+    <div className="flex flex-wrap items-center gap-0.5 border-b border-gray-200 bg-gray-50 px-2 py-1 shrink-0">
       {TOOLBAR.map((item, i) =>
         item.type === "divider" ? (
           <div key={i} className="w-px h-3.5 bg-gray-300 mx-0.5" />
@@ -358,8 +484,15 @@ function Toolbar({
             title={item.title}
             onMouseDown={(e) => {
               e.preventDefault();
-              if (textareaRef.current)
+              if (item.title === "Wiki Link") {
+                onLink("wiki");
+              } else if (item.title === "Task Link") {
+                onLink("task");
+              } else if (item.title === "External Link") {
+                onLink("link");
+              } else if (textareaRef.current) {
                 onChange(applyToolbar(textareaRef.current, item));
+              }
             }}
             className="px-1.5 py-0.5 text-xs rounded hover:bg-gray-200 text-gray-600 font-mono leading-none"
           >
@@ -404,45 +537,105 @@ export function DescriptionEditor({
   const [isEditing, setIsEditing] = useState(false);
   const [showPreview, setShowPreview] = useState(false);
   const [isFullscreen, setIsFullscreen] = useState(false);
+  const { pages } = useWiki();
+  const wikiModalOpenRef = useRef(false);
+  const [wikiModalType, setWikiModalType] = useState<"link" | "wiki" | "task">(
+    "wiki",
+  );
+  const [wikiModalOpen, _setWikiModalOpen] = useState(false);
+  const setWikiModalOpen = useCallback((val: boolean) => {
+    wikiModalOpenRef.current = val;
+    _setWikiModalOpen(val);
+  }, []);
   const [mentionSearch, setMentionSearch] = useState<string | null>(null);
-  const [mentionResults, setMentionResults] = useState<TaskDto[]>([]);
+  const [mentionType, setMentionType] = useState<"task" | "wiki">("task");
+  const [mentionResults, setMentionResults] = useState<
+    (TaskDto | WikiPageSummaryDto)[]
+  >([]);
   const [mentionIndex, setMentionIndex] = useState(0);
   const [mentionCoords, setMentionCoords] = useState<{
     top: number;
     left: number;
   }>({ top: 0, left: 0 });
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
+  const fullScreenContainerRef = useRef<HTMLDivElement>(null);
+  const isEditingRef = useRef(isEditing);
+  const latestValueRef = useRef(value);
 
   useEffect(() => {
+    isEditingRef.current = isEditing;
+  }, [isEditing]);
+
+  useEffect(() => {
+    latestValueRef.current = value;
+  }, [value]);
+
+  const onBlurRef = useRef(onBlur);
+  useEffect(() => {
+    onBlurRef.current = onBlur;
+  }, [onBlur]);
+
+  useEffect(() => {
+    return () => {
+      if (isEditingRef.current) {
+        onBlurRef.current(latestValueRef.current);
+      }
+    };
+  }, []); // Run ONLY on unmount
+
+  // ── MENTIONS (@ for tasks, [[ for wiki) ──────────────────────────────────────
+  useEffect(() => {
     if (mentionSearch === null) {
-      // eslint-disable-next-line react-hooks/set-state-in-effect
       setMentionResults([]);
       return;
     }
-    const timer = setTimeout(async () => {
-      const res = await searchTasksInOrgAction(orgId, mentionSearch);
-      if (res.tasks) {
-        setMentionResults(res.tasks.slice(0, 8));
-        setMentionIndex(0);
-      }
-    }, 200);
-    return () => clearTimeout(timer);
-  }, [mentionSearch, orgId]);
 
-  const insertMention = (targetTask: TaskDto) => {
+    if (mentionType === "task") {
+      const timer = setTimeout(async () => {
+        const res = await searchTasksInOrgAction(orgId, mentionSearch);
+        if (res.tasks) {
+          setMentionResults(res.tasks.slice(0, 8));
+          setMentionIndex(0);
+        }
+      }, 200);
+      return () => clearTimeout(timer);
+    } else {
+      const filtered = pages
+        .filter((p) =>
+          p.title.toLowerCase().includes(mentionSearch.toLowerCase()),
+        )
+        .slice(0, 8);
+      setMentionResults(filtered);
+      setMentionIndex(0);
+    }
+  }, [mentionSearch, mentionType, orgId, pages]);
+
+  const insertMention = (item: TaskDto | WikiPageSummaryDto) => {
     if (!textareaRef.current) return;
     const textarea = textareaRef.current;
     const start = textarea.selectionStart;
     const text = textarea.value;
-    const lastAt = text.lastIndexOf("@", start - 1);
-    if (lastAt === -1) return;
 
-    const mention = `[#${targetTask.title}](task:${targetTask.id})`;
-    const newVal = text.slice(0, lastAt) + mention + " " + text.slice(start);
+    let triggerPos = -1;
+    let mention = "";
+
+    if (mentionType === "task") {
+      triggerPos = text.lastIndexOf("@", start - 1);
+      mention = `[#${item.title}](task:${item.id})`;
+    } else {
+      triggerPos = text.lastIndexOf("[[", start - 1);
+      mention = `[${item.title}](wiki:${item.id})`;
+    }
+
+    if (triggerPos === -1) return;
+
+    const newVal =
+      text.slice(0, triggerPos) + mention + " " + text.slice(start);
     onChange(newVal);
     setMentionSearch(null);
 
-    const newPos = lastAt + mention.length + 1;
+    const newPos = triggerPos + mention.length + 1;
     setTimeout(() => {
       textarea.focus();
       textarea.setSelectionRange(newPos, newPos);
@@ -474,35 +667,71 @@ export function DescriptionEditor({
     const textarea = textareaRef.current;
     const pos = textarea.selectionStart;
     const text = val.slice(0, pos);
-    const lastAt = text.lastIndexOf("@");
 
+    // Check for @ (Task)
+    const lastAt = text.lastIndexOf("@");
     if (lastAt !== -1 && !text.slice(lastAt).includes(" ")) {
       setMentionSearch(text.slice(lastAt + 1));
-
+      setMentionType("task");
       const rect = textarea.getBoundingClientRect();
       setMentionCoords({
         top: rect.top + 20,
         left: rect.left + 20,
       });
-    } else {
-      setMentionSearch(null);
+      return;
     }
+
+    // Check for [[ (Wiki)
+    const lastBracket = text.lastIndexOf("[[");
+    if (
+      lastBracket !== -1 &&
+      !text.slice(lastBracket).includes(" ") &&
+      !text.slice(lastBracket).includes("\n")
+    ) {
+      setMentionSearch(text.slice(lastBracket + 2));
+      setMentionType("wiki");
+      const rect = textarea.getBoundingClientRect();
+      setMentionCoords({
+        top: rect.top + 20,
+        left: rect.left + 20,
+      });
+      return;
+    }
+
+    setMentionSearch(null);
   };
 
-  // eslint-disable-next-line react-hooks/preserve-manual-memoization
   const startEditing = useCallback(() => {
     setIsEditing(true);
     setShowPreview(false);
     setTimeout(() => textareaRef.current?.focus(), 0);
-  }, []);
+    _onFocus();
+  }, [_onFocus]);
+
+  const finishEditing = useCallback(() => {
+    setIsEditing(false);
+    onBlur(value);
+    setMentionSearch(null);
+  }, [onBlur, value]);
 
   function handleTextareaBlur() {
+    // delay to allow clicks on toolbar or modals
     setTimeout(() => {
-      if (isFullscreen) return;
-      setIsEditing(false);
-      onBlur(value);
-      setMentionSearch(null);
-    }, 150);
+      // If modal is open, DON'T close the editor
+      if (wikiModalOpenRef.current) return;
+
+      const active = document.activeElement;
+
+      // If focus is still within our container or fullscreen container, stay in edit mode
+      if (containerRef.current?.contains(active)) return;
+      if (fullScreenContainerRef.current?.contains(active)) return;
+
+      // Special case: if we are in fullscreen and just clicked something that isn't inside,
+      // it might be because the portal content changed or we are truly blurring.
+      // If we are in fullscreen, we usually only blur if we click the close button or navigate.
+
+      finishEditing();
+    }, 200);
   }
 
   function toggleFullscreen() {
@@ -522,7 +751,7 @@ export function DescriptionEditor({
       >
         <div className="bg-gray-50 px-3 py-1.5 border-b border-gray-200 flex items-center justify-between">
           <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">
-            Mention Task
+            {mentionType === "task" ? "Mention Task" : "Mention Wiki Page"}
           </span>
         </div>
         <div className="overflow-y-auto py-1">
@@ -541,13 +770,20 @@ export function DescriptionEditor({
                 </p>
                 <div className="flex items-center gap-2 mt-0.5">
                   <span className="text-[10px] text-gray-400 font-mono">
-                    #{t.id.slice(0, 6)}
+                    {mentionType === "task" ? "#" : "w/"}
+                    {mentionType === "task"
+                      ? t.id.slice(0, 6)
+                      : "slug" in t
+                        ? t.slug
+                        : ""}
                   </span>
-                  {t.projectName && (
-                    <span className="text-[10px] px-1 bg-gray-100 text-gray-500 rounded uppercase">
-                      {t.projectName}
-                    </span>
-                  )}
+                  {mentionType === "task" &&
+                    "projectName" in t &&
+                    t.projectName && (
+                      <span className="text-[10px] px-1 bg-gray-100 text-gray-500 rounded uppercase">
+                        {t.projectName}
+                      </span>
+                    )}
                 </div>
               </div>
             </button>
@@ -561,13 +797,19 @@ export function DescriptionEditor({
   if (isFullscreen) {
     return createPortal(
       <DescriptionEditorContext.Provider value={{ onOpenTask }}>
-        <div className="fixed inset-0 z-[99999] flex flex-col bg-white">
+        <div
+          ref={fullScreenContainerRef}
+          className="fixed inset-0 z-[99999] flex flex-col bg-white"
+        >
           <div className="flex items-center justify-between px-6 py-3 border-b border-gray-200 shrink-0">
             <span className="text-sm font-semibold text-gray-700 font-mono">
               DESCRIPTION_FULLSCREEN_MODE
             </span>
             <button
-              onClick={() => setIsFullscreen(false)}
+              onClick={() => {
+                setIsFullscreen(false);
+                onBlur(value);
+              }}
               className="w-8 h-8 rounded-full hover:bg-gray-100 flex items-center justify-center text-gray-400 hover:text-gray-600 transition-colors"
             >
               <span className="text-2xl leading-none">×</span>
@@ -578,14 +820,47 @@ export function DescriptionEditor({
             onChange={onChange}
             showPreview={showPreview}
             onTogglePreview={() => setShowPreview(!showPreview)}
+            onLink={(type) => {
+              setWikiModalType(type);
+              setWikiModalOpen(true);
+            }}
             extra={
               <button
-                onClick={() => setIsFullscreen(false)}
+                onClick={() => {
+                  setIsFullscreen(false);
+                  onBlur(value);
+                }}
                 className="ml-2 px-4 py-1.5 text-xs bg-blue-600 text-white rounded-md hover:bg-blue-700 shadow-sm transition-all active:scale-95 font-medium"
               >
                 Exit Fullscreen
               </button>
             }
+          />
+          <LinkModal
+            isOpen={wikiModalOpen}
+            onClose={() => {
+              setWikiModalOpen(false);
+              setTimeout(() => textareaRef.current?.focus(), 0);
+            }}
+            type={wikiModalType}
+            pages={pages}
+            orgId={orgId}
+            onSelect={(href, title) => {
+              if (!textareaRef.current) return;
+              const textarea = textareaRef.current;
+              const start = textarea.selectionStart;
+              const end = textarea.selectionEnd;
+              const insertion = `[${title || (wikiModalType === "link" ? href : "Link")}](${href})`;
+              const newVal =
+                value.slice(0, start) + insertion + value.slice(end);
+              onChange(newVal);
+              setWikiModalOpen(false);
+              setTimeout(() => {
+                textarea.focus();
+                const newPos = start + insertion.length;
+                textarea.setSelectionRange(newPos, newPos);
+              }, 0);
+            }}
           />
           <div className="flex-1 overflow-hidden flex flex-col px-6 py-6 max-w-5xl mx-auto w-full">
             {showPreview ? (
@@ -619,10 +894,7 @@ export function DescriptionEditor({
     return (
       <DescriptionEditorContext.Provider value={{ onOpenTask }}>
         <div className="group relative">
-          <div
-            onClick={startEditing}
-            className="min-h-[60px] cursor-text rounded border border-transparent hover:border-gray-200 px-2 py-1.5"
-          >
+          <div className="min-h-[60px] rounded border border-transparent hover:border-gray-200 px-2 py-1.5">
             <Preview value={value} placeholder={placeholder} />
           </div>
           <div className="absolute top-1 right-1 hidden group-hover:flex items-center gap-1">
@@ -646,6 +918,7 @@ export function DescriptionEditor({
 
   return (
     <div
+      ref={containerRef}
       className={`relative flex flex-col transition-all overflow-hidden ${isEditing ? "bg-white border border-gray-200 rounded-lg shadow-sm" : "min-h-[2.5rem]"}`}
     >
       <DescriptionEditorContext.Provider value={{ onOpenTask }}>
@@ -654,6 +927,10 @@ export function DescriptionEditor({
           onChange={onChange}
           showPreview={showPreview}
           onTogglePreview={() => setShowPreview(!showPreview)}
+          onLink={(type) => {
+            setWikiModalType(type);
+            setWikiModalOpen(true);
+          }}
           extra={
             <button
               onClick={toggleFullscreen}
@@ -663,6 +940,31 @@ export function DescriptionEditor({
               ↗
             </button>
           }
+        />
+        <LinkModal
+          isOpen={wikiModalOpen}
+          onClose={() => {
+            setWikiModalOpen(false);
+            setTimeout(() => textareaRef.current?.focus(), 0);
+          }}
+          type={wikiModalType}
+          pages={pages}
+          orgId={orgId}
+          onSelect={(href, title) => {
+            if (!textareaRef.current) return;
+            const textarea = textareaRef.current;
+            const start = textarea.selectionStart;
+            const end = textarea.selectionEnd;
+            const insertion = `[${title || (wikiModalType === "link" ? href : "Link")}](${href})`;
+            const newVal = value.slice(0, start) + insertion + value.slice(end);
+            onChange(newVal);
+            setWikiModalOpen(false);
+            setTimeout(() => {
+              textarea.focus();
+              const newPos = start + insertion.length;
+              textarea.setSelectionRange(newPos, newPos);
+            }, 0);
+          }}
         />
         <div className="relative flex flex-col min-h-[8rem] px-3 py-3">
           {showPreview ? (
@@ -684,17 +986,10 @@ export function DescriptionEditor({
             </>
           )}
         </div>
-        <div className="flex items-center justify-between px-3 py-1.5 border-t border-gray-100 bg-gray-50/50">
-          <span className="text-[10px] text-gray-400 font-mono">
-            Markdown supported • Use @ to mention tasks
+        <div className="px-3 py-1.5 border-t border-gray-50 bg-gray-50/30">
+          <span className="text-[10px] text-gray-400 font-mono italic">
+            Markdown supported • Use @ to mention tasks, [[ for wiki
           </span>
-          <button
-            type="button"
-            onClick={() => setIsEditing(false)}
-            className="text-[11px] font-medium text-gray-500 hover:text-gray-900 transition-colors"
-          >
-            Done
-          </button>
         </div>
       </DescriptionEditorContext.Provider>
     </div>

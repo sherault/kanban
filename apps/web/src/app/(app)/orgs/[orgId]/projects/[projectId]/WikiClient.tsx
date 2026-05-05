@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
+import type { TaskDto } from "@kanban/shared";
 import { WikiTabs } from "@/components/WikiTabs";
 import dynamic from "next/dynamic";
 
@@ -20,6 +21,7 @@ const WikiEditor = dynamic(
 interface Props {
   orgId: string;
   projectId: string;
+  tasks?: TaskDto[];
 }
 
 type WikiSplitState = {
@@ -27,7 +29,7 @@ type WikiSplitState = {
   openPageIds: string[];
 };
 
-export function WikiClient({ orgId }: Props) {
+export function WikiClient({ orgId, projectId, tasks }: Props) {
   const [splits, setSplits] = useState<WikiSplitState[]>([
     { activePageId: null, openPageIds: [] },
   ]);
@@ -133,6 +135,8 @@ export function WikiClient({ orgId }: Props) {
                   key={split.activePageId}
                   pageId={split.activePageId}
                   orgId={orgId}
+                  projectId={projectId}
+                  tasks={tasks}
                 />
               ) : (
                 <div className="h-full flex items-center justify-center text-gray-400 text-sm italic">
