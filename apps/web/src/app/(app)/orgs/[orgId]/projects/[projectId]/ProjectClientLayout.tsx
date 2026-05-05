@@ -1,0 +1,269 @@
+"use client";
+
+import React, { useEffect, useState, useRef } from "react";
+import { ProjectSidebar } from "./ProjectSidebar";
+import { WikiSidebar } from "./WikiSidebar";
+import { WikiProvider, useWiki } from "@/context/WikiContext";
+import type { ProjectDto } from "@kanban/shared";
+import { api } from "@/lib/api";
+import { getClientAccessToken } from "@/lib/auth-client";
+
+interface Props {
+  projects: ProjectDto[];
+  orgId: string;
+  projectId: string;
+  children: React.ReactNode;
+}
+
+export function ProjectClientLayout(props: Props) {
+  return (
+    <WikiProvider>
+      <ProjectClientLayoutInner {...props} />
+    </WikiProvider>
+  );
+}
+
+function ProjectClientLayoutInner({
+  projects,
+  orgId,
+  projectId,
+  children,
+}: Props) {
+  const [activeTab, setActiveTab] = useState<"board" | "wiki">("board");
+  const [isHydrated, setIsHydrated] = useState(false);
+  const { pages, setPages, setIsLoading: setIsLoadingPages } = useWiki();
+  const [searchQuery, setSearchQuery] = useState("");
+  const searchInputRef = useRef<HTMLInputElement>(null);
+
+  const fetchPages = React.useCallback(async () => {
+    try {
+      setIsLoadingPages(true);
+      const token = await getClientAccessToken();
+      if (!token) return;
+      const { data } = await api.wiki.listPages(token, orgId);
+      setPages(data);
+    } catch (e) {
+      console.error("Failed to fetch wiki pages", e);
+    } finally {
+      setIsLoadingPages(false);
+    }
+  }, [orgId, setIsLoadingPages, setPages]);
+
+  useEffect(() => {
+    const saved = localStorage.getItem("kanban_active_tab") as "board" | "wiki";
+    if (saved) {
+      setActiveTab(saved);
+    }
+    setIsHydrated(true);
+
+    const handleTabChange = (e: Event) => {
+      if (!(e instanceof CustomEvent)) return;
+      if (e.detail === "board" || e.detail === "wiki") {
+        setActiveTab(e.detail);
+      }
+    };
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key === "k") {
+        e.preventDefault();
+        searchInputRef.current?.focus();
+      }
+    };
+
+    window.addEventListener("kanban_tab_changed", handleTabChange);
+    window.addEventListener("kanban_wiki_page_updated", fetchPages);
+    window.addEventListener("keydown", handleKeyDown);
+
+    void fetchPages();
+
+    return () => {
+      window.removeEventListener("kanban_tab_changed", handleTabChange);
+      window.removeEventListener("kanban_wiki_page_updated", fetchPages);
+      window.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [fetchPages]);
+
+  if (!isHydrated) {
+    return (
+      <div className="flex h-full overflow-hidden">
+        <aside className="w-56 bg-white border-r border-gray-200 shrink-0 h-full" />
+        <div className="flex-1 overflow-hidden">{children}</div>
+      </div>
+    );
+  }
+
+  const filteredPages = pages.filter((p) =>
+    p.title.toLowerCase().includes(searchQuery.toLowerCase()),
+  );
+
+  return (
+    <div className="flex h-full overflow-hidden">
+      {activeTab === "board" ? (
+        <ProjectSidebar
+          projects={projects}
+          orgId={orgId}
+          projectId={projectId}
+        />
+      ) : (
+        <WikiSidebar
+          orgId={orgId}
+          projectId={projectId}
+          onRefresh={fetchPages}
+        />
+      )}
+
+      <div className="flex-1 flex flex-col min-w-0 overflow-hidden relative">
+        <div className="flex-1 overflow-hidden">{children}</div>
+
+        {/* Search Result Overlay */}
+        {searchQuery && (
+          <div className="absolute bottom-16 left-1/2 -translate-x-1/2 w-full max-w-xl bg-white border border-gray-200 rounded-xl shadow-2xl z-50 overflow-hidden">
+            <div className="p-3 border-b border-gray-100 bg-gray-50/50 flex items-center justify-between">
+              <div className="flex items-center gap-2 text-gray-400">
+                <svg
+                  className="w-3.5 h-3.5"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
+                  />
+                </svg>
+                <span className="text-[10px] font-bold uppercase tracking-wider">
+                  Search Results
+                </span>
+              </div>
+              <button
+                onClick={() => setSearchQuery("")}
+                className="text-gray-400 hover:text-gray-600 p-1 hover:bg-gray-200 rounded-md transition-colors"
+              >
+                <svg
+                  className="w-4 h-4"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M6 18L18 6M6 6l12 12"
+                  />
+                </svg>
+              </button>
+            </div>
+            <div className="max-h-[400px] overflow-y-auto p-2">
+              {filteredPages.length > 0 ? (
+                filteredPages.map((p) => (
+                  <button
+                    key={p.id}
+                    onClick={() => {
+                      window.dispatchEvent(
+                        new CustomEvent("kanban_open_wiki_page", {
+                          detail: p.id,
+                        }),
+                      );
+                      setSearchQuery("");
+                    }}
+                    className="w-full text-left p-3 hover:bg-blue-50/50 rounded-lg flex items-start gap-3 transition-all group"
+                  >
+                    <div className="mt-1 p-1.5 bg-gray-100 rounded group-hover:bg-blue-100 transition-colors">
+                      <svg
+                        className="w-4 h-4 text-gray-500 group-hover:text-blue-600"
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={2}
+                          d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
+                        />
+                      </svg>
+                    </div>
+                    <div className="flex flex-col min-w-0">
+                      <span className="text-sm font-semibold text-gray-900 group-hover:text-blue-700 transition-colors">
+                        {p.title}
+                      </span>
+                      <span className="text-xs text-gray-500 truncate mt-0.5">
+                        Wiki Page • {p.slug}
+                      </span>
+                    </div>
+                  </button>
+                ))
+              ) : (
+                <div className="py-12 flex flex-col items-center gap-2">
+                  <div className="p-3 bg-gray-50 rounded-full">
+                    <svg
+                      className="w-6 h-6 text-gray-300"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M9.172 9.172a4 4 0 015.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+                      />
+                    </svg>
+                  </div>
+                  <div className="text-center">
+                    <p className="text-sm font-medium text-gray-900">
+                      No results found
+                    </p>
+                    <p className="text-xs text-gray-500 mt-1">
+                      Try searching for a different title or keyword.
+                    </p>
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* Chat / Search Bar at the bottom */}
+        <div className="flex-none p-3 border-t border-gray-200 bg-white shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.05)]">
+          <div className="max-w-3xl mx-auto relative">
+            <input
+              ref={searchInputRef}
+              type="text"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder="Search wiki or ask a question... (Cmd+K)"
+              className="w-full bg-gray-100 border-none rounded-full px-5 py-2.5 text-sm focus:ring-2 focus:ring-blue-500/20 transition-all pl-11 shadow-inner"
+            />
+            <div className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400">
+              <svg
+                className="w-4 h-4"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
+                />
+              </svg>
+            </div>
+            <div className="absolute right-3 top-1/2 -translate-y-1/2 flex items-center gap-1">
+              <kbd className="hidden sm:inline-block px-1.5 py-0.5 text-[10px] font-semibold text-gray-400 bg-white border border-gray-200 rounded shadow-sm">
+                ⌘
+              </kbd>
+              <kbd className="hidden sm:inline-block px-1.5 py-0.5 text-[10px] font-semibold text-gray-400 bg-white border border-gray-200 rounded shadow-sm">
+                K
+              </kbd>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}

@@ -52,7 +52,11 @@ export function wsRoutes(
             const msg = JSON.parse(event.data.toString()) as {
               type?: string;
               room?: string;
+              // eslint-disable-next-line @typescript-eslint/no-explicit-any
+              [key: string]: any;
             };
+
+            // Room Subscription
             if (
               msg.type === "subscribe" &&
               typeof msg.room === "string" &&
@@ -76,6 +80,25 @@ export function wsRoutes(
                 )
                 .get();
               if (mem) wsRooms.subscribe(`project:${projectId}`, ws);
+              return;
+            }
+
+            // Real-time Collaboration Relay
+            if (
+              (msg.type === "wiki.yjs_update" ||
+                msg.type === "wiki.awareness") &&
+              typeof msg.room === "string" &&
+              (msg.room.startsWith("org:") || msg.room.startsWith("project:"))
+            ) {
+              wsRooms.broadcast(
+                msg.room,
+                {
+                  ...msg,
+                  actorId: userId,
+                  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                } as any,
+                ws,
+              ); // pass sender so they don't receive their own echo
             }
           } catch {
             // ignore malformed messages

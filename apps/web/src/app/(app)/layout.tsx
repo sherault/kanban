@@ -3,6 +3,7 @@ import { getUserName } from "../../lib/session";
 import { logoutAction } from "../../actions/auth";
 import { Providers } from "../../components/Providers";
 import { ProfileNav } from "../../components/ProfileNav";
+import { HeaderTabs } from "../../components/HeaderTabs";
 
 export default async function AppLayout({
   children,
@@ -15,12 +16,15 @@ export default async function AppLayout({
     <Providers>
       <div className="h-screen flex flex-col bg-gray-50">
         <header className="bg-white border-b border-gray-200 px-6 py-3 flex items-center justify-between shrink-0">
-          <Link
-            href="/orgs"
-            className="font-bold text-gray-900 text-lg tracking-tight"
-          >
-            Kanban
-          </Link>
+          <div className="flex items-center gap-8">
+            <Link
+              href="/orgs"
+              className="font-bold text-gray-900 text-lg tracking-tight"
+            >
+              Kanban
+            </Link>
+            <HeaderTabs />
+          </div>
           <div className="flex items-center gap-4">
             <ProfileNav displayName={displayName} />
             <form action={logoutAction}>

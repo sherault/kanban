@@ -4,7 +4,10 @@
     "module": "ESNext",
     "moduleResolution": "Bundler",
     "outDir": "dist",
-    "rootDir": "src"
+    "rootDir": "src",
+    "paths": {
+      "@kanban/shared": ["../../packages/shared/src/index.ts"]
+    }
   },
   "include": ["src"],
   "references": [{ "path": "../../packages/shared" }]

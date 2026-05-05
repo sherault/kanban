@@ -15,11 +15,12 @@ export class WsRooms {
     }
   }
 
-  broadcast(room: string, event: WsEvent): void {
+  broadcast(room: string, event: WsEvent, senderWs?: WSContext): void {
     const sockets = this.rooms.get(room);
     if (!sockets?.size) return;
     const msg = JSON.stringify(event);
     for (const ws of sockets) {
+      if (ws === senderWs) continue; // don't echo back to sender
       try {
         ws.send(msg);
       } catch {

@@ -1,0 +1,6 @@
+[mcp_servers.code-review-graph]
+args = [
+    "code-review-graph",
+    "serve",
+]
+command = "uvx"

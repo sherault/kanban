@@ -1,0 +1,47 @@
+{
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Grep|Glob",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "echo 'STOP: Use code-review-graph FIRST (semantic_search_nodes, query_graph, get_review_context, get_impact_radius). Fall back to Grep/Glob/Read only if the graph cannot answer. See CLAUDE.md.'"
+          }
+        ]
+      },
+      {
+        "matcher": "Read",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "echo 'REMINDER: If this Read is for exploration/understanding (not pre-edit), use code-review-graph tools first (get_review_context, query_graph, semantic_search_nodes). See CLAUDE.md.'"
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "Edit|Write|Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "code-review-graph update",
+            "timeout": 5000
+          }
+        ]
+      }
+    ],
+    "SessionStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "code-review-graph status --json",
+            "timeout": 5000
+          }
+        ]
+      }
+    ]
+  }
+}

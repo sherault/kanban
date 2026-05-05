@@ -8,17 +8,15 @@
   "exports": {
     ".": {
       "types": "./dist/index.d.mts",
-      "browser": "./src/index.ts",
-      "next": "./src/index.ts",
-      "import": "./dist/index.mjs",
-      "default": "./dist/index.mjs"
+      "import": "./src/index.ts",
+      "default": "./src/index.ts"
     }
   },
   "scripts": {
     "build": "tsdown",
     "dev": "tsdown --watch",
     "lint": "eslint src",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc -b --force --emitDeclarationOnly"
   },
   "devDependencies": {
     "@kanban/eslint-config": "workspace:*",

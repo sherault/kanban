@@ -32,6 +32,10 @@
     "typecheck": {
       "dependsOn": ["^typecheck"]
     },
+    "@kanban/shared#typecheck": {
+      "dependsOn": ["^typecheck"],
+      "outputs": ["dist/**"]
+    },
     "test": {
       "dependsOn": ["^build"]
     }

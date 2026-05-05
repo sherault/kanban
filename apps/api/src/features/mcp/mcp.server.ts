@@ -7,6 +7,7 @@ import type { AppDb, Broadcaster } from "../../types.js";
 import { OrganizationService } from "../organization/organization.service.js";
 import { ProjectService } from "../project/project.service.js";
 import { TaskService } from "../task/task.service.js";
+import { WikiService } from "../wiki/wiki.service.js";
 import type { Column } from "@kanban/shared";
 
 const COLUMN_VALUES = ["ideas", "todo", "doing", "done"] as const;
@@ -23,6 +24,7 @@ export function createMcpServer(
   const orgSvc = new OrganizationService(db);
   const projectSvc = new ProjectService(db, broadcast);
   const taskSvc = new TaskService(db, broadcast);
+  const wikiSvc = new WikiService(db, broadcast);
 
   const server = new McpServer(
     { name: "kanban", version: "1.0.0" },
@@ -448,6 +450,152 @@ export function createMcpServer(
       return {
         content: [
           { type: "text" as const, text: JSON.stringify({ deleted: taskId }) },
+        ],
+      };
+    },
+  );
+
+  // ── Wiki tools ──────────────────────────────────────────────────────────
+
+  server.registerTool(
+    "list_wiki_pages",
+    {
+      description: "List all wiki pages in an organization",
+      inputSchema: { orgId: z.string().describe("Organization ID") },
+    },
+    async ({ orgId }) => {
+      const pages = await wikiSvc.listPages(orgId);
+      return {
+        content: [
+          { type: "text" as const, text: JSON.stringify(pages, null, 2) },
+        ],
+      };
+    },
+  );
+
+  server.registerTool(
+    "get_wiki_page",
+    {
+      description: "Get the full content of a wiki page",
+      inputSchema: { pageId: z.string().describe("Wiki Page ID") },
+    },
+    async ({ pageId }) => {
+      const page = await wikiSvc.getPage(pageId);
+      if (!page) {
+        return {
+          content: [{ type: "text" as const, text: "Wiki page not found" }],
+          isError: true,
+        };
+      }
+      return {
+        content: [
+          { type: "text" as const, text: JSON.stringify(page, null, 2) },
+        ],
+      };
+    },
+  );
+
+  server.registerTool(
+    "create_wiki_page",
+    {
+      description: "Create a new wiki page",
+      inputSchema: {
+        orgId: z.string().describe("Organization ID"),
+        title: z.string().min(1).max(200).describe("Page title"),
+        content: z.string().describe("Page content (markdown)"),
+        parentId: z.string().optional().describe("Optional parent page ID"),
+        projectId: z
+          .string()
+          .optional()
+          .describe("Optional project ID mapping"),
+      },
+    },
+    async ({ orgId, title, content, parentId, projectId }) => {
+      const page = await wikiSvc.createPage(orgId, userId, {
+        title,
+        content,
+        parentId,
+        projectId,
+      });
+      return {
+        content: [
+          { type: "text" as const, text: JSON.stringify(page, null, 2) },
+        ],
+      };
+    },
+  );
+
+  server.registerTool(
+    "update_wiki_page",
+    {
+      description: "Update an existing wiki page",
+      inputSchema: {
+        pageId: z.string().describe("Wiki Page ID"),
+        title: z.string().min(1).max(200).optional().describe("New title"),
+        content: z.string().optional().describe("New content"),
+        parentId: z.string().optional().describe("New parent page ID"),
+      },
+    },
+    async ({ pageId, title, content, parentId }) => {
+      const page = await wikiSvc.updatePage(pageId, userId, {
+        title,
+        content,
+        parentId,
+      });
+      return {
+        content: [
+          { type: "text" as const, text: JSON.stringify(page, null, 2) },
+        ],
+      };
+    },
+  );
+
+  server.registerTool(
+    "delete_wiki_page",
+    {
+      description: "Delete a wiki page",
+      inputSchema: { pageId: z.string().describe("Wiki Page ID") },
+    },
+    async ({ pageId }) => {
+      await wikiSvc.deletePage(pageId, userId);
+      return {
+        content: [
+          { type: "text" as const, text: JSON.stringify({ deleted: pageId }) },
+        ],
+      };
+    },
+  );
+
+  server.registerTool(
+    "get_wiki_history",
+    {
+      description: "Get the revision history of a wiki page",
+      inputSchema: { pageId: z.string().describe("Wiki Page ID") },
+    },
+    async ({ pageId }) => {
+      const history = await wikiSvc.getHistory(pageId);
+      return {
+        content: [
+          { type: "text" as const, text: JSON.stringify(history, null, 2) },
+        ],
+      };
+    },
+  );
+
+  server.registerTool(
+    "search_wiki",
+    {
+      description: "Search for wiki pages by title in an organization",
+      inputSchema: {
+        orgId: z.string().describe("Organization ID"),
+        query: z.string().describe("Search query"),
+      },
+    },
+    async ({ orgId, query }) => {
+      const results = await wikiSvc.searchPages(orgId, query);
+      return {
+        content: [
+          { type: "text" as const, text: JSON.stringify(results, null, 2) },
         ],
       };
     },

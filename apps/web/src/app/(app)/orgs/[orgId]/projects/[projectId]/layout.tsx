@@ -1,7 +1,7 @@
 import { redirect } from "next/navigation";
 import { api } from "../../../../../../lib/api";
 import { getAccessToken } from "../../../../../../lib/session";
-import { ProjectSidebar } from "./ProjectSidebar";
+import { ProjectClientLayout } from "./ProjectClientLayout";
 
 export default async function BoardLayout({
   children,
@@ -17,10 +17,12 @@ export default async function BoardLayout({
   const { data: projects } = await api.projects.list(token, orgId);
 
   return (
-    <div className="flex h-full overflow-hidden">
-      <ProjectSidebar projects={projects} orgId={orgId} projectId={projectId} />
-
-      <div className="flex-1 overflow-hidden">{children}</div>
-    </div>
+    <ProjectClientLayout
+      projects={projects}
+      orgId={orgId}
+      projectId={projectId}
+    >
+      {children}
+    </ProjectClientLayout>
   );
 }

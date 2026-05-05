@@ -1,6 +1,6 @@
 import type { BetterSQLite3Database } from "drizzle-orm/better-sqlite3";
 import type * as schema from "./db/schema/index.js";
-import type { ProjectDto, TaskDto } from "@kanban/shared";
+import type { ProjectDto, TaskDto, WikiPageDto } from "@kanban/shared";
 
 /** The concrete Drizzle DB type for this project. */
 export type AppDb = BetterSQLite3Database<typeof schema>;
@@ -37,7 +37,10 @@ export type WsEvent =
       actorId?: string | undefined;
       isMcp?: boolean | undefined;
     }
-  | { type: "member.updated"; payload: { userId: string; role: string } };
+  | { type: "member.updated"; payload: { userId: string; role: string } }
+  | { type: "wiki.page_created"; page: WikiPageDto }
+  | { type: "wiki.page_updated"; page: WikiPageDto }
+  | { type: "wiki.page_deleted"; pageId: string };
 
 /** Function that broadcasts a WsEvent to all subscribers of a room. */
 export type Broadcaster = (room: string, event: WsEvent) => void;

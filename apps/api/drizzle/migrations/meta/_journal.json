@@ -50,6 +50,13 @@
       "when": 1776756542241,
       "tag": "0006_mute_nightmare",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "6",
+      "when": 1777967639144,
+      "tag": "0007_many_warpath",
+      "breakpoints": true
     }
   ]
 }

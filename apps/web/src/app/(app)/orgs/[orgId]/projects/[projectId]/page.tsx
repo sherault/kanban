@@ -1,7 +1,7 @@
 import { redirect } from "next/navigation";
 import { api } from "../../../../../../lib/api";
 import { getAccessToken, getUserId } from "../../../../../../lib/session";
-import { BoardClient } from "./BoardClient";
+import { ProjectViewManager } from "./ProjectViewManager";
 
 export default async function ProjectBoardPage({
   params,
@@ -21,7 +21,7 @@ export default async function ProjectBoardPage({
     ]);
 
   return (
-    <BoardClient
+    <ProjectViewManager
       initialTasks={tasks}
       orgMembers={members}
       projectId={projectId}
