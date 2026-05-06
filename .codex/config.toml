@@ -4,3 +4,9 @@ args = [
     "serve",
 ]
 command = "uvx"
+
+[mcp_servers.code-review-graph.tools.find_large_functions_tool]
+approval_mode = "approve"
+
+[mcp_servers.code-review-graph.tools.list_graph_stats_tool]
+approval_mode = "approve"

@@ -4,6 +4,9 @@ import { useState, useEffect } from "react";
 import { useDraggable } from "@dnd-kit/core";
 import { CSS } from "@dnd-kit/utilities";
 import type { TaskDto } from "@kanban/shared";
+import { isDateOverdue, parseTaskDate } from "./task-card/date";
+import { TaskCardContent } from "./task-card/TaskCardContent";
+import { TaskCardControls } from "./task-card/TaskCardControls";
 
 interface Props {
   task: TaskDto;
@@ -46,20 +49,8 @@ export function TaskCard({
     return () => clearTimeout(timer);
   }, []);
 
-  const endDateObj = task.endDate ? new Date(task.endDate) : null;
-  const isOverdue =
-    isMounted &&
-    endDateObj != null &&
-    !isNaN(endDateObj.getTime()) &&
-    endDateObj < new Date();
-  const initials = task.doer
-    ? task.doer.displayName
-        .split(" ")
-        .map((n) => n[0] ?? "")
-        .join("")
-        .slice(0, 2)
-        .toUpperCase()
-    : null;
+  const endDate = parseTaskDate(task.endDate);
+  const isOverdue = isMounted && isDateOverdue(endDate);
 
   return (
     <div
@@ -76,140 +67,22 @@ export function TaskCard({
           : "hover:shadow-sm hover:border-gray-300"
       } ${overlay ? "shadow-xl rotate-2 opacity-90" : ""}`}
     >
-      <div className="absolute top-2 right-2 flex items-center gap-1 z-10">
-        {/* Compare icon — visible on hover when a panel is already open */}
-        {onOpenAsComparison && !overlay && (
-          <button
-            onClick={(e) => {
-              e.stopPropagation();
-              onOpenAsComparison();
-            }}
-            className="opacity-0 group-hover:opacity-100 p-0.5 rounded text-gray-400 hover:text-blue-600 hover:bg-blue-50 transition-all"
-            title="Open as comparison panel"
-          >
-            <svg
-              width="13"
-              height="13"
-              viewBox="0 0 14 14"
-              fill="none"
-              xmlns="http://www.w3.org/2000/svg"
-            >
-              <rect
-                x="1"
-                y="1"
-                width="5"
-                height="12"
-                rx="1"
-                stroke="currentColor"
-                strokeWidth="1.4"
-              />
-              <rect
-                x="8"
-                y="1"
-                width="5"
-                height="12"
-                rx="1"
-                stroke="currentColor"
-                strokeWidth="1.4"
-              />
-            </svg>
-          </button>
-        )}
-
-        {selectable && (
-          <div
-            className="flex items-center justify-center p-0.5"
-            onClick={(e) => {
-              e.stopPropagation();
-              onSelectChange?.(!selected);
-            }}
-          >
-            <input
-              type="checkbox"
-              checked={selected}
-              onChange={(e) => {
-                e.stopPropagation();
-                onSelectChange?.(e.target.checked);
-              }}
-              onClick={(e) => e.stopPropagation()}
-              className="w-3.5 h-3.5 accent-blue-500 cursor-pointer"
-            />
-          </div>
-        )}
-      </div>
-      <p className="text-sm text-gray-900 font-medium leading-snug mb-2 line-clamp-2">
-        {task.title}
-      </p>
-      <div className="flex items-center justify-between gap-2">
-        {isMounted && endDateObj && !isNaN(endDateObj.getTime()) && (
-          <span
-            className={`text-xs ${isOverdue ? "text-red-500 font-medium" : "text-gray-400"}`}
-          >
-            {endDateObj.toLocaleDateString("en", {
-              month: "short",
-              day: "numeric",
-            })}
-          </span>
-        )}
-        {initials && (
-          <span
-            onClick={
-              onDoerClick
-                ? (e) => {
-                    e.stopPropagation();
-                    onDoerClick(task.doer!.id);
-                  }
-                : undefined
-            }
-            className={`inline-flex items-center justify-center w-6 h-6 rounded-full bg-blue-100 text-blue-700 text-xs font-semibold shrink-0 ${onDoerClick ? "cursor-pointer hover:bg-blue-200" : ""}`}
-            title={task.doer?.displayName}
-          >
-            {initials}
-          </span>
-        )}
-      </div>
-      {task.objective && (
-        <div
-          className="text-xs text-gray-400 italic mt-1.5 line-clamp-1"
-          title={task.objective}
-        >
-          <span
-            onClick={
-              onObjectiveClick
-                ? (e) => {
-                    e.stopPropagation();
-                    onObjectiveClick(task.objective || "");
-                  }
-                : undefined
-            }
-            className={
-              onObjectiveClick ? "cursor-pointer hover:text-purple-600" : ""
-            }
-          >
-            {task.objective}
-          </span>
-        </div>
-      )}
-      {task.tags.length > 0 && (
-        <div className="flex flex-wrap gap-1 mt-1.5">
-          {task.tags.map((tag) => (
-            <span
-              key={tag}
-              onClick={
-                onTagClick
-                  ? (e) => {
-                      e.stopPropagation();
-                      onTagClick(tag);
-                    }
-                  : undefined
-              }
-              className={`text-xs bg-gray-100 text-gray-600 px-1.5 py-0.5 rounded ${onTagClick ? "hover:bg-blue-100 hover:text-blue-700 cursor-pointer" : ""}`}
-            >
-              {tag}
-            </span>
-          ))}
-        </div>
-      )}
+      <TaskCardControls
+        overlay={overlay}
+        selectable={selectable}
+        selected={selected}
+        onOpenAsComparison={onOpenAsComparison}
+        onSelectChange={onSelectChange}
+      />
+      <TaskCardContent
+        date={endDate}
+        isMounted={isMounted}
+        isOverdue={isOverdue}
+        task={task}
+        onDoerClick={onDoerClick}
+        onObjectiveClick={onObjectiveClick}
+        onTagClick={onTagClick}
+      />
     </div>
   );
 }

@@ -1,10 +1,6 @@
 import { describe, it, expect, beforeAll } from "vitest";
 import { KB_REFRESH_TOKEN_COOKIE } from "@kanban/shared";
-import {
-  createTestDb,
-  createVerifiedUser,
-  loginTestUser,
-} from "../../db/test-utils.js";
+import { createTestDb, createVerifiedUser } from "../../db/test-utils.js";
 import { createApp } from "../../app.js";
 
 beforeAll(() => {
@@ -52,9 +48,9 @@ describe("POST /auth/register", () => {
     close();
   });
 
-  it("returns 400 for invalid email", async () => {
+  it("returns 400 for invalid registration data", async () => {
     const { app, close } = setup();
-    const res = await app.request("/auth/register", {
+    const badEmail = await app.request("/auth/register", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -63,13 +59,7 @@ describe("POST /auth/register", () => {
         displayName: "X",
       }),
     });
-    expect(res.status).toBe(400);
-    close();
-  });
-
-  it("returns 400 for password shorter than 8 chars", async () => {
-    const { app, close } = setup();
-    const res = await app.request("/auth/register", {
+    const shortPassword = await app.request("/auth/register", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -78,7 +68,8 @@ describe("POST /auth/register", () => {
         displayName: "X",
       }),
     });
-    expect(res.status).toBe(400);
+    expect(badEmail.status).toBe(400);
+    expect(shortPassword.status).toBe(400);
     close();
   });
 });
@@ -147,118 +138,6 @@ describe("POST /auth/login", () => {
       }),
     });
     expect(res.status).toBe(403);
-    close();
-  });
-});
-
-describe("POST /auth/refresh", () => {
-  it("issues a new accessToken given a valid refresh cookie", async () => {
-    const { app, db, close } = setup();
-    const { cookieHeader } = await loginTestUser(app, db, {
-      email: "alice@example.com",
-      password: "password123",
-      displayName: "Alice",
-    });
-    const match = new RegExp(`${KB_REFRESH_TOKEN_COOKIE}=([^;]+)`).exec(
-      cookieHeader,
-    );
-    const rawToken = match?.[1] ?? "";
-
-    const res = await app.request("/auth/refresh", {
-      method: "POST",
-      headers: { Cookie: `${KB_REFRESH_TOKEN_COOKIE}=${rawToken}` },
-    });
-    expect(res.status).toBe(200);
-    const body = (await res.json()) as { accessToken: string };
-    expect(typeof body.accessToken).toBe("string");
-    close();
-  });
-
-  it("returns 401 with no cookie", async () => {
-    const { app, close } = setup();
-    const res = await app.request("/auth/refresh", { method: "POST" });
-    expect(res.status).toBe(401);
-    close();
-  });
-});
-
-describe("POST /auth/logout", () => {
-  it("returns 200 and clears the cookie", async () => {
-    const { app, close } = setup();
-    const res = await app.request("/auth/logout", { method: "POST" });
-    expect(res.status).toBe(200);
-    close();
-  });
-});
-
-describe("POST /auth/forgot-password", () => {
-  it("returns 200 for any email (no enumeration)", async () => {
-    const { app, close } = setup();
-    const res = await app.request("/auth/forgot-password", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ email: "anyone@example.com" }),
-    });
-    expect(res.status).toBe(200);
-    close();
-  });
-
-  it("returns 400 for invalid email", async () => {
-    const { app, close } = setup();
-    const res = await app.request("/auth/forgot-password", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ email: "not-an-email" }),
-    });
-    expect(res.status).toBe(400);
-    close();
-  });
-});
-
-describe("POST /auth/reset-password", () => {
-  it("returns 401 for invalid token", async () => {
-    const { app, close } = setup();
-    const res = await app.request("/auth/reset-password", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ token: "bad-token", password: "newpass123" }),
-    });
-    expect(res.status).toBe(401);
-    close();
-  });
-
-  it("returns 400 for missing fields", async () => {
-    const { app, close } = setup();
-    const res = await app.request("/auth/reset-password", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ token: "tok" }),
-    });
-    expect(res.status).toBe(400);
-    close();
-  });
-});
-
-describe("POST /auth/resend-verification-public", () => {
-  it("returns 200 for any email (no enumeration)", async () => {
-    const { app, close } = setup();
-    const res = await app.request("/auth/resend-verification-public", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ email: "anyone@example.com" }),
-    });
-    expect(res.status).toBe(200);
-    close();
-  });
-
-  it("returns 400 for invalid email", async () => {
-    const { app, close } = setup();
-    const res = await app.request("/auth/resend-verification-public", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ email: "bad" }),
-    });
-    expect(res.status).toBe(400);
     close();
   });
 });

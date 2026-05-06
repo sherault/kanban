@@ -61,7 +61,6 @@ interface WikiSocketState {
   ws: WebSocket | null;
   tabId: string;
 }
-
 async function fetchConfig(): Promise<{
   token: string;
   wsUrl: string;
@@ -182,7 +181,6 @@ export function useWikiSocket(
   useEffect(() => {
     unmountedRef.current = false;
     void connect();
-
     return () => {
       unmountedRef.current = true;
       wsRef.current?.close();

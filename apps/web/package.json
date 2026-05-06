@@ -7,7 +7,8 @@
     "build": "next build",
     "start": "next start -p 3009",
     "lint": "eslint src --max-warnings 0",
-    "typecheck": "tsc"
+    "typecheck": "tsc",
+    "test": "node ../../scripts/check-server-actions.mjs && node ../../scripts/check-web-refactor-contracts.mjs"
   },
   "dependencies": {
     "@dnd-kit/core": "^6.3.1",

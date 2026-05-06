@@ -1,54 +1,15 @@
 import { describe, it, expect, beforeAll } from "vitest";
-import { createTestDb, loginTestUser } from "../../db/test-utils.js";
-import { createApp } from "../../app.js";
+import { loginTestUser } from "../../db/test-utils.js";
+import {
+  auth,
+  baseTask,
+  setupTaskRouteTest as setup,
+} from "./task-route-helpers.js";
 
 beforeAll(() => {
   process.env["JWT_SECRET"] = "test-jwt-secret-must-be-at-least-32-chars!!";
   process.env["NODE_ENV"] = "test";
 });
-
-async function setup() {
-  const testDb = createTestDb();
-  const app = createApp(testDb.db);
-  const { accessToken: token } = await loginTestUser(app, testDb.db, {
-    email: "alice@example.com",
-    password: "password123",
-    displayName: "Alice",
-  });
-
-  // Create org + project via API
-  const orgRes = await app.request("/organizations", {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${token}`,
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({ name: "Acme" }),
-  });
-  const { id: orgId } = (await orgRes.json()) as { id: string };
-
-  const projRes = await app.request(`/organizations/${orgId}/projects`, {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${token}`,
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({ name: "Sprint 1" }),
-  });
-  const { id: projectId } = (await projRes.json()) as { id: string };
-
-  return { app, db: testDb.db, token, orgId, projectId, close: testDb.close };
-}
-
-function auth(token: string) {
-  return { Authorization: `Bearer ${token}` };
-}
-
-const baseTask = {
-  title: "Fix bug",
-  startDate: "2026-01-01",
-  endDate: "2026-12-31",
-};
 
 describe("POST /projects/:projectId/tasks", () => {
   it("creates a task and returns 201 with full dto", async () => {

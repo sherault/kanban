@@ -1,38 +1,23 @@
 import { Hono } from "hono";
 import { zValidator } from "@hono/zod-validator";
-import { z } from "zod";
-import { setCookie, getCookie, deleteCookie } from "hono/cookie";
 import type { AppDb, HonoEnv } from "../../types.js";
 import { authnMiddleware } from "../../middleware/authn.js";
 import { rateLimit } from "../../middleware/rate-limit.js";
-import { KB_REFRESH_TOKEN_COOKIE } from "@kanban/shared";
 import { IdentityService, TotpRequiredError } from "./identity.service.js";
 import { unauthorized } from "../../lib/errors.js";
-
-const COOKIE_NAME = KB_REFRESH_TOKEN_COOKIE;
-const COOKIE_MAX_AGE = 7 * 24 * 60 * 60; // 7 days in seconds
-
-const registerSchema = z.object({
-  email: z.string().email(),
-  password: z.string().min(8),
-  displayName: z.string().min(1).max(100),
-});
-
-const loginSchema = z.object({
-  email: z.string().email(),
-  password: z.string().min(1),
-  totpCode: z.string().optional(),
-});
-
-const totpCodeSchema = z.object({
-  code: z.string().length(6),
-});
-
-const emailSchema = z.object({ email: z.string().email() });
-const resetPasswordSchema = z.object({
-  token: z.string().min(1),
-  password: z.string().min(8),
-});
+import {
+  clearRefreshCookie,
+  getRefreshCookie,
+  setRefreshCookie,
+} from "./identity-routes/cookies.js";
+import {
+  emailSchema,
+  loginSchema,
+  registerSchema,
+  resetPasswordSchema,
+  settingsSchema,
+  totpCodeSchema,
+} from "./identity-routes/schemas.js";
 
 export function identityRoutes(db: AppDb): Hono<HonoEnv> {
   const router = new Hono<HonoEnv>();
@@ -66,13 +51,7 @@ export function identityRoutes(db: AppDb): Hono<HonoEnv> {
           ...(body.totpCode !== undefined && { totpCode: body.totpCode }),
         };
         const result = await svc.login(payload);
-        setCookie(c, COOKIE_NAME, result.refreshToken, {
-          httpOnly: true,
-          sameSite: "Strict",
-          secure: process.env["NODE_ENV"] === "production",
-          path: "/",
-          maxAge: COOKIE_MAX_AGE,
-        });
+        setRefreshCookie(c, result.refreshToken);
         return c.json({ user: result.user, accessToken: result.accessToken });
       } catch (err) {
         if (err instanceof TotpRequiredError) {
@@ -84,16 +63,10 @@ export function identityRoutes(db: AppDb): Hono<HonoEnv> {
   );
 
   router.post("/refresh", async (c) => {
-    const rawToken = getCookie(c, COOKIE_NAME);
+    const rawToken = getRefreshCookie(c);
     if (!rawToken) return c.json({ error: "No refresh token" }, 401);
     const result = await svc.refresh(rawToken);
-    setCookie(c, COOKIE_NAME, result.newRefreshToken, {
-      httpOnly: true,
-      sameSite: "Strict",
-      secure: process.env["NODE_ENV"] === "production",
-      path: "/",
-      maxAge: COOKIE_MAX_AGE,
-    });
+    setRefreshCookie(c, result.newRefreshToken);
     return c.json({
       accessToken: result.accessToken,
       refreshToken: result.newRefreshToken,
@@ -101,9 +74,9 @@ export function identityRoutes(db: AppDb): Hono<HonoEnv> {
   });
 
   router.post("/logout", async (c) => {
-    const rawToken = getCookie(c, COOKIE_NAME);
+    const rawToken = getRefreshCookie(c);
     if (rawToken) await svc.logout(rawToken);
-    deleteCookie(c, COOKIE_NAME, { path: "/" });
+    clearRefreshCookie(c);
     return c.json({ success: true });
   });
 
@@ -188,15 +161,7 @@ export function identityRoutes(db: AppDb): Hono<HonoEnv> {
 
   router.patch(
     "/me/settings",
-    zValidator(
-      "json",
-      z.object({
-        maxOpenPanels: z.number().min(1).max(10).optional(),
-        enableNotifications: z.boolean().optional(),
-        maxNotifications: z.number().min(1).max(5).optional(),
-        notificationDuration: z.number().min(1).max(30).optional(),
-      }),
-    ),
+    zValidator("json", settingsSchema),
     async (c) => {
       const userId = c.get("userId");
       if (!userId) throw unauthorized("Not authenticated");
