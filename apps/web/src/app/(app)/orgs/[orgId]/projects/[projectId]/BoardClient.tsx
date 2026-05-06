@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import {
   DndContext,
   DragOverlay,
@@ -8,8 +8,7 @@ import {
   useSensor,
   useSensors,
 } from "@dnd-kit/core";
-import type { Column} from "@kanban/shared";
-import { type TaskDto } from "@kanban/shared";
+import type { Column } from "@kanban/shared";
 import type { NotificationData } from "@/components/NotificationsOverlay";
 import { ArchivePanel } from "./ArchivePanel";
 import { TaskCard } from "./TaskCard";
@@ -18,6 +17,12 @@ import { BoardErrorBanner } from "./board-client/BoardErrorBanner";
 import { BoardFilters } from "./board-client/BoardFilters";
 import { BoardOverlays } from "./board-client/BoardOverlays";
 import { BoardToolbar } from "./board-client/BoardToolbar";
+import {
+  upsertTask,
+  useBoardFilterOptions,
+  useSyncedTasks,
+} from "./board-client/taskState";
+import { useHydrated } from "./board-client/useHydrated";
 import { useBoardInteractions } from "./board-client/useBoardInteractions";
 import { useBoardPanels } from "./board-client/useBoardPanels";
 import { useBoardRealtime } from "./board-client/useBoardRealtime";
@@ -34,8 +39,8 @@ export function BoardClient({
   maxNotifications,
   notificationDuration,
 }: BoardClientProps) {
-  const [tasks, setTasks] = useState<TaskDto[]>(initialTasks);
-  const [isMounted, setIsMounted] = useState(false);
+  const [tasks, setTasks] = useSyncedTasks(initialTasks);
+  const isMounted = useHydrated();
   const [notifications, setNotifications] = useState<NotificationData[]>([]);
   const [archiveRevision, setArchiveRevision] = useState(0);
   const [newTaskColumn, setNewTaskColumn] = useState<Column | null>(null);
@@ -45,9 +50,6 @@ export function BoardClient({
   const [activeTag, setActiveTag] = useState<string | null>(null);
   const [activeObjective, setActiveObjective] = useState<string | null>(null);
   const [activeDoerId, setActiveDoerId] = useState<string | null>(null);
-
-  useEffect(() => setIsMounted(true), []);
-  useEffect(() => setTasks(initialTasks), [initialTasks]);
 
   const panels = useBoardPanels({ orgId, maxOpenPanels, isMounted });
   const interactions = useBoardInteractions({
@@ -85,22 +87,10 @@ export function BoardClient({
       window.removeEventListener("kanban_open_task", handleOpenEvent);
   }, [panels]);
 
-  const objectives = useMemo(
-    () => [
-      ...new Set(
-        tasks.flatMap((task) => (task.objective ? [task.objective] : [])),
-      ),
-    ],
-    [tasks],
+  const { objectives, allTags, activeDoerName } = useBoardFilterOptions(
+    tasks,
+    activeDoerId,
   );
-  const allTags = useMemo(
-    () => [...new Set(tasks.flatMap((task) => task.tags))],
-    [tasks],
-  );
-  const activeDoerName = activeDoerId
-    ? (tasks.find((task) => task.doer?.id === activeDoerId)?.doer
-        ?.displayName ?? activeDoerId)
-    : null;
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
   );
@@ -199,11 +189,4 @@ export function BoardClient({
       />
     </div>
   );
-}
-function upsertTask(tasks: TaskDto[], task: TaskDto) {
-  const idx = tasks.findIndex((item) => item.id === task.id);
-  if (idx < 0) return [...tasks, task];
-  const next = [...tasks];
-  next[idx] = task;
-  return next;
 }

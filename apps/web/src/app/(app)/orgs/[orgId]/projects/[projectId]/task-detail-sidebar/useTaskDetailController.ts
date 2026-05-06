@@ -34,23 +34,32 @@ export function useTaskDetailController({
   const [saveError, setSaveError] = useState<string | null>(null);
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [isPending, startTransition] = useTransition();
-
   const shellTaskId = "taskId" in initialTask ? initialTask.taskId : undefined;
   const initialId = initialTask.id || shellTaskId;
   const isShell = !initialTask.id && !!shellTaskId;
+  const [prevInitialTask, setPrevInitialTask] = useState(initialTask);
+
+  if (!isShell && prevInitialTask !== initialTask) {
+    setPrevInitialTask(initialTask);
+    setTask(initialTask as TaskDto);
+  }
 
   useEffect(() => {
-    if (!isShell) {
-      setTask(initialTask as TaskDto);
-      return;
-    }
-    if (!initialId || task?.id === initialId) return;
-    setLoading(true);
-    void getTaskByIdAction(initialId).then((res) => {
+    if (!isShell || !initialId || task?.id === initialId) return;
+    let cancelled = false;
+    void loadTask();
+    return () => {
+      cancelled = true;
+    };
+
+    async function loadTask() {
+      setLoading(true);
+      const res = await getTaskByIdAction(initialId!);
+      if (cancelled) return;
       if (res.task) setTask(res.task);
       setLoading(false);
-    });
-  }, [initialTask, initialId, isShell, task?.id]);
+    }
+  }, [isShell, initialId, task?.id]);
 
   const taskLinks = useTaskLinks({ task, projectId, onUpdated });
 

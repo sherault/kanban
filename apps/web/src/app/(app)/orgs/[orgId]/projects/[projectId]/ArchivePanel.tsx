@@ -7,6 +7,7 @@ import { deleteTaskAction, restoreTaskAction } from "@/actions/tasks";
 import { ArchiveDeleteModal } from "./archive-panel/ArchiveDeleteModal";
 import { ArchiveFilters } from "./archive-panel/ArchiveFilters";
 import { ArchivePagination } from "./archive-panel/ArchivePagination";
+import { ArchiveResizeHandle } from "./archive-panel/ArchiveResizeHandle";
 import { ArchiveTaskList } from "./archive-panel/ArchiveTaskList";
 
 const PAGE_SIZE = 20;
@@ -79,7 +80,7 @@ export function ArchivePanel(props: Props) {
 
   useEffect(() => {
     if (open) void load(search, page, dateFrom, dateTo);
-  }, [open, page, load, refreshTrigger]);
+  }, [open, page, load, refreshTrigger, search, dateFrom, dateTo]);
 
   useEffect(() => {
     if (!open) return;
@@ -89,12 +90,6 @@ export function ArchivePanel(props: Props) {
     }, 300);
     return () => clearTimeout(timer);
   }, [search, open, dateFrom, dateTo, load]);
-
-  useEffect(() => {
-    if (!open) return;
-    setPage(1);
-    void load(search, 1, dateFrom, dateTo);
-  }, [dateFrom, dateTo, open, load, search]);
 
   const totalPages = data ? Math.ceil(data.total / PAGE_SIZE) : 1;
 
@@ -189,20 +184,4 @@ export function ArchivePanel(props: Props) {
         : null,
     );
   }
-}
-
-function ArchiveResizeHandle({
-  onMouseDown,
-}: {
-  onMouseDown: (event: MouseEvent) => void;
-}) {
-  return (
-    <div
-      onMouseDown={onMouseDown}
-      className="absolute top-0 left-0 right-0 h-2 cursor-row-resize z-20 flex items-center justify-center group"
-      title="Drag to resize"
-    >
-      <div className="w-10 h-1 rounded-full bg-gray-300 group-hover:bg-blue-400 transition-colors" />
-    </div>
-  );
 }

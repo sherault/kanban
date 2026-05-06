@@ -108,7 +108,7 @@ export function WikiEditor({
       broadcast(md);
       scheduleSave(md);
     },
-    [pageId, broadcast, scheduleSave, setPageContent],
+    [pageId, broadcast, scheduleSave, setPageContent, setStatus],
   );
 
   const handlePropertiesChange = useCallback(
@@ -118,7 +118,7 @@ export function WikiEditor({
       broadcast(undefined, newProps);
       scheduleSave(content, newProps);
     },
-    [pageId, broadcast, scheduleSave, setPageProperties, content],
+    [pageId, broadcast, scheduleSave, setPageProperties, setStatus, content],
   );
 
   const handleVisualInputRef = useRef(handleVisualInput);

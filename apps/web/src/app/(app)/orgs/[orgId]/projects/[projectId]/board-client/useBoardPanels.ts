@@ -16,14 +16,21 @@ export function useBoardPanels({
   const [isHydrated, setIsHydrated] = useState(false);
 
   useEffect(() => {
-    setIsHydrated(false);
-    const saved = localStorage.getItem(`kanban_open_tasks_${orgId}`);
-    const savedExpanded = localStorage.getItem(
-      `kanban_expanded_panels_${orgId}`,
-    );
-    setOpenTasks(parseSaved(saved, []));
-    setExpandedIds(parseSaved(savedExpanded, []));
-    setIsHydrated(true);
+    let cancelled = false;
+    queueMicrotask(() => {
+      if (cancelled) return;
+      setIsHydrated(false);
+      const saved = localStorage.getItem(`kanban_open_tasks_${orgId}`);
+      const savedExpanded = localStorage.getItem(
+        `kanban_expanded_panels_${orgId}`,
+      );
+      setOpenTasks(parseSaved(saved, []));
+      setExpandedIds(parseSaved(savedExpanded, []));
+      setIsHydrated(true);
+    });
+    return () => {
+      cancelled = true;
+    };
   }, [orgId]);
 
   useEffect(() => {

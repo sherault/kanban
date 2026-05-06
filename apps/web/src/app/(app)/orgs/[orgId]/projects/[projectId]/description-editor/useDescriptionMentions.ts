@@ -32,11 +32,6 @@ export function useDescriptionMentions({
   }, [mentionSearch, mentionType, pages]);
 
   useEffect(() => {
-    if (mentionSearch !== null) return;
-    if (mentionResults.length > 0) setMentionResults([]);
-  }, [mentionSearch, mentionResults.length]);
-
-  useEffect(() => {
     if (mentionSearch === null) return;
 
     if (mentionType === "task") {
@@ -54,7 +49,11 @@ export function useDescriptionMentions({
   }, [mentionSearch, mentionType, orgId]);
 
   const activeResults =
-    mentionType === "task" ? mentionResults : wikiMentionResults;
+    mentionSearch === null
+      ? []
+      : mentionType === "task"
+        ? mentionResults
+        : wikiMentionResults;
 
   function insertMention(item: MentionItem) {
     if (!textareaRef.current) return;
