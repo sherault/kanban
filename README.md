@@ -62,6 +62,19 @@ A self-hosted, real-time project management board with built-in MCP server — s
 - **Stacking task panels** — open multiple tasks side-by-side; inactive panels collapse to vertical title strips
 - **Side-by-side comparison** — hover any task card and click the ⊞ split icon to pin it as a comparison panel alongside your current task
 
+### Project Wiki
+
+- **Integrated Wiki** — Keep documentation right alongside your projects
+- **Collaborative Markdown Editor** — Custom-built real-time editor with live sync (no heavy libraries like TipTap/Yjs)
+- **Split View** — Work on two pages side-by-side; perfect for cross-referencing documentation
+- **Tabbed Interface** — Keep multiple pages open and switch between them instantly
+- **Page Metadata (Properties)** — Add frontmatter-style JSON properties to any page for structured data
+- **Revision History** — View previous versions of any page to track changes over time
+- **Intelligent Markdown Links** — Link to other wiki pages or tasks directly in your content
+- **Unified Search** — Find wiki pages and tasks from the same bottom search bar (`Cmd+K`)
+
+See the [Wiki Documentation](docs/wiki.md) for more details.
+
 ### Task Detail
 
 Each task has a rich detail sidebar with:
@@ -123,6 +136,8 @@ Each task has a rich detail sidebar with:
   - `list_organizations`, `create_organization`
   - `list_projects`, `create_project`
   - `list_tasks`, `create_task`, `update_task`, `move_task`, `delete_task`
+  - `list_wiki_pages`, `get_wiki_page`, `create_wiki_page`, `update_wiki_page`, `delete_wiki_page`
+  - `get_wiki_history`, `search_wiki`
 
 ---
 
@@ -337,6 +352,13 @@ Connect Claude (or any other MCP client) to your board from the **Profile** page
 - `archive_task`: Archive a task in the 'done' column.
 - `list_archived_tasks`: Retrieve and search through archived tasks.
 - `restore_task`: Restore an archived task back to the 'todo' column.
+- `list_wiki_pages`: List all wiki pages in an organization.
+- `get_wiki_page`: Get the full content and metadata of a wiki page.
+- `create_wiki_page`: Create a new wiki page with markdown content and optional properties.
+- `update_wiki_page`: Update page title, content, parent, or properties.
+- `delete_wiki_page`: Remove a wiki page.
+- `get_wiki_history`: View the full revision history of a wiki page.
+- `search_wiki`: Search wiki pages by title across the organization.
 
 ---
 
