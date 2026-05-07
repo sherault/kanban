@@ -11,7 +11,8 @@ export function registerWikiTools(
   server.registerTool(
     "list_wiki_pages",
     {
-      description: "List all wiki pages in an organization",
+      description:
+        "List all wiki pages in an organization (includes title and metadata attributes)",
       inputSchema: { orgId: z.string().describe("Organization ID") },
     },
     async ({ orgId }) => jsonText(await wikiSvc.listPages(orgId)),
@@ -20,7 +21,8 @@ export function registerWikiTools(
   server.registerTool(
     "get_wiki_page",
     {
-      description: "Get the full content of a wiki page",
+      description:
+        "Get the full content and metadata attributes of a wiki page",
       inputSchema: { pageId: z.string().describe("Wiki Page ID") },
     },
     async ({ pageId }) => {
@@ -32,7 +34,7 @@ export function registerWikiTools(
   server.registerTool(
     "create_wiki_page",
     {
-      description: "Create a new wiki page",
+      description: "Create a new wiki page with optional metadata attributes",
       inputSchema: {
         orgId: z.string().describe("Organization ID"),
         title: z.string().min(1).max(200).describe("Page title"),
@@ -64,7 +66,8 @@ export function registerWikiTools(
   server.registerTool(
     "update_wiki_page",
     {
-      description: "Update an existing wiki page",
+      description:
+        "Update an existing wiki page (title, content, or metadata attributes)",
       inputSchema: {
         pageId: z.string().describe("Wiki Page ID"),
         title: z.string().min(1).max(200).optional().describe("New title"),
@@ -107,6 +110,35 @@ export function registerWikiTools(
       inputSchema: { pageId: z.string().describe("Wiki Page ID") },
     },
     async ({ pageId }) => jsonText(await wikiSvc.getHistory(pageId)),
+  );
+
+  server.registerTool(
+    "set_wiki_page_property",
+    {
+      description: "Set a single metadata property on a wiki page",
+      inputSchema: {
+        pageId: z.string().describe("Wiki Page ID"),
+        key: z.string().describe("Property key"),
+        value: z.any().describe("Property value (null to delete)"),
+      },
+    },
+    async ({ pageId, key, value }) => {
+      const page = await wikiSvc.getPage(pageId);
+      if (!page) return textResult("Wiki page not found", true);
+
+      const properties = { ...(page.properties || {}) };
+      if (value === null) {
+        delete properties[key];
+      } else {
+        properties[key] = value;
+      }
+
+      return jsonText(
+        await wikiSvc.updatePage(pageId, userId, {
+          properties,
+        }),
+      );
+    },
   );
 
   server.registerTool(

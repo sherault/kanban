@@ -7,7 +7,11 @@ import { desc, eq } from "drizzle-orm";
 import { memberships, users } from "../../../db/schema/index.js";
 import { wikiPageHistory, wikiPages } from "../../../db/schema/wiki.js";
 import type { WikiServiceContext } from "./context.js";
-import { toWikiHistoryDto, toWikiPageDto } from "./mappers.js";
+import {
+  parseWikiProperties,
+  toWikiHistoryDto,
+  toWikiPageDto,
+} from "./mappers.js";
 import { ensureOrganizationIndexPage } from "./project-index.js";
 
 export async function getWikiPage(
@@ -75,16 +79,23 @@ async function selectWikiPageSummaries(
   ctx: WikiServiceContext,
   orgId: string,
 ): Promise<WikiPageSummaryDto[]> {
-  return ctx.db
+  const rows = await ctx.db
     .select({
       id: wikiPages.id,
       parentId: wikiPages.parentId,
       projectId: wikiPages.projectId,
       title: wikiPages.title,
       slug: wikiPages.slug,
+      properties: wikiPages.properties,
     })
     .from(wikiPages)
     .where(eq(wikiPages.organizationId, orgId));
+
+  return rows.map((row) => ({
+    ...row,
+    properties:
+      (parseWikiProperties(row.properties) as Record<string, any>) ?? null,
+  }));
 }
 
 async function resolveCreatorId(

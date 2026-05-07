@@ -30,6 +30,7 @@ export interface WikiPageSummaryDto {
   projectId: string | null;
   title: string;
   slug: string;
+  properties?: Record<string, any> | null;
 }
 
 export interface CreateWikiPageDto {
