@@ -24,7 +24,7 @@ async function setup() {
   });
   const org = orgSvc.createOrg(user.id, { name: "Acme" });
   const project = projectSvc.createProject(org.id, { name: "Sprint" });
-  return { testDb, wikiSvc, events, user, org, project };
+  return { testDb, projectSvc, wikiSvc, events, user, org, project };
 }
 
 describe("WikiService page operations", () => {
@@ -78,11 +78,71 @@ describe("WikiService page operations", () => {
     const pages = await wikiSvc.listPages(org.id, user.id);
 
     expect(root.slug).toBe("root");
+    expect(root.content).toContain("<!-- kanban:auto-project-index:start -->");
     expect(root.content).toContain(`/orgs/${org.id}/projects/${project.id}`);
     expect(pages.map((page) => page.slug).sort()).toEqual([
+      "knowledge-base",
       "root",
-      "sprint-knowledge-base",
     ]);
+    expect(
+      pages.find(
+        (page) =>
+          page.title === "Knowledge Base" &&
+          page.projectId === project.id &&
+          page.parentId === null,
+      ),
+    ).toBeTruthy();
+    testDb.close();
+  });
+
+  it("recreates the organization index automated part when a project is created", async () => {
+    const { testDb, projectSvc, wikiSvc, user, org } = await setup();
+    const root = await wikiSvc.ensureRootPage(org.id, user.id);
+
+    await wikiSvc.updatePage(root.id, user.id, {
+      content: "# Custom Organization Notes\n\nManual notes stay here.",
+    });
+    const project = projectSvc.createProject(
+      org.id,
+      { name: "Roadmap" },
+      user.id,
+    );
+    const updatedRoot = await wikiSvc.getPage(root.id);
+
+    expect(updatedRoot?.content).toContain("Manual notes stay here.");
+    expect(updatedRoot?.content).toContain(
+      "<!-- kanban:auto-project-index:start -->",
+    );
+    expect(updatedRoot?.content).toContain(
+      `/orgs/${org.id}/projects/${project.id}`,
+    );
+    testDb.close();
+  });
+
+  it("marks deleted project knowledge bases and removes board links from the organization index", async () => {
+    const { testDb, projectSvc, wikiSvc, user, org, project } = await setup();
+    const projectPage = (await wikiSvc.listPages(org.id, user.id)).find(
+      (page) => page.projectId === project.id && page.parentId === null,
+    );
+
+    expect(projectPage).toBeTruthy();
+    projectSvc.deleteProject(org.id, project.id, user.id);
+
+    const root = await wikiSvc.ensureRootPage(org.id, user.id);
+    const deletedPage = await wikiSvc.getPage(projectPage!.id);
+
+    expect(root.content).not.toContain(
+      `[Board](/orgs/${org.id}/projects/${project.id})`,
+    );
+    expect(root.content).toMatch(
+      /\*\*Sprint\*\*: deleted on \d{4}-\d{2}-\d{2}/,
+    );
+    expect(root.content).toContain(
+      `[Knowledge Base](wiki://${projectPage!.id})`,
+    );
+    expect(deletedPage).toBeTruthy();
+    expect(deletedPage?.projectId).toBeNull();
+    expect(deletedPage?.content.startsWith("[DELETED PROJECT]\n\n")).toBe(true);
     testDb.close();
   });
 

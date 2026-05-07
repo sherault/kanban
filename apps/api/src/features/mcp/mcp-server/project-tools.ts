@@ -6,6 +6,7 @@ import { jsonText } from "./utils.js";
 export function registerProjectTools(
   server: McpServer,
   projectSvc: ProjectService,
+  userId: string,
 ) {
   server.registerTool(
     "list_projects",
@@ -25,6 +26,7 @@ export function registerProjectTools(
         name: z.string().min(1).max(200).describe("Project name"),
       },
     },
-    ({ orgId, name }) => jsonText(projectSvc.createProject(orgId, { name })),
+    ({ orgId, name }) =>
+      jsonText(projectSvc.createProject(orgId, { name }, userId)),
   );
 }

@@ -5,6 +5,10 @@ import type { ProjectDto } from "@kanban/shared";
 import { generateId } from "../../lib/id.js";
 import { notFound } from "../../lib/errors.js";
 import { projects } from "../../db/schema/index.js";
+import {
+  syncOrganizationIndexForProjectCreated,
+  syncOrganizationIndexForProjectDeleted,
+} from "../wiki/wiki-service/project-index.js";
 
 function toDto(row: typeof projects.$inferSelect): ProjectDto {
   return {
@@ -21,7 +25,11 @@ export class ProjectService {
     private readonly broadcast: Broadcaster = noopBroadcaster,
   ) {}
 
-  createProject(orgId: string, input: { name: string }): ProjectDto {
+  createProject(
+    orgId: string,
+    input: { name: string },
+    userId?: string,
+  ): ProjectDto {
     const id = generateId();
     const row = this.db
       .insert(projects)
@@ -31,6 +39,12 @@ export class ProjectService {
     if (!row) throw new Error("Failed to create project");
     const dto = toDto(row);
     this.broadcast(`org:${orgId}`, { type: "project.created", payload: dto });
+    syncOrganizationIndexForProjectCreated(
+      { db: this.db, broadcast: this.broadcast },
+      orgId,
+      row,
+      userId,
+    );
     return dto;
   }
 
@@ -76,7 +90,7 @@ export class ProjectService {
     return dto;
   }
 
-  deleteProject(orgId: string, projectId: string): void {
+  deleteProject(orgId: string, projectId: string, userId?: string): void {
     const existing = this.db
       .select()
       .from(projects)
@@ -84,6 +98,12 @@ export class ProjectService {
       .get();
     if (!existing) throw notFound("Project not found");
     if (existing.organizationId !== orgId) throw notFound("Project not found");
+    syncOrganizationIndexForProjectDeleted(
+      { db: this.db, broadcast: this.broadcast },
+      orgId,
+      existing,
+      userId,
+    );
     this.db.delete(projects).where(eq(projects.id, projectId)).run();
     this.broadcast(`org:${orgId}`, {
       type: "project.deleted",

@@ -35,6 +35,7 @@ export function projectRoutes(
       const project = svc.createProject(
         c.req.param("orgId"),
         c.req.valid("json"),
+        c.get("userId"),
       );
       return c.json(project, 201);
     },
@@ -68,7 +69,11 @@ export function projectRoutes(
     "/:orgId/projects/:projectId",
     authz.requireOrgRole("manager", (c) => c.req.param("orgId")),
     (c) => {
-      svc.deleteProject(c.req.param("orgId"), c.req.param("projectId"));
+      svc.deleteProject(
+        c.req.param("orgId"),
+        c.req.param("projectId"),
+        c.get("userId"),
+      );
       return c.json({ success: true });
     },
   );

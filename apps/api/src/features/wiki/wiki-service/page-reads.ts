@@ -3,12 +3,12 @@ import type {
   WikiPageDto,
   WikiPageSummaryDto,
 } from "@kanban/shared";
-import { and, desc, eq } from "drizzle-orm";
+import { desc, eq } from "drizzle-orm";
 import { memberships, users } from "../../../db/schema/index.js";
 import { wikiPageHistory, wikiPages } from "../../../db/schema/wiki.js";
 import type { WikiServiceContext } from "./context.js";
 import { toWikiHistoryDto, toWikiPageDto } from "./mappers.js";
-import { createWikiPage } from "./page-writes.js";
+import { ensureOrganizationIndexPage } from "./project-index.js";
 
 export async function getWikiPage(
   ctx: WikiServiceContext,
@@ -44,24 +44,7 @@ export async function ensureRootWikiPage(
   orgId: string,
   userId: string,
 ): Promise<WikiPageDto> {
-  const [existing] = await ctx.db
-    .select()
-    .from(wikiPages)
-    .where(and(eq(wikiPages.organizationId, orgId), eq(wikiPages.slug, "root")))
-    .limit(1);
-
-  if (existing) return toWikiPageDto(existing);
-
-  const projectRows = await ctx.db.query.projects.findMany({
-    where: (p, { eq }) => eq(p.organizationId, orgId),
-  });
-  const content = await buildRootContent(ctx, orgId, userId, projectRows);
-
-  return createWikiPage(ctx, orgId, userId, {
-    title: "Organization Index",
-    content,
-    slug: "root",
-  });
+  return ensureOrganizationIndexPage(ctx, orgId, userId);
 }
 
 export async function searchWikiPages(
@@ -118,56 +101,4 @@ async function resolveCreatorId(
     .limit(1);
 
   return firstMember?.userId || "unknown";
-}
-
-async function buildRootContent(
-  ctx: WikiServiceContext,
-  orgId: string,
-  userId: string,
-  projectRows: Array<{ id: string; name: string }>,
-): Promise<string> {
-  const lines = ["# Organization Knowledge Base", "", "## Projects", ""];
-
-  for (const project of projectRows) {
-    const pageId = await findOrCreateProjectPage(ctx, orgId, userId, project);
-    lines.push(
-      `- **${project.name}**: [Board](/orgs/${orgId}/projects/${project.id}) | [Wiki Page](/orgs/${orgId}/projects/${project.id}?page=${pageId})`,
-    );
-  }
-
-  lines.push(
-    "",
-    "---",
-    "",
-    "*This index is managed by the organization. You can edit additional notes below.*",
-  );
-  return lines.join("\n");
-}
-
-async function findOrCreateProjectPage(
-  ctx: WikiServiceContext,
-  orgId: string,
-  userId: string,
-  project: { id: string; name: string },
-): Promise<string> {
-  const [projectPage] = await ctx.db
-    .select()
-    .from(wikiPages)
-    .where(
-      and(
-        eq(wikiPages.projectId, project.id),
-        eq(wikiPages.organizationId, orgId),
-      ),
-    )
-    .limit(1);
-
-  if (projectPage) return projectPage.id;
-
-  const newPage = await createWikiPage(ctx, orgId, userId, {
-    title: `${project.name} Knowledge Base`,
-    content: `# ${project.name}\n\nDocumentation for project ${project.name} starts here.`,
-    projectId: project.id,
-    parentId: null,
-  });
-  return newPage.id;
 }

@@ -32,7 +32,7 @@ export function createMcpServer(
   );
 
   registerOrganizationTools(server, orgSvc, userId);
-  registerProjectTools(server, projectSvc);
+  registerProjectTools(server, projectSvc, userId);
   registerTaskListTools(server, taskSvc);
   registerTaskCrudTools(server, taskSvc, userId);
   registerTaskLifecycleTools(server, taskSvc, userId);
