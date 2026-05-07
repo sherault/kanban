@@ -10,3 +10,9 @@ approval_mode = "approve"
 
 [mcp_servers.code-review-graph.tools.list_graph_stats_tool]
 approval_mode = "approve"
+
+[mcp_servers.code-review-graph.tools.get_architecture_overview_tool]
+approval_mode = "approve"
+
+[mcp_servers.code-review-graph.tools.list_communities_tool]
+approval_mode = "approve"
