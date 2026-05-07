@@ -17,6 +17,7 @@ A self-hosted, real-time project management board with built-in MCP server — s
   - [Docker](#docker)
 - [Demo Data](#demo-data)
 - [MCP Integration (Claude / AI)](#mcp-integration-claude--ai)
+- [Second-Brain Agent Installer](#second-brain-agent-installer)
 - [Architecture](#architecture)
 - [Environment Variables](#environment-variables)
 - [Running Tests](#running-tests)
@@ -138,6 +139,7 @@ Each task has a rich detail sidebar with:
   - `list_tasks`, `create_task`, `update_task`, `move_task`, `delete_task`
   - `list_wiki_pages`, `get_wiki_page`, `create_wiki_page`, `update_wiki_page`, `delete_wiki_page`
   - `get_wiki_history`, `search_wiki`
+  - `set_wiki_page_property`
 
 ---
 
@@ -356,9 +358,53 @@ Connect Claude (or any other MCP client) to your board from the **Profile** page
 - `get_wiki_page`: Get the full content and metadata of a wiki page.
 - `create_wiki_page`: Create a new wiki page with markdown content and optional properties.
 - `update_wiki_page`: Update page title, content, parent, or properties.
+- `set_wiki_page_property`: Update one page metadata property without rewriting the whole page.
 - `delete_wiki_page`: Remove a wiki page.
 - `get_wiki_history`: View the full revision history of a wiki page.
 - `search_wiki`: Search wiki pages by title across the organization.
+
+### Kanban Markdown Links
+
+Kanban supports durable interlinks in normal Markdown:
+
+```md
+[A wiki page](wiki://<WIKI_PAGE_UUID>)
+[A task](task://<TASK_UUID>)
+```
+
+AI clients should search or fetch the target first and then link to the returned id. They should not invent UUIDs.
+
+Wiki page `properties` are the frontmatter-like details/attributes layer for structured metadata such as `doc_type`, `jurisdiction`, `validation_status`, `source_urls`, `freshness`, `cite_required`, `related_wiki_ids`, and `related_task_ids`. Use page content for human-readable Markdown.
+
+---
+
+## Second-Brain Agent Installer
+
+Kanban includes an interactive installer that can provision a personal second-brain instance and configure coding agents to use it through MCP.
+
+From a checkout:
+
+```bash
+pnpm agent:install
+```
+
+From a shell with curl:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/sherault/kanban/main/scripts/install-kanban-agent.sh | sh
+```
+
+The installer can:
+
+- run Kanban locally with Docker in `~/.kanban`;
+- connect to an external Kanban URL;
+- create a verified default user, organization, project, inbox wiki page, and triage task for Docker installs;
+- generate an MCP API key without printing it;
+- store the key in the OS keychain when available, or `~/.kanban/agent.env` with private permissions;
+- install the `kanban-second-brain` skill and MCP configuration for Codex and Claude Code;
+- add experimental Antigravity MCP/instruction files when requested.
+
+The reusable skill source lives in `scripts/agent-install/skills/kanban-second-brain/SKILL.md`.
 
 ---
 

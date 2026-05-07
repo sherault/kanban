@@ -4,6 +4,9 @@ import type { Column } from "@kanban/shared";
 import type { TaskService } from "../../task/task.service.js";
 import { jsonText } from "./utils.js";
 
+const KANBAN_LINK_GUIDANCE =
+  "Kanban supports durable Markdown interlinks. Use [label](task://<TASK_UUID>) for task references and [label](wiki://<WIKI_PAGE_UUID>) for wiki references. Do not invent UUIDs: search or fetch the target first, then use its id.";
+
 export function registerTaskCrudTools(
   server: McpServer,
   taskSvc: TaskService,
@@ -12,14 +15,16 @@ export function registerTaskCrudTools(
   server.registerTool(
     "create_task",
     {
-      description: "Create a new task in a project",
+      description: `Create a new task in a project. ${KANBAN_LINK_GUIDANCE}`,
       inputSchema: {
         projectId: z.string().describe("Project ID"),
         title: z.string().min(1).max(500).describe("Task title"),
         description: z
           .string()
           .optional()
-          .describe("Task description (markdown)"),
+          .describe(
+            "Task description as Markdown. Use wiki:// and task:// Markdown links for durable references.",
+          ),
         objective: z.string().optional().describe("Task objective"),
         startDate: z
           .string()
@@ -79,7 +84,7 @@ export function registerTaskCrudTools(
   server.registerTool(
     "update_task",
     {
-      description: "Update one or more fields of an existing task",
+      description: `Update one or more fields of an existing task. ${KANBAN_LINK_GUIDANCE}`,
       inputSchema: {
         taskId: z.string().describe("Task ID"),
         title: z.string().min(1).max(500).optional().describe("New title"),
@@ -87,7 +92,9 @@ export function registerTaskCrudTools(
           .string()
           .nullable()
           .optional()
-          .describe("New description in Markdown (null to clear)"),
+          .describe(
+            "New description in Markdown (null to clear). Use wiki:// and task:// Markdown links for durable references.",
+          ),
         objective: z
           .string()
           .nullable()

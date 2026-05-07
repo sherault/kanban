@@ -9,6 +9,7 @@
     "typecheck": "turbo typecheck",
     "test": "turbo test",
     "format": "prettier --write \"**/*.{ts,tsx,js,json,md}\" --ignore-path .gitignore",
+    "agent:install": "node scripts/kanban-agent-install.mjs",
     "prepare": "husky"
   },
   "devDependencies": {

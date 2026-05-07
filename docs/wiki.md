@@ -26,6 +26,23 @@ Each wiki page supports frontmatter-style metadata properties.
 - **Dynamic Usage**: Properties can be used to categorize pages, store technical metadata, or integrate with external tools.
 - **MCP Access**: Properties are fully readable and writable via the MCP server.
 
+Recommended properties for AI/second-brain workflows include:
+
+- `doc_type`
+- `status`
+- `jurisdiction`
+- `validation_status`
+- `source_status`
+- `source_urls`
+- `effective_from`
+- `effective_to`
+- `freshness`
+- `cite_required`
+- `related_wiki_ids`
+- `related_task_ids`
+
+Use page content for human-readable Markdown. Use properties for machine-readable details and attributes that agents should preserve.
+
 ### Revision History
 
 The wiki maintains a full history of every change made to a page.
@@ -36,6 +53,7 @@ The wiki maintains a full history of every change made to a page.
 ### Intelligent Linking & Search
 
 - **Markdown Links**: Use standard Markdown syntax to link to other wiki pages or even specific tasks.
+- **Kanban Link Schemes**: Use `[label](wiki://<WIKI_PAGE_UUID>)` for wiki pages and `[label](task://<TASK_UUID>)` for tasks.
 - **Unified Search**: Press `Cmd+K` (or `Ctrl+K`) to open the global search bar at the bottom. It searches across both tasks and wiki pages simultaneously, providing a fast way to navigate your entire workspace.
 
 ## MCP Integration
@@ -55,6 +73,8 @@ The wiki is fully exposed to AI assistants through the Model Context Protocol (M
 - `delete_wiki_page`: Permanent removal of a page.
 - `get_wiki_history`: Retrieve the revision log.
 - `search_wiki`: Find pages by title.
+
+When an MCP client writes Markdown, it should use `wiki://` and `task://` links for durable references. It should search or fetch the target first and never invent UUIDs.
 
 ## Getting Started with the Wiki
 
