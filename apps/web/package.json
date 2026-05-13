@@ -20,7 +20,7 @@
     "date-fns": "^4.1.0",
     "lowlight": "^3.3.0",
     "marked": "^18.0.3",
-    "next": "^16.2.5",
+    "next": "^16.2.6",
     "react": "^19.2.5",
     "react-diff-viewer-continued": "^4.2.2",
     "react-dom": "^19.2.5",
