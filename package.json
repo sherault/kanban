@@ -21,7 +21,7 @@
     "playwright": "^1.59.1",
     "prettier": "^3.3.3",
     "tsdown": "^0.21.9",
-    "turbo": "^2.1.3",
+    "turbo": "^2.9.14",
     "typescript": "^5.5.4"
   },
   "engines": {
