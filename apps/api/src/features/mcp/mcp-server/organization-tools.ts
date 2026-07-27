@@ -15,6 +15,23 @@ export function registerOrganizationTools(
   );
 
   server.registerTool(
+    "list_members",
+    {
+      description:
+        "List the members of an organization with their id, display name and role. Use the returned ids to assign tasks.",
+      inputSchema: { orgId: z.string().describe("Organization ID") },
+    },
+    ({ orgId }) =>
+      jsonText(
+        orgSvc.listMembers(orgId).map((m) => ({
+          id: m.user.id,
+          displayName: m.user.displayName,
+          role: m.role,
+        })),
+      ),
+  );
+
+  server.registerTool(
     "create_organization",
     {
       description: "Create a new organization",
