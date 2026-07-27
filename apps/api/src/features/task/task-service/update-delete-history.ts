@@ -1,4 +1,4 @@
-import { eq, sql } from "drizzle-orm";
+import { desc, eq, sql } from "drizzle-orm";
 import type { TaskDto, TaskHistoryDto } from "@kanban/shared";
 import { generateId } from "../../../lib/id.js";
 import { unprocessable } from "../../../lib/errors.js";
@@ -226,6 +226,7 @@ export class TaskUpdateHistoryOperations extends TaskServiceBase {
       .select()
       .from(taskHistory)
       .where(eq(taskHistory.taskId, taskId))
+      .orderBy(desc(taskHistory.changedAt), desc(taskHistory.id))
       .all();
 
     return rows.map((row) => {
