@@ -143,8 +143,9 @@ Adds `registerBoardTools(server, taskSvc)` alongside the existing registrars.
 ## Testing
 
 TDD. New file `apps/api/src/tests/features/mcp-board-tools.test.ts`, using the same
-harness as `mcp-task-list-tools.test.ts` (`createTestDb()`, a stub `McpServer` that
-captures registered handlers).
+harness style as `mcp-task-list-tools.test.ts`: a stub `McpServer` that captures
+registered handlers and a stub `TaskService` over in-memory `TaskDto` fixtures. No
+database — the render depends on nothing the DB provides.
 
 Cases:
 
