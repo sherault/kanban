@@ -5,7 +5,7 @@ function parseToolResult(result: any) {
   return JSON.parse(result.content[0].text);
 }
 
-function makeHarness(tasks: any[] = []) {
+function makeHarness(tasks: any[] = [], history: any[] = []) {
   const tools = new Map<string, (input: any) => any>();
 
   const server = {
@@ -20,6 +20,9 @@ function makeHarness(tasks: any[] = []) {
     },
     listTasks(projectId: string) {
       return tasks.filter((task) => task.projectId === projectId);
+    },
+    getTaskHistory(taskId: string) {
+      return history.filter((entry) => entry.taskId === taskId);
     },
   };
 
@@ -49,6 +52,24 @@ function makeTask(overrides: Record<string, unknown> = {}) {
 
 function listArgs(overrides: Record<string, unknown> = {}) {
   return { projectId: "project-1", page: 1, limit: 10, ...overrides };
+}
+
+function makeHistoryEntry(overrides: Record<string, unknown> = {}) {
+  return {
+    id: "hist-1",
+    taskId: "task-1",
+    field: "column",
+    oldValue: "todo",
+    newValue: "doing",
+    actor: { id: "user-1", displayName: "Alice" },
+    changedAt: "2026-07-27 18:04:11",
+    batchId: "batch-1",
+    ...overrides,
+  };
+}
+
+function historyArgs(overrides: Record<string, unknown> = {}) {
+  return { taskId: "task-1", page: 1, limit: 50, ...overrides };
 }
 
 describe("get_task MCP tool", () => {
@@ -158,5 +179,147 @@ describe("list_tasks MCP tool", () => {
 
     expect(result.tasks).toHaveLength(50);
     expect(result.pagination.totalPages).toBe(2);
+  });
+});
+
+describe("get_task_history MCP tool", () => {
+  it("returns entries and a pagination block", () => {
+    const entries = [
+      makeHistoryEntry({ id: "h-2", changedAt: "2026-07-27 18:04:11" }),
+      makeHistoryEntry({
+        id: "h-1",
+        field: "title",
+        changedAt: "2026-07-26 09:00:00",
+      }),
+    ];
+    const { tools } = makeHarness([makeTask()], entries);
+    const getHistory = tools.get("get_task_history");
+    expect(getHistory).toBeDefined();
+
+    const result = parseToolResult(getHistory!(historyArgs()));
+
+    expect(result.taskId).toBe("task-1");
+    expect(result.entries).toEqual([
+      {
+        field: "column",
+        oldValue: "todo",
+        newValue: "doing",
+        actor: { id: "user-1", displayName: "Alice" },
+        changedAt: "2026-07-27 18:04:11",
+        batchId: "batch-1",
+      },
+      {
+        field: "title",
+        oldValue: "todo",
+        newValue: "doing",
+        actor: { id: "user-1", displayName: "Alice" },
+        changedAt: "2026-07-26 09:00:00",
+        batchId: "batch-1",
+      },
+    ]);
+    expect(result.pagination).toEqual({
+      total: 2,
+      page: 1,
+      limit: 50,
+      totalPages: 1,
+    });
+  });
+
+  it("paginates with page and limit", () => {
+    const entries = Array.from({ length: 7 }, (_, index) =>
+      makeHistoryEntry({ id: `h-${index}`, newValue: `value-${index}` }),
+    );
+    const { tools } = makeHarness([makeTask()], entries);
+
+    const result = parseToolResult(
+      tools.get("get_task_history")!(historyArgs({ page: 2, limit: 3 })),
+    );
+
+    expect(result.entries.map((entry: any) => entry.newValue)).toEqual([
+      "value-3",
+      "value-4",
+      "value-5",
+    ]);
+    expect(result.pagination).toEqual({
+      total: 7,
+      page: 2,
+      limit: 3,
+      totalPages: 3,
+    });
+  });
+
+  it("filters by field and reflects the filter in the total", () => {
+    const entries = [
+      makeHistoryEntry({ id: "h-1", field: "column" }),
+      makeHistoryEntry({ id: "h-2", field: "description" }),
+      makeHistoryEntry({ id: "h-3", field: "column" }),
+    ];
+    const { tools } = makeHarness([makeTask()], entries);
+
+    const result = parseToolResult(
+      tools.get("get_task_history")!(historyArgs({ field: "column" })),
+    );
+
+    expect(result.entries).toHaveLength(2);
+    expect(result.entries.every((entry: any) => entry.field === "column")).toBe(
+      true,
+    );
+    expect(result.pagination.total).toBe(2);
+  });
+
+  it("returns an error result when the task does not exist", () => {
+    const { tools } = makeHarness([], []);
+
+    const result = tools.get("get_task_history")!(
+      historyArgs({ taskId: "missing" }),
+    );
+
+    expect(result.isError).toBe(true);
+    expect(result.content[0].text).toBe("Task not found");
+  });
+
+  it("returns an empty page for a known task with no history", () => {
+    const { tools } = makeHarness([makeTask()], []);
+
+    const result = parseToolResult(
+      tools.get("get_task_history")!(historyArgs()),
+    );
+
+    expect(result.entries).toEqual([]);
+    expect(result.pagination).toEqual({
+      total: 0,
+      page: 1,
+      limit: 50,
+      totalPages: 0,
+    });
+  });
+
+  it("truncates long old and new values", () => {
+    const long = "x".repeat(600);
+    const { tools } = makeHarness(
+      [makeTask()],
+      [makeHistoryEntry({ oldValue: long, newValue: long })],
+    );
+
+    const result = parseToolResult(
+      tools.get("get_task_history")!(historyArgs()),
+    );
+
+    expect(result.entries[0].oldValue).toBe(`${"x".repeat(500)}…[truncated]`);
+    expect(result.entries[0].newValue).toBe(`${"x".repeat(500)}…[truncated]`);
+  });
+
+  it("leaves short and null values untouched", () => {
+    const { tools } = makeHarness(
+      [makeTask()],
+      [makeHistoryEntry({ oldValue: null, newValue: "doing" })],
+    );
+
+    const result = parseToolResult(
+      tools.get("get_task_history")!(historyArgs()),
+    );
+
+    expect(result.entries[0].oldValue).toBeNull();
+    expect(result.entries[0].newValue).toBe("doing");
   });
 });

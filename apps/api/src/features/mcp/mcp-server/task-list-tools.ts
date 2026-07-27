@@ -3,6 +3,15 @@ import { z } from "zod";
 import type { TaskService } from "../../task/task.service.js";
 import { COLUMN_VALUES, jsonText, textResult } from "./utils.js";
 
+const HISTORY_VALUE_LIMIT = 500;
+
+function truncateHistoryValue(value: string | null) {
+  if (value === null) return null;
+  return value.length > HISTORY_VALUE_LIMIT
+    ? `${value.slice(0, HISTORY_VALUE_LIMIT)}…[truncated]`
+    : value;
+}
+
 export function registerTaskListTools(server: McpServer, taskSvc: TaskService) {
   server.registerTool(
     "get_task",
@@ -85,6 +94,57 @@ export function registerTaskListTools(server: McpServer, taskSvc: TaskService) {
           page,
           limit,
           totalPages: Math.ceil(tasks.length / limit),
+        },
+      });
+    },
+  );
+
+  server.registerTool(
+    "get_task_history",
+    {
+      description:
+        "Get the change history of a task, newest first — who changed which field, from what to what, and when. Use it to resume work after an interruption or to reconstruct how a task progressed. Long values are truncated to 500 characters.",
+      inputSchema: {
+        taskId: z.string().describe("Task ID"),
+        field: z
+          .string()
+          .optional()
+          .describe(
+            "Filter by changed field name, e.g. column, title, description, doerId",
+          ),
+        page: z.number().int().min(1).default(1).describe("Page number"),
+        limit: z
+          .number()
+          .int()
+          .min(1)
+          .max(100)
+          .default(50)
+          .describe("Max entries per call (1-100, default 50)"),
+      },
+    },
+    ({ taskId, field, page, limit }) => {
+      if (!taskSvc.getTask(taskId)) return textResult("Task not found", true);
+
+      let entries = taskSvc.getTaskHistory(taskId);
+      if (field) entries = entries.filter((entry) => entry.field === field);
+
+      const total = entries.length;
+      const offset = (page - 1) * limit;
+      return jsonText({
+        taskId,
+        entries: entries.slice(offset, offset + limit).map((entry) => ({
+          field: entry.field,
+          oldValue: truncateHistoryValue(entry.oldValue),
+          newValue: truncateHistoryValue(entry.newValue),
+          actor: entry.actor,
+          changedAt: entry.changedAt,
+          batchId: entry.batchId,
+        })),
+        pagination: {
+          total,
+          page,
+          limit,
+          totalPages: Math.ceil(total / limit),
         },
       });
     },
