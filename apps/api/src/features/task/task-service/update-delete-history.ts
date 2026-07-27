@@ -115,6 +115,60 @@ export class TaskUpdateHistoryOperations extends TaskServiceBase {
     return dto;
   }
 
+  appendNote(
+    taskId: string,
+    actorId: string,
+    text: string,
+    isMcp?: boolean,
+  ): TaskDto {
+    const note = text.trim();
+    if (!note) throw unprocessable("Note text cannot be empty");
+
+    const existing = this.getRow(taskId);
+    const doerName = existing.doerId
+      ? (this.db
+          .select({ displayName: users.displayName })
+          .from(users)
+          .where(eq(users.id, existing.doerId))
+          .get()?.displayName ?? null)
+      : null;
+    const stamp = new Date().toISOString().slice(0, 16).replace("T", " ");
+    const heading = doerName
+      ? `#### ${stamp} UTC — ${doerName}`
+      : `#### ${stamp} UTC`;
+    const base = (existing.description ?? "").replace(/\s+$/, "");
+    const description = base
+      ? `${base}\n\n${heading}\n\n${note}`
+      : `${heading}\n\n${note}`;
+
+    const dto = this.db.transaction((tx) => {
+      tx.update(tasks)
+        .set({ description, updatedAt: sql`(datetime('now'))` })
+        .where(eq(tasks.id, taskId))
+        .run();
+      tx.insert(taskHistory)
+        .values({
+          id: generateId(),
+          taskId,
+          userId: actorId,
+          field: "description",
+          oldValue: existing.description,
+          newValue: description,
+          batchId: generateId(),
+        })
+        .run();
+      return this.assemble(this.getRow(taskId));
+    });
+
+    this.broadcast(`project:${existing.projectId}`, {
+      type: "task.updated",
+      payload: dto,
+      actorId,
+      isMcp,
+    });
+    return dto;
+  }
+
   private readTags(taskId: string): string[] {
     return this.db
       .select({ tag: taskTags.tag })

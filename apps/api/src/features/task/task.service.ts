@@ -69,6 +69,15 @@ export class TaskService {
     return this.updateHistory.updateTask(taskId, actorId, input, isMcp);
   }
 
+  appendTaskNote(
+    taskId: string,
+    actorId: string,
+    text: string,
+    isMcp?: boolean,
+  ): TaskDto {
+    return this.updateHistory.appendNote(taskId, actorId, text, isMcp);
+  }
+
   deleteTask(taskId: string, actorId?: string, isMcp?: boolean): void {
     this.updateHistory.deleteTask(taskId, actorId, isMcp);
   }

@@ -155,6 +155,24 @@ export function registerTaskCrudTools(
   );
 
   server.registerTool(
+    "append_task_note",
+    {
+      description: `Append a note to the end of a task description, atomically server-side. Use this instead of read + update_task(description) for traceability blocks: it never overwrites concurrent edits and needs no prior read. The server prefixes the note with a UTC timestamp heading naming the currently assigned doer. ${KANBAN_LINK_GUIDANCE}`,
+      inputSchema: {
+        taskId: z.string().describe("Task ID"),
+        text: z
+          .string()
+          .min(1)
+          .describe(
+            "Note body as Markdown, appended verbatim under the stamped heading. Use wiki:// and task:// Markdown links for durable references.",
+          ),
+      },
+    },
+    ({ taskId, text }) =>
+      jsonText(taskSvc.appendTaskNote(taskId, userId, text, true)),
+  );
+
+  server.registerTool(
     "delete_task",
     {
       description: "Delete a task",

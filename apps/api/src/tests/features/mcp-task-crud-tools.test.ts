@@ -5,6 +5,7 @@ function makeHarness() {
   const tools = new Map<string, (input: any) => any>();
   const configs = new Map<string, any>();
   const updateCalls: any[] = [];
+  const appendCalls: any[] = [];
 
   const server = {
     registerTool(name: string, config: unknown, handler: any) {
@@ -20,11 +21,15 @@ function makeHarness() {
       updateCalls.push({ taskId, userId, fields, isMcp });
       return { id: taskId, ...fields };
     },
+    appendTaskNote(taskId: string, userId: string, text: string) {
+      appendCalls.push({ taskId, userId, text });
+      return { id: taskId, description: text };
+    },
   };
 
   registerTaskCrudTools(server as any, taskSvc as any, "user-1");
 
-  return { tools, configs, updateCalls };
+  return { tools, configs, updateCalls, appendCalls };
 }
 
 describe("update_task MCP tool tag deltas", () => {
@@ -60,5 +65,38 @@ describe("update_task MCP tool tag deltas", () => {
     tools.get("update_task")!({ taskId: "task-1", title: "New" });
 
     expect(updateCalls[0].fields).toEqual({ title: "New" });
+  });
+});
+
+describe("append_task_note MCP tool", () => {
+  it("is registered with taskId and text inputs", () => {
+    const { configs } = makeHarness();
+    const schema = configs.get("append_task_note").inputSchema;
+
+    expect(schema.taskId).toBeDefined();
+    expect(schema.text).toBeDefined();
+  });
+
+  it("forwards the note to the task service with the MCP user id", () => {
+    const { tools, appendCalls } = makeHarness();
+
+    tools.get("append_task_note")!({ taskId: "task-1", text: "Progress" });
+
+    expect(appendCalls[0]).toEqual({
+      taskId: "task-1",
+      userId: "user-1",
+      text: "Progress",
+    });
+  });
+
+  it("returns the updated task as JSON text", () => {
+    const { tools } = makeHarness();
+
+    const result = tools.get("append_task_note")!({
+      taskId: "task-1",
+      text: "Progress",
+    });
+
+    expect(JSON.parse(result.content[0].text).id).toBe("task-1");
   });
 });
