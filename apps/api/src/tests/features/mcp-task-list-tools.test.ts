@@ -41,8 +41,14 @@ function makeTask(overrides: Record<string, unknown> = {}) {
     tags: ["mcp"],
     linkedTaskIds: [],
     archivedAt: null,
+    doer: null,
+    validator: null,
     ...overrides,
   };
+}
+
+function listArgs(overrides: Record<string, unknown> = {}) {
+  return { projectId: "project-1", page: 1, limit: 10, ...overrides };
 }
 
 describe("get_task MCP tool", () => {
@@ -85,5 +91,72 @@ describe("get_task MCP tool", () => {
     const result = parseToolResult(getTask!({ taskId: "task-1" }));
 
     expect(result.archived).toBeUndefined();
+  });
+});
+
+describe("list_tasks MCP tool", () => {
+  it("filters by tags with AND semantics", () => {
+    const both = makeTask({ id: "both", tags: ["mcp", "urgent"] });
+    const one = makeTask({ id: "one", tags: ["mcp"] });
+    const none = makeTask({ id: "none", tags: [] });
+    const { tools } = makeHarness([both, one, none]);
+
+    const result = parseToolResult(
+      tools.get("list_tasks")!(listArgs({ tags: ["mcp", "urgent"] })),
+    );
+
+    expect(result.tasks.map((task: any) => task.id)).toEqual(["both"]);
+    expect(result.pagination.total).toBe(1);
+  });
+
+  it("still honours the deprecated singular tag key", () => {
+    const tagged = makeTask({ id: "tagged", tags: ["mcp"] });
+    const other = makeTask({ id: "other", tags: ["docs"] });
+    const { tools } = makeHarness([tagged, other]);
+
+    const result = parseToolResult(
+      tools.get("list_tasks")!(listArgs({ tag: "mcp" })),
+    );
+
+    expect(result.tasks.map((task: any) => task.id)).toEqual(["tagged"]);
+  });
+
+  it("combines the deprecated tag key with tags using AND", () => {
+    const both = makeTask({ id: "both", tags: ["mcp", "urgent"] });
+    const one = makeTask({ id: "one", tags: ["mcp"] });
+    const { tools } = makeHarness([both, one]);
+
+    const result = parseToolResult(
+      tools.get("list_tasks")!(listArgs({ tag: "urgent", tags: ["mcp"] })),
+    );
+
+    expect(result.tasks.map((task: any) => task.id)).toEqual(["both"]);
+  });
+
+  it("filters by validatorId", () => {
+    const mine = makeTask({ id: "mine", validator: { id: "user-1" } });
+    const other = makeTask({ id: "other", validator: { id: "user-2" } });
+    const unset = makeTask({ id: "unset" });
+    const { tools } = makeHarness([mine, other, unset]);
+
+    const result = parseToolResult(
+      tools.get("list_tasks")!(listArgs({ validatorId: "user-1" })),
+    );
+
+    expect(result.tasks.map((task: any) => task.id)).toEqual(["mine"]);
+  });
+
+  it("accepts a limit of up to 50", () => {
+    const tasks = Array.from({ length: 60 }, (_, index) =>
+      makeTask({ id: `task-${index}` }),
+    );
+    const { tools } = makeHarness(tasks);
+
+    const result = parseToolResult(
+      tools.get("list_tasks")!(listArgs({ limit: 50 })),
+    );
+
+    expect(result.tasks).toHaveLength(50);
+    expect(result.pagination.totalPages).toBe(2);
   });
 });

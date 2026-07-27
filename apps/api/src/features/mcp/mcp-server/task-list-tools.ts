@@ -26,8 +26,19 @@ export function registerTaskListTools(server: McpServer, taskSvc: TaskService) {
       inputSchema: {
         projectId: z.string().describe("Project ID"),
         column: z.enum(COLUMN_VALUES).optional().describe("Filter by column"),
-        tag: z.string().optional().describe("Filter by tag"),
+        tag: z
+          .string()
+          .optional()
+          .describe("Deprecated alias for tags — filter by a single tag"),
+        tags: z
+          .array(z.string())
+          .optional()
+          .describe("Filter by tags — a task must carry every listed tag"),
         doerId: z.string().optional().describe("Filter by doer user ID"),
+        validatorId: z
+          .string()
+          .optional()
+          .describe("Filter by validator user ID"),
         search: z
           .string()
           .optional()
@@ -39,16 +50,32 @@ export function registerTaskListTools(server: McpServer, taskSvc: TaskService) {
           .number()
           .int()
           .min(1)
-          .max(20)
+          .max(50)
           .default(10)
-          .describe("Max elements per call (1-20, default 10)"),
+          .describe("Max elements per call (1-50, default 10)"),
       },
     },
-    ({ projectId, column, tag, doerId, page, limit, search }) => {
+    ({
+      projectId,
+      column,
+      tag,
+      tags,
+      doerId,
+      validatorId,
+      page,
+      limit,
+      search,
+    }) => {
+      const allTags = [...(tags ?? []), ...(tag ? [tag] : [])];
       let tasks = taskSvc.listTasks(projectId, { search });
       if (column) tasks = tasks.filter((task) => task.column === column);
-      if (tag) tasks = tasks.filter((task) => task.tags.includes(tag));
+      if (allTags.length)
+        tasks = tasks.filter((task) =>
+          allTags.every((wanted) => task.tags.includes(wanted)),
+        );
       if (doerId) tasks = tasks.filter((task) => task.doer?.id === doerId);
+      if (validatorId)
+        tasks = tasks.filter((task) => task.validator?.id === validatorId);
 
       const offset = (page - 1) * limit;
       return jsonText({
