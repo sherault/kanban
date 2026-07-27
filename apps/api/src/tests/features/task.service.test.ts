@@ -183,6 +183,99 @@ describe("TaskService.updateTask", () => {
   });
 });
 
+describe("TaskService.updateTask tag deltas", () => {
+  async function setupTagged(tags: string[]) {
+    const ctx = await setup();
+    const created = ctx.taskSvc.createTask(ctx.project.id, ctx.user.id, {
+      ...baseTask,
+      tags,
+    });
+    return { ...ctx, created };
+  }
+
+  it("appends tags without touching existing ones", async () => {
+    const { user, taskSvc, testDb, created } = await setupTagged(["api"]);
+    const updated = taskSvc.updateTask(created.id, user.id, {
+      addTags: ["mcp", "docs"],
+    });
+    expect(updated.tags).toEqual(["api", "mcp", "docs"]);
+    testDb.close();
+  });
+
+  it("ignores duplicates when adding", async () => {
+    const { user, taskSvc, testDb, created } = await setupTagged(["api"]);
+    const updated = taskSvc.updateTask(created.id, user.id, {
+      addTags: ["api", "mcp", "mcp"],
+    });
+    expect(updated.tags).toEqual(["api", "mcp"]);
+    testDb.close();
+  });
+
+  it("removes only the listed tags", async () => {
+    const { user, taskSvc, testDb, created } = await setupTagged([
+      "api",
+      "mcp",
+      "docs",
+    ]);
+    const updated = taskSvc.updateTask(created.id, user.id, {
+      removeTags: ["mcp", "absent"],
+    });
+    expect(updated.tags).toEqual(["api", "docs"]);
+    testDb.close();
+  });
+
+  it("applies removals before additions when both are given", async () => {
+    const { user, taskSvc, testDb, created } = await setupTagged([
+      "api",
+      "mcp",
+    ]);
+    const updated = taskSvc.updateTask(created.id, user.id, {
+      removeTags: ["mcp"],
+      addTags: ["mcp", "docs"],
+    });
+    expect(updated.tags).toEqual(["api", "mcp", "docs"]);
+    testDb.close();
+  });
+
+  it("writes a tags history entry with old and new values", async () => {
+    const { user, taskSvc, testDb, created } = await setupTagged(["api"]);
+    taskSvc.updateTask(created.id, user.id, { addTags: ["mcp"] });
+    const history = taskSvc.getTaskHistory(created.id);
+    expect(history.length).toBe(1);
+    expect(history[0]?.field).toBe("tags");
+    expect(history[0]?.oldValue).toBe("api");
+    expect(history[0]?.newValue).toBe("api, mcp");
+    testDb.close();
+  });
+
+  it("writes no history when the tag set is unchanged", async () => {
+    const { user, taskSvc, testDb, created } = await setupTagged(["api"]);
+    taskSvc.updateTask(created.id, user.id, {
+      addTags: ["api"],
+      removeTags: ["absent"],
+    });
+    expect(taskSvc.getTaskHistory(created.id).length).toBe(0);
+    testDb.close();
+  });
+
+  it("rejects combining tags with addTags or removeTags", async () => {
+    const { user, taskSvc, testDb, created } = await setupTagged(["api"]);
+    expect(() =>
+      taskSvc.updateTask(created.id, user.id, {
+        tags: ["x"],
+        addTags: ["y"],
+      }),
+    ).toThrow(/tags/);
+    expect(() =>
+      taskSvc.updateTask(created.id, user.id, {
+        tags: ["x"],
+        removeTags: ["y"],
+      }),
+    ).toThrow(/tags/);
+    testDb.close();
+  });
+});
+
 describe("TaskService.deleteTask", () => {
   it("removes the task", async () => {
     const { user, project, taskSvc, testDb } = await setup();

@@ -84,7 +84,7 @@ export function registerTaskCrudTools(
   server.registerTool(
     "update_task",
     {
-      description: `Update one or more fields of an existing task. ${KANBAN_LINK_GUIDANCE}`,
+      description: `Update one or more fields of an existing task. Tags can be set wholesale with tags, or edited incrementally with addTags/removeTags; tags is mutually exclusive with addTags/removeTags. ${KANBAN_LINK_GUIDANCE}`,
       inputSchema: {
         taskId: z.string().describe("Task ID"),
         title: z.string().min(1).max(500).optional().describe("New title"),
@@ -130,7 +130,24 @@ export function registerTaskCrudTools(
           .nullable()
           .optional()
           .describe("Validator user ID (null to unassign)"),
-        tags: z.array(z.string()).optional().describe("New list of tags"),
+        tags: z
+          .array(z.string())
+          .optional()
+          .describe(
+            "Full replacement list of tags. Cannot be combined with addTags/removeTags.",
+          ),
+        addTags: z
+          .array(z.string())
+          .optional()
+          .describe(
+            "Tags to add, keeping existing ones. Duplicates are ignored. Cannot be combined with tags.",
+          ),
+        removeTags: z
+          .array(z.string())
+          .optional()
+          .describe(
+            "Tags to remove, keeping the others. Unknown tags are ignored. Cannot be combined with tags. Applied before addTags.",
+          ),
       },
     },
     ({ taskId, ...fields }) =>

@@ -1,6 +1,7 @@
 import { eq, sql } from "drizzle-orm";
 import type { TaskDto, TaskHistoryDto } from "@kanban/shared";
 import { generateId } from "../../../lib/id.js";
+import { unprocessable } from "../../../lib/errors.js";
 import {
   tasks,
   taskHistory,
@@ -20,6 +21,8 @@ export interface UpdateTaskInput {
   doerId?: string | null | undefined;
   validatorId?: string | null | undefined;
   tags?: string[] | undefined;
+  addTags?: string[] | undefined;
+  removeTags?: string[] | undefined;
 }
 
 export class TaskUpdateHistoryOperations extends TaskServiceBase {
@@ -29,6 +32,13 @@ export class TaskUpdateHistoryOperations extends TaskServiceBase {
     input: UpdateTaskInput,
     isMcp?: boolean,
   ): TaskDto {
+    const usesTagDeltas =
+      input.addTags !== undefined || input.removeTags !== undefined;
+    if (input.tags !== undefined && usesTagDeltas)
+      throw unprocessable(
+        "Provide either tags (full replacement) or addTags/removeTags, not both",
+      );
+
     const existing = this.getRow(taskId);
     const batchId = generateId();
     const historyEntries: Array<typeof taskHistory.$inferInsert> = [];
@@ -81,22 +91,17 @@ export class TaskUpdateHistoryOperations extends TaskServiceBase {
     }
 
     if (input.tags !== undefined) {
-      this.db.delete(taskTags).where(eq(taskTags.taskId, taskId)).run();
-      for (const tag of input.tags) {
-        this.db.insert(taskTags).values({ taskId, tag }).run();
+      this.replaceTags(taskId, actorId, batchId, input.tags, "REST_REPLACED");
+    } else if (usesTagDeltas) {
+      const current = this.readTags(taskId);
+      const removed = new Set(input.removeTags ?? []);
+      const next = current.filter((tag) => !removed.has(tag));
+      for (const tag of input.addTags ?? []) {
+        if (!next.includes(tag)) next.push(tag);
       }
-      this.db
-        .insert(taskHistory)
-        .values({
-          id: generateId(),
-          taskId,
-          userId: actorId,
-          field: "tags",
-          oldValue: "REST_REPLACED",
-          newValue: input.tags.join(", "),
-          batchId,
-        })
-        .run();
+      if (next.join(", ") !== current.join(", ")) {
+        this.replaceTags(taskId, actorId, batchId, next, current.join(", "));
+      }
     }
 
     const updated = this.getRow(taskId);
@@ -108,6 +113,40 @@ export class TaskUpdateHistoryOperations extends TaskServiceBase {
       isMcp,
     });
     return dto;
+  }
+
+  private readTags(taskId: string): string[] {
+    return this.db
+      .select({ tag: taskTags.tag })
+      .from(taskTags)
+      .where(eq(taskTags.taskId, taskId))
+      .all()
+      .map((row) => row.tag);
+  }
+
+  private replaceTags(
+    taskId: string,
+    actorId: string,
+    batchId: string,
+    tags: string[],
+    oldValue: string,
+  ): void {
+    this.db.delete(taskTags).where(eq(taskTags.taskId, taskId)).run();
+    for (const tag of tags) {
+      this.db.insert(taskTags).values({ taskId, tag }).run();
+    }
+    this.db
+      .insert(taskHistory)
+      .values({
+        id: generateId(),
+        taskId,
+        userId: actorId,
+        field: "tags",
+        oldValue,
+        newValue: tags.join(", "),
+        batchId,
+      })
+      .run();
   }
 
   deleteTask(taskId: string, actorId?: string, isMcp?: boolean): void {
