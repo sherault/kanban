@@ -1,11 +1,11 @@
 ---
-name: "kanban-second-brain"
-description: "Use Kanban as a durable second brain through its MCP server: capture inbox items, maintain wiki/task links, separate human-readable content from structured properties, and answer from validated knowledge with citations."
+name: "{{SKILL_ID}}"
+description: "Use {{MCP_SERVER_NAME}} as a durable second brain through its MCP server: capture inbox items, maintain wiki/task links, separate human-readable content from structured properties, and answer from validated knowledge with citations."
 ---
 
-# Kanban Second Brain
+# {{MCP_SERVER_NAME}} Second Brain
 
-Use this skill when the user wants to save, retrieve, organize, link, review, or reason over knowledge in a Kanban instance.
+Use this skill when the user wants to save, retrieve, organize, link, review, or reason over knowledge in the `{{MCP_SERVER_ID}}` Kanban MCP instance.
 
 ## Core Model
 
@@ -57,8 +57,8 @@ Prefer updating one property with `set_wiki_page_property` when only metadata ch
 
 When the user says "remember this", "capture this", "save this", "make a note", "turn this into tasks", or gives useful context that should survive the conversation:
 
-1. Decide whether it is raw capture, durable knowledge, or actionable work.
-2. If unclear, create an inbox wiki page or inbox task rather than losing it.
+1. Use `create_capture` when it is available.
+2. Decide whether it is raw capture, durable knowledge, or actionable work.
 3. Use a short title that can be found later.
 4. Add enough body context that another agent can understand it without this conversation.
 5. Add metadata properties so it can be triaged.
@@ -88,6 +88,8 @@ Recommended inbox task tags:
 
 When triaging captures:
 
+- Prefer `promote_capture_to_wiki_page` for durable knowledge.
+- Prefer `promote_capture_to_task` for actionable work.
 - Promote stable knowledge to a wiki page with `doc_type` such as `note`, `decision`, `source_registry`, `runbook`, `kb_rule`, or `project_context`.
 - Promote actionable work to one or more tasks.
 - Link the created items back to the source capture.
@@ -98,11 +100,12 @@ When triaging captures:
 
 Before answering from project memory:
 
-1. Search/list relevant wiki pages and tasks.
-2. Fetch the specific pages/tasks you rely on.
-3. Respect `validation_status`, `source_status`, `effective_from`, `effective_to`, `freshness`, and `cite_required`.
-4. Cite with visible Markdown links to `wiki://` and `task://` items when the answer uses Kanban knowledge.
-5. If sources are stale, unvalidated, missing, or jurisdictionally ambiguous, say so and ask for clarification or create a validation task.
+1. Prefer `search_knowledge` when it is available.
+2. Otherwise search/list relevant wiki pages and tasks.
+3. Fetch the specific pages/tasks you rely on.
+4. Respect `validation_status`, `source_status`, `effective_from`, `effective_to`, `freshness`, and `cite_required`.
+5. Cite with visible Markdown links to `wiki://` and `task://` items when the answer uses Kanban knowledge.
+6. If sources are stale, unvalidated, missing, or jurisdictionally ambiguous, say so and ask for clarification or create a validation task.
 
 For regulated or high-stakes domains, do not convert draft or stale notes into confident advice. Use the metadata as guardrails.
 
@@ -110,10 +113,13 @@ For regulated or high-stakes domains, do not convert draft or stale notes into c
 
 Treat freshness as a generic second-brain rule:
 
+- Prefer `audit_knowledge_freshness` when it is available to find stale, draft, unsourced, expired, or under-specified wiki pages.
 - If `review_after` is in the past, mark the page stale or create a review task.
 - If a page has `cite_required: true` and no `source_urls`, do not use it as authoritative.
 - If `effective_to` has passed, do not present the page as current.
 - If the topic is time-sensitive, verify before answering or create a freshness task.
+
+When the user asks for a knowledge audit, run `audit_knowledge_freshness` with `createTasks: false` first. If they want the audit turned into work, run it again with `createTasks: true` and a `projectId`.
 
 ## Task Creation Patterns
 

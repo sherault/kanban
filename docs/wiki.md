@@ -70,11 +70,35 @@ The wiki is fully exposed to AI assistants through the Model Context Protocol (M
 - `get_wiki_page`: Fetch full content, parent information, and metadata.
 - `create_wiki_page`: Create a new page with Markdown and optional properties.
 - `update_wiki_page`: Modify content, title, or metadata.
+- `set_wiki_page_property`: Update a single metadata property.
 - `delete_wiki_page`: Permanent removal of a page.
 - `get_wiki_history`: Retrieve the revision log.
 - `search_wiki`: Find pages by title.
 
+### Second-Brain Capture Tools
+
+Agents should prefer these tools for inbox workflows:
+
+- `search_knowledge`: Search wiki content, wiki properties, and tasks together; returns real `wiki://` and `task://` links.
+- `audit_knowledge_freshness`: Find stale, draft, unsourced, expired, or incomplete wiki pages and optionally create review tasks.
+- `create_capture`: Save raw context as a wiki page with `doc_type: "capture"` and `status: "inbox"`.
+- `promote_capture_to_task`: Create an actionable task from a capture and mark the capture triaged.
+- `promote_capture_to_wiki_page`: Create durable wiki knowledge from a capture and mark the capture triaged.
+
 When an MCP client writes Markdown, it should use `wiki://` and `task://` links for durable references. It should search or fetch the target first and never invent UUIDs.
+
+### Second-Brain Sidebar
+
+The Wiki sidebar includes a Second Brain panel for human triage:
+
+- create a raw capture directly from the UI;
+- see captures with `doc_type: "capture"` and `status: "inbox"`;
+- create a linked triage task for a capture;
+- mark a capture as triaged;
+- see pages due for freshness or validation review;
+- create linked freshness review tasks.
+
+For the full verification flow, see [Second-Brain Testing Guide](second-brain-testing.md).
 
 ## Getting Started with the Wiki
 

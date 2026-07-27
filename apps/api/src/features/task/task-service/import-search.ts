@@ -71,7 +71,13 @@ export class TaskImportSearchOperations extends TaskServiceBase {
         and(
           eq(projects.organizationId, orgId),
           isNull(tasks.archivedAt),
-          or(like(tasks.title, `%${query}%`), eq(tasks.id, query)),
+          or(
+            like(tasks.title, `%${query}%`),
+            like(tasks.description, `%${query}%`),
+            like(tasks.globalSubject, `%${query}%`),
+            like(tasks.objective, `%${query}%`),
+            eq(tasks.id, query),
+          ),
         ),
       )
       .limit(limit)

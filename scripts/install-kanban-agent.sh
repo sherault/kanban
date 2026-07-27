@@ -5,10 +5,11 @@ KANBAN_HOME="${KANBAN_HOME:-$HOME/.kanban}"
 KANBAN_REPO_URL="${KANBAN_REPO_URL:-https://github.com/sherault/kanban.git}"
 KANBAN_REF="${KANBAN_REF:-main}"
 APP_DIR="${KANBAN_APP_DIR:-$KANBAN_HOME/app}"
+MANAGED_APP_DIR="$KANBAN_HOME/app"
 
 mkdir -p "$KANBAN_HOME"
 
-if [ -f "$APP_DIR/scripts/kanban-agent-install.mjs" ]; then
+if [ "$APP_DIR" != "$MANAGED_APP_DIR" ] && [ -f "$APP_DIR/scripts/kanban-agent-install.mjs" ]; then
   :
 elif command -v git >/dev/null 2>&1; then
   if [ -d "$APP_DIR/.git" ]; then

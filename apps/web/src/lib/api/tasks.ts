@@ -16,6 +16,9 @@ export const tasksApi = {
       description?: string | null;
       objective?: string | null;
       backgroundColor?: string | null;
+      globalSubject?: string | null;
+      doerId?: string | null;
+      validatorId?: string | null;
     },
   ) {
     return apiFetch<TaskDto>(`/projects/${projectId}/tasks`, {

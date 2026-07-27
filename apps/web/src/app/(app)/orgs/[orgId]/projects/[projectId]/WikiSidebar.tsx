@@ -4,6 +4,7 @@ import { useWiki } from "@/context/WikiContext";
 import * as DndKit from "@dnd-kit/core";
 import { CreateWikiPageButton } from "./wiki-sidebar/CreateWikiPageButton";
 import { RootDroppable } from "./wiki-sidebar/RootDroppable";
+import { SecondBrainPanel } from "./wiki-sidebar/SecondBrainPanel";
 import { useWikiSidebarCreatePage } from "./wiki-sidebar/useWikiSidebarCreatePage";
 import { useWikiSidebarDrag } from "./wiki-sidebar/useWikiSidebarDrag";
 import { WikiDragOverlay } from "./wiki-sidebar/WikiDragOverlay";
@@ -32,6 +33,12 @@ export function WikiSidebar({ orgId, projectId, onRefresh }: Props) {
   return (
     <aside className="w-64 bg-white border-r border-gray-200 shrink-0 h-full flex flex-col shadow-sm">
       <WikiSidebarHeader onRefresh={onRefresh} />
+      <SecondBrainPanel
+        orgId={orgId}
+        projectId={projectId}
+        pages={pages}
+        onRefresh={onRefresh}
+      />
       <DndKit.DndContext
         sensors={sensors}
         collisionDetection={DndKit.closestCenter}

@@ -18,6 +18,7 @@ A self-hosted, real-time project management board with built-in MCP server — s
 - [Demo Data](#demo-data)
 - [MCP Integration (Claude / AI)](#mcp-integration-claude--ai)
 - [Second-Brain Agent Installer](#second-brain-agent-installer)
+- [Second-Brain Testing](#second-brain-testing)
 - [Architecture](#architecture)
 - [Environment Variables](#environment-variables)
 - [Running Tests](#running-tests)
@@ -140,6 +141,7 @@ Each task has a rich detail sidebar with:
   - `list_wiki_pages`, `get_wiki_page`, `create_wiki_page`, `update_wiki_page`, `delete_wiki_page`
   - `get_wiki_history`, `search_wiki`
   - `set_wiki_page_property`
+  - `search_knowledge`, `audit_knowledge_freshness`, `create_capture`, `promote_capture_to_task`, `promote_capture_to_wiki_page`
 
 ---
 
@@ -362,6 +364,11 @@ Connect Claude (or any other MCP client) to your board from the **Profile** page
 - `delete_wiki_page`: Remove a wiki page.
 - `get_wiki_history`: View the full revision history of a wiki page.
 - `search_wiki`: Search wiki pages by title across the organization.
+- `search_knowledge`: Search wiki content, wiki properties, and tasks together.
+- `audit_knowledge_freshness`: Find stale, draft, unsourced, expired, or incomplete wiki pages and optionally create review tasks.
+- `create_capture`: Create a second-brain inbox capture as a wiki page, optionally with a linked triage task.
+- `promote_capture_to_task`: Turn a capture page into an actionable task and mark the capture triaged.
+- `promote_capture_to_wiki_page`: Turn a capture page into durable wiki knowledge and mark the capture triaged.
 
 ### Kanban Markdown Links
 
@@ -382,16 +389,64 @@ Wiki page `properties` are the frontmatter-like details/attributes layer for str
 
 Kanban includes an interactive installer that can provision a personal second-brain instance and configure coding agents to use it through MCP.
 
-From a checkout:
+### Install From GitHub Without Cloning
+
+Prerequisites:
+
+- Node.js 22 or newer.
+- Docker Desktop or Docker Engine if you want the installer to run Kanban locally.
+- `git`, or `curl` plus `tar`.
+- A workspace folder for the agent config, usually the project where you run Codex or Claude Code.
+
+First do a dry run. The bootstrap downloads the installer source into
+`~/.kanban/app`, but the dry run does not start containers, create Kanban data,
+or write agent config into your workspace:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/sherault/kanban/main/scripts/install-kanban-agent.sh \
+  | sh -s -- --dry-run --mode docker --clients codex,claude --workspace "$PWD"
+```
+
+Then run the interactive local install:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/sherault/kanban/main/scripts/install-kanban-agent.sh \
+  | sh -s -- --mode docker --clients codex,claude --workspace "$PWD"
+```
+
+What this does:
+
+1. downloads Kanban into `~/.kanban/app`;
+2. writes Docker files and SQLite data under `~/.kanban`;
+3. starts Kanban with Docker;
+4. asks for an MCP/skill connection name (default: `Kanban`) and your workspace;
+5. asks for your email, display name, organization, and project names;
+6. creates a verified user, default organization, default project, Second Brain Index, Second Brain Inbox, and triage task;
+7. shows your generated login credentials once;
+8. creates an MCP API key and stores it in the OS keychain when possible;
+9. installs agent instructions, skills, and MCP config into the workspace you passed with `--workspace`.
+
+If you want to test without touching the default `~/.kanban` folder, set a custom install home:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/sherault/kanban/main/scripts/install-kanban-agent.sh \
+  | KANBAN_HOME="$HOME/.kanban-test" sh -s -- --mode docker --clients codex,claude --workspace "$PWD"
+```
+
+If you already have a hosted Kanban instance, use external mode instead:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/sherault/kanban/main/scripts/install-kanban-agent.sh \
+  | sh -s -- --mode external --url https://kanban.example.com \
+    --clients codex,claude --workspace "$PWD" \
+    --integration-name "Personal Kanban" \
+    --skip-provision --mcp-key kbk_your_existing_key
+```
+
+From a local checkout:
 
 ```bash
 pnpm agent:install
-```
-
-From a shell with curl:
-
-```bash
-curl -fsSL https://raw.githubusercontent.com/sherault/kanban/main/scripts/install-kanban-agent.sh | sh
 ```
 
 The installer can:
@@ -400,11 +455,96 @@ The installer can:
 - connect to an external Kanban URL;
 - create a verified default user, organization, project, inbox wiki page, and triage task for Docker installs;
 - generate an MCP API key without printing it;
-- store the key in the OS keychain when available, or `~/.kanban/agent.env` with private permissions;
+- store the key in the OS keychain when available, with lookup metadata in the connection env file (`~/.kanban/agent.env` by default);
+- fall back to storing the key in that private connection env file;
 - install the `kanban-second-brain` skill and MCP configuration for Codex and Claude Code;
 - add experimental Antigravity MCP/instruction files when requested.
 
-The reusable skill source lives in `scripts/agent-install/skills/kanban-second-brain/SKILL.md`.
+### Existing Installations And Existing MCP Config
+
+The installer is conservative when files already exist:
+
+- Existing `AGENTS.md` and `CLAUDE.md` content is preserved; the installer adds or updates only its named managed block.
+- Existing `.mcp.json` and `.antigravity/mcp.json` keep unrelated MCP servers; the installer adds its selected connection id.
+- Existing `.codex/config.toml` keeps unrelated content; the installer adds its named managed MCP block.
+- All generated MCP configs use an environment-variable placeholder for the API key, never a raw key.
+- If the chosen connection name already exists, the installer stops instead of replacing it. Choose another name to keep both, or pass `--replace-existing` when intentionally updating that named installation.
+- If an unmanaged Codex MCP section already uses the chosen id, choose another connection name or edit the TOML manually; the installer will not create a duplicate section.
+- Docker mode stops when local Kanban Docker/config/data files already exist under `KANBAN_HOME`. To test separately, set `KANBAN_HOME="$HOME/.kanban-test"`. To configure agents against an existing instance, use `--mode external`. Use `--overwrite-local-instance` only after backing up data and accepting that local configuration may be rewritten.
+
+A name such as `Personal Kanban` becomes:
+
+- MCP config id: `personal-kanban`
+- skill id: `personal-kanban-second-brain`
+- secret environment variable: `PERSONAL_KANBAN_MCP_API_KEY`
+- secret metadata file: `~/.kanban/agent-personal-kanban.env`
+
+It also supports non-interactive installs:
+
+```bash
+pnpm agent:install -- --mode external --url https://kanban.example.com \
+  --email you@example.com --mcp-key kbk_... --skip-provision \
+  --integration-name "Personal Kanban" \
+  --clients codex,claude --workspace /path/to/workspace
+```
+
+Useful flags:
+
+- `--mode docker|external|native`
+- `--url`, `--api-url`, `--port`
+- `--email`, `--password`, `--display-name`, `--org`, `--project`
+- `--clients codex,claude,antigravity`
+- `--workspace /path/to/workspace`
+- `--integration-name "Personal Kanban"` to use a distinct MCP/skill identity
+- `--mcp-key kbk_... --skip-provision` for an existing key
+- `--replace-existing` to update an already installed named connection
+- `--overwrite-local-instance` to allow Docker mode to reuse an existing `KANBAN_HOME` after backup
+- `--no-start` to write Docker files without starting containers
+- `--no-keychain` to store only in the connection env file
+- `--dry-run` to print the plan without writing files
+
+Generated config files use an API-key environment variable. From a local checkout, launch agents through:
+
+```bash
+pnpm agent:env -- codex
+pnpm agent:env -- claude
+```
+
+From a curl install, launch through the downloaded helper instead:
+
+```bash
+node ~/.kanban/app/scripts/kanban-agent-env.mjs -- codex
+node ~/.kanban/app/scripts/kanban-agent-env.mjs -- claude
+```
+
+For a non-default name, pass its env file:
+
+```bash
+node ~/.kanban/app/scripts/kanban-agent-env.mjs \
+  --env ~/.kanban/agent-personal-kanban.env -- codex
+```
+
+When a workspace has multiple named Kanban connections, load each env file:
+
+```bash
+node ~/.kanban/app/scripts/kanban-agent-env.mjs \
+  --env ~/.kanban/agent-work-kanban.env \
+  --env ~/.kanban/agent-personal-kanban.env -- codex
+```
+
+The env launcher resolves keys stored in macOS Keychain or Linux `secret-tool`.
+
+Installer smoke test:
+
+```bash
+pnpm agent:install:smoke
+```
+
+The reusable skill template lives in `scripts/agent-install/skills/kanban-second-brain/SKILL.md`.
+
+## Second-Brain Testing
+
+See [Second-Brain Testing Guide](docs/second-brain-testing.md) for the full automated and manual test flow covering installer smoke tests, MCP capture/search/promote/audit tools, UI inbox triage, freshness review, and secret handling.
 
 ---
 

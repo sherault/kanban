@@ -7,6 +7,7 @@ import { WikiService } from "../wiki/wiki.service.js";
 import { registerMcpResources } from "./mcp-server/resources.js";
 import { registerOrganizationTools } from "./mcp-server/organization-tools.js";
 import { registerProjectTools } from "./mcp-server/project-tools.js";
+import { registerSecondBrainTools } from "./mcp-server/second-brain-tools.js";
 import { registerTaskCrudTools } from "./mcp-server/task-crud-tools.js";
 import { registerTaskLifecycleTools } from "./mcp-server/task-lifecycle-tools.js";
 import { registerTaskLinkTools } from "./mcp-server/task-link-tools.js";
@@ -38,6 +39,7 @@ export function createMcpServer(
   registerTaskLifecycleTools(server, taskSvc, userId);
   registerTaskLinkTools(server, taskSvc, userId);
   registerWikiTools(server, wikiSvc, userId);
+  registerSecondBrainTools(server, wikiSvc, taskSvc, userId);
   registerMcpResources(server, taskSvc);
 
   return server;

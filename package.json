@@ -10,6 +10,8 @@
     "test": "turbo test",
     "format": "prettier --write \"**/*.{ts,tsx,js,json,md}\" --ignore-path .gitignore",
     "agent:install": "node scripts/kanban-agent-install.mjs",
+    "agent:env": "node scripts/kanban-agent-env.mjs",
+    "agent:install:smoke": "node scripts/agent-install/smoke-test.mjs",
     "prepare": "husky"
   },
   "devDependencies": {

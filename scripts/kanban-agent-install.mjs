@@ -9,7 +9,7 @@ import {
   writeFileSync,
   chmodSync,
 } from "node:fs";
-import { copyFile, mkdir, readFile, writeFile } from "node:fs/promises";
+import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { homedir } from "node:os";
 import path from "node:path";
 import readline from "node:readline/promises";
@@ -22,7 +22,7 @@ const installRoot =
 const appDir = process.env["KANBAN_APP_DIR"] || repoRoot;
 const dataDir = path.join(installRoot, "data");
 const composePath = path.join(installRoot, "docker-compose.yml");
-const agentEnvPath = path.join(installRoot, "agent.env");
+const defaultAgentEnvPath = path.join(installRoot, "agent.env");
 const skillSource = path.join(
   repoRoot,
   "scripts",
@@ -38,11 +38,74 @@ const templateDir = path.join(
   "templates",
 );
 const placeholderConfigPaths = new Set();
+const cliOptions = parseArgs(process.argv.slice(2));
 
 const rl = readline.createInterface({
   input: process.stdin,
   output: process.stdout,
 });
+
+function parseArgs(args) {
+  const parsed = {};
+  for (let i = 0; i < args.length; i += 1) {
+    const arg = args[i];
+    if (arg === "--") continue;
+    if (!arg.startsWith("--")) continue;
+
+    if (arg.startsWith("--no-")) {
+      const key = toCamel(arg.slice(5));
+      parsed[`no${key.slice(0, 1).toUpperCase()}${key.slice(1)}`] = true;
+      continue;
+    }
+
+    const [rawKey, inlineValue] = arg.slice(2).split("=", 2);
+    const key = toCamel(rawKey);
+    const next = args[i + 1];
+    if (inlineValue !== undefined) {
+      parsed[key] = inlineValue;
+    } else if (next && !next.startsWith("--")) {
+      parsed[key] = next;
+      i += 1;
+    } else {
+      parsed[key] = true;
+    }
+  }
+  return parsed;
+}
+
+function toCamel(value) {
+  return value.replace(/-([a-z])/g, (_match, letter) => letter.toUpperCase());
+}
+
+function printHelp() {
+  console.log(`Kanban second-brain installer
+
+Usage:
+  node scripts/kanban-agent-install.mjs [options]
+
+Options:
+  --mode docker|external|native     Where Kanban runs
+  --url URL                         Kanban web URL
+  --api-url URL                     Public API URL for provisioning external/native
+  --port PORT                       Local Docker web port
+  --email EMAIL                     User email or label
+  --password PASSWORD               Existing user password for external/native provisioning
+  --display-name NAME               User display name for Docker provisioning
+  --org NAME                        Organization name
+  --project NAME                    Project name
+  --clients LIST                    Comma-separated: codex,claude,antigravity
+  --workspace PATH                  Workspace to configure
+  --integration-name NAME           MCP/skill connection name (default: Kanban)
+  --mcp-key KEY                     Existing MCP key for --skip-provision
+  --skip-provision                  Do not create user/org/project/key; use --mcp-key
+  --replace-existing                Replace matching MCP/skill/env installation entries
+  --overwrite-local-instance        Permit Docker mode to rewrite existing ~/.kanban config/data
+  --no-start                        Write Docker files but do not start containers
+  --no-keychain                     Store key in the named env file only
+  --dry-run                         Print the plan without writing files or calling services
+  --help                            Show this help
+`);
+}
 
 function generateSecret(bytes = 32) {
   return randomBytes(bytes).toString("hex");
@@ -54,6 +117,56 @@ function normalizeUrl(value) {
 
 function mcpUrlFor(baseUrl) {
   return `${normalizeUrl(baseUrl)}/mcp/`;
+}
+
+function integrationIdFor(name) {
+  const id = name
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "");
+  if (!id) {
+    throw new Error(
+      "MCP/skill connection name must include letters or numbers.",
+    );
+  }
+  return id;
+}
+
+function integrationFor(name) {
+  const displayName = name.trim() || "Kanban";
+  const id = integrationIdFor(displayName);
+  const defaultIntegration = id === "kanban";
+  const markerId = id.toUpperCase().replaceAll("-", " ");
+  const envPrefixCandidate = id.toUpperCase().replaceAll("-", "_");
+  const envPrefix = /^[A-Z]/.test(envPrefixCandidate)
+    ? envPrefixCandidate
+    : `KANBAN_${envPrefixCandidate}`;
+
+  return {
+    displayName,
+    id,
+    skillId: `${id}-second-brain`,
+    keyEnvName: defaultIntegration
+      ? "KANBAN_MCP_API_KEY"
+      : `${envPrefix}_MCP_API_KEY`,
+    envPath: defaultIntegration
+      ? defaultAgentEnvPath
+      : path.join(installRoot, `agent-${id}.env`),
+    instructionsBlock: defaultIntegration
+      ? "KANBAN SECOND BRAIN"
+      : `${markerId} SECOND BRAIN`,
+    mcpBlock: defaultIntegration ? "KANBAN MCP" : `${markerId} MCP`,
+  };
+}
+
+async function chooseIntegration() {
+  const name = await ask(
+    "MCP/skill connection name",
+    "Kanban",
+    "integrationName",
+  );
+  return integrationFor(name);
 }
 
 function run(command, args, options = {}) {
@@ -78,24 +191,35 @@ function hasCommand(command) {
   return result.status === 0;
 }
 
-async function ask(question, defaultValue) {
+async function ask(question, defaultValue, optionName) {
+  if (
+    optionName &&
+    cliOptions[optionName] !== undefined &&
+    cliOptions[optionName] !== true
+  ) {
+    return String(cliOptions[optionName]);
+  }
   const suffix = defaultValue ? ` [${defaultValue}]` : "";
   const answer = (await rl.question(`${question}${suffix}: `)).trim();
   return answer || defaultValue || "";
 }
 
-async function choose(question, options, defaultValue) {
+async function choose(question, options, defaultValue, optionName) {
   const labels = options.map((option) => option.value).join("/");
   while (true) {
-    const answer = await ask(`${question} (${labels})`, defaultValue);
+    const answer = await ask(
+      `${question} (${labels})`,
+      defaultValue,
+      optionName,
+    );
     const match = options.find((option) => option.value === answer);
     if (match) return match.value;
     console.log(`Choose one of: ${labels}`);
   }
 }
 
-async function chooseMany(question, defaults) {
-  const answer = await ask(question, defaults.join(","));
+async function chooseMany(question, defaults, optionName) {
+  const answer = await ask(question, defaults.join(","), optionName);
   return answer
     .split(",")
     .map((item) => item.trim().toLowerCase())
@@ -226,6 +350,28 @@ function dockerCompose(args, options = {}) {
   return run("docker", ["compose", "-f", composePath, ...args], options);
 }
 
+function existingDockerInstallPaths() {
+  return [
+    composePath,
+    path.join(installRoot, ".env"),
+    path.join(dataDir, "kanban.db"),
+  ].filter((filePath) => existsSync(filePath));
+}
+
+function assertDockerInstallTargetSafe() {
+  const existingPaths = existingDockerInstallPaths();
+  if (existingPaths.length === 0 || cliOptions.overwriteLocalInstance) return;
+
+  throw new Error(
+    `Existing local Kanban installation files found in ${installRoot}:\n` +
+      `${existingPaths.map((filePath) => `  - ${filePath}`).join("\n")}\n\n` +
+      "Docker mode may rewrite configuration or seed an existing database. " +
+      'Use a separate KANBAN_HOME (for example "$HOME/.kanban-test"), ' +
+      "connect to the existing instance with --mode external, or make a backup " +
+      "and explicitly pass --overwrite-local-instance.",
+  );
+}
+
 async function setupDocker() {
   if (!hasCommand("docker")) {
     throw new Error(
@@ -233,10 +379,23 @@ async function setupDocker() {
     );
   }
 
-  const webPort = await ask("Local web port", "3000");
+  const webPort = await ask("Local web port", "3000", "port");
   const webUrl = `http://localhost:${webPort}`;
   await writeComposeFile(webPort);
   await writeDockerEnv(webUrl);
+
+  if (cliOptions.noStart) {
+    console.log("");
+    console.log(
+      `Docker files written in ${installRoot}; skipping container start.`,
+    );
+    return {
+      mode: "docker",
+      webUrl,
+      mcpUrl: mcpUrlFor(webUrl),
+      started: false,
+    };
+  }
 
   console.log("");
   console.log(`Starting Kanban with Docker in ${installRoot}`);
@@ -252,7 +411,7 @@ async function setupDocker() {
 
 async function setupExternal() {
   const webUrl = normalizeUrl(
-    await ask("Kanban URL", "https://kanban.example.com"),
+    await ask("Kanban URL", "https://kanban.example.com", "url"),
   );
   return {
     mode: "external",
@@ -263,7 +422,11 @@ async function setupExternal() {
 
 async function setupNative() {
   const webUrl = normalizeUrl(
-    await ask("Kanban URL for this native instance", "http://localhost:3009"),
+    await ask(
+      "Kanban URL for this native instance",
+      "http://localhost:3009",
+      "url",
+    ),
   );
   return {
     mode: "native",
@@ -454,7 +617,7 @@ function today() {
 
   db.prepare(
     "INSERT INTO api_keys (id, user_id, hashed_key, label, created_at) VALUES (?, ?, ?, ?, ?)",
-  ).run(keyId, finalUserId, hashedKey, "Kanban second brain MCP", now);
+  ).run(keyId, finalUserId, hashedKey, input.keyLabel, now);
 
   console.log(
     JSON.stringify({
@@ -473,15 +636,19 @@ function today() {
 });
 `;
 
-async function seedDocker(instance) {
+async function seedDocker(instance, integration) {
   const email = await ask(
     "Email for the verified Kanban user",
     "you@example.com",
+    "email",
   );
-  const displayName = await ask("Display name", "Default User");
-  const orgName = await ask("Organization name", "Default");
-  const projectName = await ask("Project name", "Default");
-  const password = generateSecret(12);
+  const displayName = await ask("Display name", "Default User", "displayName");
+  const orgName = await ask("Organization name", "Default", "org");
+  const projectName = await ask("Project name", "Default", "project");
+  const password =
+    cliOptions.password && cliOptions.password !== true
+      ? String(cliOptions.password)
+      : generateSecret(12);
 
   const seedInput = JSON.stringify({
     email,
@@ -489,6 +656,7 @@ async function seedDocker(instance) {
     orgName,
     projectName,
     password,
+    keyLabel: `${integration.displayName} second brain MCP`,
   });
 
   const output = dockerCompose(
@@ -536,12 +704,14 @@ async function apiRequest(baseUrl, pathName, options = {}) {
   return response.json();
 }
 
-async function seedViaApi(instance) {
-  const apiUrl = normalizeUrl(await ask("Public API URL", instance.webUrl));
-  const email = await ask("Verified account email", "you@example.com");
-  const password = await ask("Account password");
-  const orgName = await ask("Organization name", "Default");
-  const projectName = await ask("Project name", "Default");
+async function seedViaApi(instance, integration) {
+  const apiUrl = normalizeUrl(
+    await ask("Public API URL", instance.webUrl, "apiUrl"),
+  );
+  const email = await ask("Verified account email", "you@example.com", "email");
+  const password = await ask("Account password", undefined, "password");
+  const orgName = await ask("Organization name", "Default", "org");
+  const projectName = await ask("Project name", "Default", "project");
 
   const login = await apiRequest(apiUrl, "/auth/login", {
     method: "POST",
@@ -575,7 +745,7 @@ async function seedViaApi(instance) {
   const key = await apiRequest(apiUrl, "/profile/api-keys", {
     method: "POST",
     token,
-    body: { label: "Kanban second brain MCP" },
+    body: { label: `${integration.displayName} second brain MCP` },
   });
 
   return {
@@ -624,42 +794,51 @@ function storeInSecretTool(account, rawKey) {
   return result.status === 0;
 }
 
-function storeSecret(instance) {
-  const account = `${instance.email}:${instance.mcpUrl}`;
+function storeSecret(instance, integration) {
+  const account = `${integration.id}:${instance.email}:${instance.mcpUrl}`;
   const keychainStored =
-    storeInMacKeychain(account, instance.rawKey) ||
-    storeInSecretTool(account, instance.rawKey);
+    !cliOptions.noKeychain &&
+    (storeInMacKeychain(account, instance.rawKey) ||
+      storeInSecretTool(account, instance.rawKey));
 
   const envContent = keychainStored
     ? `KANBAN_URL=${instance.webUrl}
 KANBAN_MCP_URL=${instance.mcpUrl}
-KANBAN_MCP_API_KEY=${instance.rawKey}
+KANBAN_MCP_CONNECTION=${integration.id}
+KANBAN_MCP_KEY_ENV=${integration.keyEnvName}
 KANBAN_MCP_KEY_STORAGE=keychain
 KANBAN_MCP_KEY_ACCOUNT=${account}
 `
     : `KANBAN_URL=${instance.webUrl}
 KANBAN_MCP_URL=${instance.mcpUrl}
-KANBAN_MCP_API_KEY=${instance.rawKey}
+KANBAN_MCP_CONNECTION=${integration.id}
+KANBAN_MCP_KEY_ENV=${integration.keyEnvName}
+${integration.keyEnvName}=${instance.rawKey}
 `;
 
-  writeFilePrivate(agentEnvPath, envContent);
+  writeFilePrivate(integration.envPath, envContent);
   return keychainStored ? "keychain" : "agent.env";
 }
 
-function isGitTracked(workspaceDir, relativePath) {
-  const result = spawnSync(
-    "git",
-    ["ls-files", "--error-unmatch", relativePath],
-    {
-      cwd: workspaceDir,
-      stdio: "ignore",
-    },
-  );
-  return result.status === 0;
+function renderIntegrationText(content, integration) {
+  return content
+    .replaceAll("{{MCP_SERVER_NAME}}", integration.displayName)
+    .replaceAll("{{MCP_SERVER_ID}}", integration.id)
+    .replaceAll("{{SKILL_ID}}", integration.skillId);
 }
 
-async function readTemplate(name) {
-  return readFile(path.join(templateDir, name), "utf8");
+async function readTemplate(name, integration) {
+  return renderIntegrationText(
+    await readFile(path.join(templateDir, name), "utf8"),
+    integration,
+  );
+}
+
+async function readSkill(integration) {
+  return renderIntegrationText(
+    await readFile(skillSource, "utf8"),
+    integration,
+  );
 }
 
 async function appendManagedBlock(filePath, blockName, content) {
@@ -688,16 +867,16 @@ async function writeJson(filePath, value, privateFile = false) {
   }
 }
 
-async function mergeMcpJson(filePath, serverConfig, privateFile) {
+async function mergeMcpJson(filePath, serverId, serverConfig) {
   let current = {};
   if (existsSync(filePath)) {
     current = JSON.parse(await readFile(filePath, "utf8"));
   }
   current.mcpServers = {
     ...(current.mcpServers || {}),
-    kanban: serverConfig,
+    [serverId]: serverConfig,
   };
-  await writeJson(filePath, current, privateFile);
+  await writeJson(filePath, current);
 }
 
 async function appendTomlBlock(filePath, blockName, content) {
@@ -714,123 +893,270 @@ async function appendTomlBlock(filePath, blockName, content) {
   await writeFile(filePath, next);
 }
 
-function authorizationValue(instance, workspaceDir, relativeConfigPath) {
-  const tracked = isGitTracked(workspaceDir, relativeConfigPath);
-  if (tracked) {
-    placeholderConfigPaths.add(relativeConfigPath);
-    return "Bearer ${KANBAN_MCP_API_KEY}";
-  }
-  return `Bearer ${instance.rawKey}`;
+function authorizationValue(integration, relativeConfigPath) {
+  placeholderConfigPaths.add(relativeConfigPath);
+  return `Bearer \${${integration.keyEnvName}}`;
 }
 
-async function installCodex(workspaceDir, instance) {
+async function installCodex(workspaceDir, instance, integration) {
   const agentsPath = path.join(workspaceDir, "AGENTS.md");
   await appendManagedBlock(
     agentsPath,
-    "KANBAN SECOND BRAIN",
-    await readTemplate("AGENTS.kanban-second-brain.md"),
+    integration.instructionsBlock,
+    await readTemplate("AGENTS.kanban-second-brain.md", integration),
   );
 
-  await mkdir(
-    path.join(workspaceDir, ".codex", "skills", "kanban-second-brain"),
-    {
-      recursive: true,
-    },
+  const skillDir = path.join(
+    workspaceDir,
+    ".codex",
+    "skills",
+    integration.skillId,
   );
-  await copyFile(
-    skillSource,
-    path.join(
-      workspaceDir,
-      ".codex",
-      "skills",
-      "kanban-second-brain",
-      "SKILL.md",
-    ),
+  await mkdir(skillDir, { recursive: true });
+  await writeFile(
+    path.join(skillDir, "SKILL.md"),
+    await readSkill(integration),
   );
 
   const relativeConfigPath = path.join(".codex", "config.toml");
-  const auth = authorizationValue(instance, workspaceDir, relativeConfigPath);
+  const auth = authorizationValue(integration, relativeConfigPath);
   await appendTomlBlock(
     path.join(workspaceDir, relativeConfigPath),
-    "KANBAN MCP",
-    `[mcp_servers.kanban]
+    integration.mcpBlock,
+    `[mcp_servers.${integration.id}]
 type = "http"
 url = "${instance.mcpUrl}"
 headers = { Authorization = "${auth}" }`,
   );
 }
 
-async function installClaude(workspaceDir, instance) {
+async function installClaude(workspaceDir, instance, integration) {
   const claudePath = path.join(workspaceDir, "CLAUDE.md");
   await appendManagedBlock(
     claudePath,
-    "KANBAN SECOND BRAIN",
-    await readTemplate("CLAUDE.kanban-second-brain.md"),
+    integration.instructionsBlock,
+    await readTemplate("CLAUDE.kanban-second-brain.md", integration),
   );
 
   await mkdir(path.join(workspaceDir, ".claude", "skills"), {
     recursive: true,
   });
-  await copyFile(
-    skillSource,
-    path.join(workspaceDir, ".claude", "skills", "kanban-second-brain.md"),
+  await writeFile(
+    path.join(workspaceDir, ".claude", "skills", `${integration.skillId}.md`),
+    await readSkill(integration),
   );
 
   const relativeConfigPath = ".mcp.json";
-  const auth = authorizationValue(instance, workspaceDir, relativeConfigPath);
+  const auth = authorizationValue(integration, relativeConfigPath);
   await mergeMcpJson(
     path.join(workspaceDir, relativeConfigPath),
+    integration.id,
     {
       type: "http",
       url: instance.mcpUrl,
       headers: { Authorization: auth },
     },
-    auth.includes(instance.rawKey),
   );
 }
 
-async function installAntigravity(workspaceDir, instance) {
+async function installAntigravity(workspaceDir, instance, integration) {
   const agentsPath = path.join(workspaceDir, "AGENTS.md");
   await appendManagedBlock(
     agentsPath,
-    "KANBAN SECOND BRAIN",
-    await readTemplate("ANTIGRAVITY.kanban-second-brain.md"),
+    integration.instructionsBlock,
+    await readTemplate("ANTIGRAVITY.kanban-second-brain.md", integration),
   );
 
   const relativeConfigPath = path.join(".antigravity", "mcp.json");
-  const auth = authorizationValue(instance, workspaceDir, relativeConfigPath);
+  const auth = authorizationValue(integration, relativeConfigPath);
   await mergeMcpJson(
     path.join(workspaceDir, relativeConfigPath),
+    integration.id,
     {
       type: "http",
       url: instance.mcpUrl,
       headers: { Authorization: auth },
     },
-    auth.includes(instance.rawKey),
   );
 }
 
-async function installClients(instance) {
+async function chooseClientInstall() {
   const workspaceDir = path.resolve(
-    await ask("Workspace to configure", process.cwd()),
+    await ask("Workspace to configure", process.cwd(), "workspace"),
   );
   const clients = await chooseMany(
     "Install for which agents? comma-separated: codex, claude, antigravity",
     ["codex", "claude"],
+    "clients",
   );
-
-  for (const client of clients) {
-    if (client === "codex") await installCodex(workspaceDir, instance);
-    else if (client === "claude") await installClaude(workspaceDir, instance);
-    else if (client === "antigravity")
-      await installAntigravity(workspaceDir, instance);
-    else console.log(`Skipping unknown client: ${client}`);
-  }
 
   return { workspaceDir, clients };
 }
 
+function escapeRegExp(value) {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+async function jsonMcpCollision(filePath, integration) {
+  if (!existsSync(filePath)) return false;
+  const current = JSON.parse(await readFile(filePath, "utf8"));
+  return Boolean(current.mcpServers?.[integration.id]);
+}
+
+async function assertClientInstallTargetSafe(install, integration) {
+  const { workspaceDir, clients } = install;
+  const collisions = [];
+
+  if (existsSync(integration.envPath)) {
+    collisions.push(integration.envPath);
+  }
+
+  if (clients.includes("codex")) {
+    const skillPath = path.join(
+      workspaceDir,
+      ".codex",
+      "skills",
+      integration.skillId,
+      "SKILL.md",
+    );
+    if (existsSync(skillPath)) collisions.push(skillPath);
+
+    const configPath = path.join(workspaceDir, ".codex", "config.toml");
+    if (existsSync(configPath)) {
+      const config = await readFile(configPath, "utf8");
+      const section = new RegExp(
+        `\\[mcp_servers\\.${escapeRegExp(integration.id)}\\]`,
+      );
+      if (section.test(config)) {
+        if (!config.includes(`# BEGIN ${integration.mcpBlock}`)) {
+          throw new Error(
+            `An unmanaged Codex MCP section named "${integration.id}" already exists in ${configPath}.\n` +
+              "Choose another MCP/skill connection name, or remove/rename that section manually before installing.",
+          );
+        }
+        collisions.push(configPath);
+      }
+    }
+  }
+
+  if (clients.includes("claude")) {
+    const skillPath = path.join(
+      workspaceDir,
+      ".claude",
+      "skills",
+      `${integration.skillId}.md`,
+    );
+    if (existsSync(skillPath)) collisions.push(skillPath);
+
+    const configPath = path.join(workspaceDir, ".mcp.json");
+    if (await jsonMcpCollision(configPath, integration)) {
+      collisions.push(`${configPath} (mcpServers.${integration.id})`);
+    }
+  }
+
+  if (clients.includes("antigravity")) {
+    const configPath = path.join(workspaceDir, ".antigravity", "mcp.json");
+    if (await jsonMcpCollision(configPath, integration)) {
+      collisions.push(`${configPath} (mcpServers.${integration.id})`);
+    }
+  }
+
+  if (collisions.length > 0 && !cliOptions.replaceExisting) {
+    throw new Error(
+      `The MCP/skill connection name "${integration.displayName}" conflicts with an existing installation:\n` +
+        `${collisions.map((entry) => `  - ${entry}`).join("\n")}\n\n` +
+        "Run again with another --integration-name to keep both connections, " +
+        "or pass --replace-existing to update this named installation.",
+    );
+  }
+}
+
+async function installClients(instance, integration, install) {
+  const { workspaceDir, clients } = install;
+  for (const client of clients) {
+    if (client === "codex")
+      await installCodex(workspaceDir, instance, integration);
+    else if (client === "claude")
+      await installClaude(workspaceDir, instance, integration);
+    else if (client === "antigravity")
+      await installAntigravity(workspaceDir, instance, integration);
+    else console.log(`Skipping unknown client: ${client}`);
+  }
+
+  return install;
+}
+
+async function useExistingMcpKey(instance) {
+  const rawKey = await ask("Existing MCP API key", undefined, "mcpKey");
+  if (!rawKey) {
+    throw new Error(
+      "--skip-provision requires --mcp-key or an entered MCP key.",
+    );
+  }
+
+  const email = await ask("Account/email label", "agent", "email");
+  return {
+    ...instance,
+    email,
+    rawKey,
+  };
+}
+
+function printDryRunPlan() {
+  const mode = cliOptions.mode || "docker";
+  const integration = integrationFor(
+    typeof cliOptions.integrationName === "string"
+      ? cliOptions.integrationName
+      : "Kanban",
+  );
+  const url =
+    cliOptions.url ||
+    (mode === "docker"
+      ? `http://localhost:${cliOptions.port || "3000"}`
+      : "https://kanban.example.com");
+  const clients = cliOptions.clients || "codex,claude";
+  const workspace = cliOptions.workspace || process.cwd();
+
+  console.log("Kanban second-brain installer dry run");
+  console.log("");
+  console.log(`Mode:       ${mode}`);
+  console.log(`Kanban URL: ${normalizeUrl(url)}`);
+  console.log(`MCP URL:    ${mcpUrlFor(url)}`);
+  console.log(
+    `Connection: ${integration.displayName} (config id: ${integration.id})`,
+  );
+  console.log(`Skill:      ${integration.skillId}`);
+  console.log(`Key env:    ${integration.keyEnvName}`);
+  console.log(`Env file:   ${integration.envPath}`);
+  console.log(`Workspace:  ${workspace}`);
+  console.log(`Clients:    ${clients}`);
+  console.log(
+    `Provision:  ${cliOptions.skipProvision ? "skip" : "create/update"}`,
+  );
+  console.log(
+    `Docker:     ${cliOptions.noStart ? "write files only" : "start if mode=docker"}`,
+  );
+  console.log(
+    `Keychain:   ${cliOptions.noKeychain ? "disabled" : "best effort"}`,
+  );
+  if (mode === "docker" && existingDockerInstallPaths().length > 0) {
+    console.log("");
+    console.log(
+      `Warning: existing local Kanban files detected in ${installRoot}; a real Docker install will stop unless you use another KANBAN_HOME or explicitly pass --overwrite-local-instance.`,
+    );
+  }
+}
+
 async function main() {
+  if (cliOptions.help) {
+    printHelp();
+    return;
+  }
+  if (cliOptions.dryRun) {
+    printDryRunPlan();
+    return;
+  }
+
   console.log("Kanban second-brain installer");
   console.log("");
 
@@ -838,24 +1164,41 @@ async function main() {
     "Where should Kanban run?",
     [{ value: "docker" }, { value: "external" }, { value: "native" }],
     "docker",
+    "mode",
   );
+  const integration = await chooseIntegration();
+  const installTarget = await chooseClientInstall();
+
+  await assertClientInstallTargetSafe(installTarget, integration);
+
+  if (mode === "docker" && cliOptions.noStart && !cliOptions.skipProvision) {
+    throw new Error(
+      "--no-start requires --skip-provision because no database is running to seed.",
+    );
+  }
+  if (mode === "docker") assertDockerInstallTargetSafe();
 
   let instance;
   if (mode === "docker") instance = await setupDocker();
   else if (mode === "external") instance = await setupExternal();
   else instance = await setupNative();
 
-  const provisioned =
-    mode === "docker" ? await seedDocker(instance) : await seedViaApi(instance);
-  const secretStorage = storeSecret(provisioned);
-  const install = await installClients(provisioned);
+  const provisioned = cliOptions.skipProvision
+    ? await useExistingMcpKey(instance)
+    : mode === "docker"
+      ? await seedDocker(instance, integration)
+      : await seedViaApi(instance, integration);
+  const secretStorage = storeSecret(provisioned, integration);
+  const install = await installClients(provisioned, integration, installTarget);
 
   console.log("");
   console.log("Kanban second-brain setup complete.");
   console.log(`Kanban: ${provisioned.webUrl}`);
   console.log(`MCP:    ${provisioned.mcpUrl}`);
+  console.log(`Connection: ${integration.displayName} (${integration.id})`);
+  console.log(`Skill: ${integration.skillId}`);
   console.log(
-    `Secret storage: ${secretStorage === "keychain" ? "OS keychain plus ~/.kanban/agent.env" : agentEnvPath}`,
+    `Secret storage: ${secretStorage === "keychain" ? `OS keychain; metadata in ${integration.envPath}` : integration.envPath}`,
   );
   console.log(`Workspace: ${install.workspaceDir}`);
   console.log(`Clients: ${install.clients.join(", ")}`);
@@ -868,7 +1211,10 @@ async function main() {
   if (placeholderConfigPaths.size > 0) {
     console.log("");
     console.log(
-      `Tracked config files use KANBAN_MCP_API_KEY placeholders. Load ${agentEnvPath} before launching those agents.`,
+      `Agent config files use ${integration.keyEnvName} placeholders. Load ${integration.envPath} before launching those agents.`,
+    );
+    console.log(
+      `Launch example: node ${path.join(appDir, "scripts", "kanban-agent-env.mjs")} --env ${integration.envPath} -- codex`,
     );
   }
 }
