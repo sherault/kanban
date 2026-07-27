@@ -13,8 +13,11 @@ export class TaskMoveOperations extends TaskServiceBase {
   ): TaskDto {
     const row = this.getRow(taskId);
     const oldColumn = row.column as Column;
-    const autoAssignDoer = input.column === "doing" && !row.doerId;
+    // Auto doer assignment/clearing serves drag & drop ergonomics only.
+    // MCP callers set the doer explicitly and must not be second-guessed.
+    const autoAssignDoer = !isMcp && input.column === "doing" && !row.doerId;
     const clearsDoer =
+      !isMcp &&
       (input.column === "ideas" || input.column === "todo") &&
       row.doerId !== null;
     const position = this.nextPosition(row.projectId, input.column);
