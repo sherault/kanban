@@ -62,6 +62,7 @@ function makeHistoryEntry(overrides: Record<string, unknown> = {}) {
     oldValue: "todo",
     newValue: "doing",
     actor: { id: "user-1", displayName: "Alice" },
+    source: "mcp",
     changedAt: "2026-07-27 18:04:11",
     batchId: "batch-1",
     ...overrides,
@@ -205,6 +206,7 @@ describe("get_task_history MCP tool", () => {
         oldValue: "todo",
         newValue: "doing",
         actor: { id: "user-1", displayName: "Alice" },
+        source: "mcp",
         changedAt: "2026-07-27 18:04:11",
         batchId: "batch-1",
       },
@@ -213,6 +215,7 @@ describe("get_task_history MCP tool", () => {
         oldValue: "todo",
         newValue: "doing",
         actor: { id: "user-1", displayName: "Alice" },
+        source: "mcp",
         changedAt: "2026-07-26 09:00:00",
         batchId: "batch-1",
       },
@@ -292,6 +295,25 @@ describe("get_task_history MCP tool", () => {
       limit: 50,
       totalPages: 0,
     });
+  });
+
+  it("exposes the change source, null for legacy entries", () => {
+    const { tools } = makeHarness(
+      [makeTask()],
+      [
+        makeHistoryEntry({ id: "h-1", source: "web" }),
+        makeHistoryEntry({ id: "h-2", source: null }),
+      ],
+    );
+
+    const result = parseToolResult(
+      tools.get("get_task_history")!(historyArgs()),
+    );
+
+    expect(result.entries.map((entry: any) => entry.source)).toEqual([
+      "web",
+      null,
+    ]);
   });
 
   it("truncates long old and new values", () => {

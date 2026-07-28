@@ -103,7 +103,7 @@ export function registerTaskListTools(server: McpServer, taskSvc: TaskService) {
     "get_task_history",
     {
       description:
-        "Get the change history of a task, newest first — who changed which field, from what to what, and when. Use it to resume work after an interruption or to reconstruct how a task progressed. Long values are truncated to 500 characters.",
+        'Get the change history of a task, newest first — who changed which field, from what to what, when, and from where (source: "mcp", "web", or null for entries recorded before source tracking). Use it to resume work after an interruption or to reconstruct how a task progressed. Long values are truncated to 500 characters.',
       inputSchema: {
         taskId: z.string().describe("Task ID"),
         field: z
@@ -137,6 +137,7 @@ export function registerTaskListTools(server: McpServer, taskSvc: TaskService) {
           oldValue: truncateHistoryValue(entry.oldValue),
           newValue: truncateHistoryValue(entry.newValue),
           actor: entry.actor,
+          source: entry.source,
           changedAt: entry.changedAt,
           batchId: entry.batchId,
         })),
