@@ -73,7 +73,9 @@ Every `insert(taskHistory)` call sets `source`:
 | `task-service/move.ts`                  | column move entry                                       |
 | `task-service/archive.ts`               | archive entry, restore entry                            |
 | `task-service/participants.ts`          | `insertParticipantHistory` (watchers, advisors)         |
-| `task-service/relations.ts`             | `addTag`, `removeTag`, `addLink`, `removeLink`          |
+| `task-service/relations.ts`             | `addTag`, `removeTag`                                   |
+
+`addLink` / `removeLink` write no history row today, so they stay untouched.
 
 ### Plumbing to extend
 
@@ -82,7 +84,7 @@ trailing `isMcp?: boolean` parameter to:
 
 - `addWatcher`, `removeWatcher`, `addAdvisor`, `removeAdvisor`,
   `insertParticipantHistory`, `broadcastParticipantUpdate`
-- `addTag`, `removeTag`, `addLink`, `removeLink`
+- `addTag`, `removeTag`
 
 and to the matching façade methods on `TaskService` (`task.service.ts`).
 `replaceTags` in `update-delete-history.ts` also takes the source through from
@@ -115,8 +117,8 @@ Vitest integration tests in `apps/api/src/tests/features/task-history.test.ts`
 
 1. `updateTask` without `isMcp` → history rows have `source === "web"`.
 2. `updateTask` with `isMcp: true` → `source === "mcp"`.
-3. `appendNote`, `moveTask`, archive/restore, tag change, watcher add, link add
-   each record the expected source under both flags.
+3. `appendNote`, `moveTask`, archive/restore, tag change and watcher add each
+   record the expected source under both flags.
 4. A history row inserted directly with `source` omitted → `getTaskHistory`
    returns `source: null` (legacy-row guarantee).
 
