@@ -13,7 +13,7 @@ export function registerTaskLifecycleTools(
     "move_task",
     {
       description:
-        'Move a task to a different column. Moving to "doing" requires a doer assigned.',
+        'Move a task to a different column. Moving to "doing" is rejected unless the task already has a doer — assign one with update_task first.',
       inputSchema: {
         taskId: z.string().describe("Task ID"),
         column: z.enum(COLUMN_VALUES).describe("Target column"),

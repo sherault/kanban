@@ -60,7 +60,7 @@ A self-hosted, real-time project management board with built-in MCP server — s
 - **Ideas column** collapsible to save horizontal space
 - **Color-coded task cards** — set a custom background colour per task
 - Auto-assign the moving user as **doer** when dragging a task to Doing (no doer set)
-- Auto-clear doer when moving back to Todo (drag-and-drop only — MCP `move_task` never touches the doer)
+- Auto-clear doer when moving back to Todo (drag-and-drop only — MCP `move_task` never touches the doer, and refuses a move to Doing without one)
 - **Stacking task panels** — open multiple tasks side-by-side; inactive panels collapse to vertical title strips
 - **Side-by-side comparison** — hover any task card and click the ⊞ split icon to pin it as a comparison panel alongside your current task
 
@@ -355,7 +355,7 @@ Connect Claude (or any other MCP client) to your board from the **Profile** page
 - `create_task`: Create a new task (supports tags, doer, and validator assignment).
 - `update_task`: Update task details. Tags can be set wholesale with `tags`, or edited incrementally with `addTags`/`removeTags` (mutually exclusive with `tags`).
 - `append_task_note`: Append a note to the end of a task description, atomically server-side. Use it instead of read + `update_task(description)` for traceability blocks: it never overwrites concurrent edits and needs no prior read. The server prefixes the note with a UTC timestamp heading naming the current doer.
-- `move_task`: Change task column. Unlike drag-and-drop, it never auto-assigns or auto-clears the doer.
+- `move_task`: Change task column. Unlike drag-and-drop, it never auto-assigns or auto-clears the doer — and because of that it rejects (422) a move to `doing` on a task with no doer. Assign one with `update_task` first.
 - `delete_task`: Remove a task.
 - `link_tasks`: Add a bidirectional link between two tasks.
 - `unlink_tasks`: Remove a link between two tasks.

@@ -1,6 +1,7 @@
 import { eq, sql } from "drizzle-orm";
 import type { Column, TaskDto } from "@kanban/shared";
 import { generateId } from "../../../lib/id.js";
+import { unprocessable } from "../../../lib/errors.js";
 import { taskHistory, tasks } from "../../../db/schema/index.js";
 import { TaskServiceBase } from "./base.js";
 
@@ -13,6 +14,11 @@ export class TaskMoveOperations extends TaskServiceBase {
   ): TaskDto {
     const row = this.getRow(taskId);
     const oldColumn = row.column as Column;
+    // MCP callers get no auto doer, so the doer rule must be enforced here or
+    // tasks land in "doing" nameless: invisible to avatar filters, unsigned notes.
+    if (isMcp && input.column === "doing" && !row.doerId) {
+      throw unprocessable('Moving to "doing" requires a doer assigned');
+    }
     // Auto doer assignment/clearing serves drag & drop ergonomics only.
     // MCP callers set the doer explicitly and must not be second-guessed.
     const autoAssignDoer = !isMcp && input.column === "doing" && !row.doerId;

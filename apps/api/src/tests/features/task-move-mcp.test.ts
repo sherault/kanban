@@ -35,17 +35,34 @@ const baseTask = {
 };
 
 describe("TaskService.moveTask from MCP", () => {
+  it("refuses to move to doing when no doer is assigned", async () => {
+    const { user, project, taskSvc, testDb } = await setup();
+    const task = taskSvc.createTask(project.id, user.id, baseTask);
+
+    expect(() =>
+      taskSvc.moveTask(task.id, user.id, { column: "doing" }, true),
+    ).toThrow(/doer/i);
+
+    expect(taskSvc.getTask(task.id)?.column).toBe("todo");
+    expect(taskSvc.getTaskHistory(task.id).length).toBe(0);
+    testDb.close();
+  });
+
   it("does not auto-assign the actor as doer when moving to doing", async () => {
     const { user, project, taskSvc, testDb } = await setup();
     const task = taskSvc.createTask(project.id, user.id, baseTask);
+    taskSvc.updateTask(task.id, user.id, { doerId: user.id });
+    const historyBefore = taskSvc.getTaskHistory(task.id).length;
 
     const moved = taskSvc.moveTask(task.id, user.id, { column: "doing" }, true);
 
     expect(moved.column).toBe("doing");
-    expect(moved.doer).toBeNull();
+    expect(moved.doer?.id).toBe(user.id);
 
+    // only the column change is recorded — no implicit doer write
     const history = taskSvc.getTaskHistory(task.id);
-    expect(history.some((h) => h.field === "doerId")).toBe(false);
+    expect(history.length).toBe(historyBefore + 1);
+    expect(history.filter((h) => h.field === "column").length).toBe(1);
     testDb.close();
   });
 
