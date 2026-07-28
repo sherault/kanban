@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { api, ApiError } from "../../lib/api";
 import { createLogger } from "@kanban/shared";
-import type { TaskDto , Column} from "@kanban/shared";
+import type { TaskDto, Column } from "@kanban/shared";
 import { actionError, requireTaskActionToken } from "./utils";
 
 const logger = createLogger("task-actions");

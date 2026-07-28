@@ -1,5 +1,5 @@
 import type { Dispatch, SetStateAction } from "react";
-import type { Column} from "@kanban/shared";
+import type { Column } from "@kanban/shared";
 import { type MembershipDto, type TaskDto } from "@kanban/shared";
 import {
   NotificationsOverlay,

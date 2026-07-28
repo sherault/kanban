@@ -45,6 +45,7 @@ export class TaskUpdateHistoryOperations extends TaskServiceBase {
 
     const existing = this.getRow(taskId);
     const batchId = generateId();
+    const source = this.historySource(isMcp);
     const historyEntries: Array<typeof taskHistory.$inferInsert> = [];
     const updateSet: Record<string, unknown> = {};
     const track = (
@@ -61,6 +62,7 @@ export class TaskUpdateHistoryOperations extends TaskServiceBase {
         oldValue: oldVal,
         newValue: newVal,
         batchId,
+        source,
       });
       updateSet[field] = newVal;
     };
@@ -95,7 +97,14 @@ export class TaskUpdateHistoryOperations extends TaskServiceBase {
     }
 
     if (input.tags !== undefined) {
-      this.replaceTags(taskId, actorId, batchId, input.tags, "REST_REPLACED");
+      this.replaceTags(
+        taskId,
+        actorId,
+        batchId,
+        input.tags,
+        "REST_REPLACED",
+        source,
+      );
     } else if (usesTagDeltas) {
       const current = this.readTags(taskId);
       const removed = new Set(input.removeTags ?? []);
@@ -104,7 +113,14 @@ export class TaskUpdateHistoryOperations extends TaskServiceBase {
         if (!next.includes(tag)) next.push(tag);
       }
       if (next.join(", ") !== current.join(", ")) {
-        this.replaceTags(taskId, actorId, batchId, next, current.join(", "));
+        this.replaceTags(
+          taskId,
+          actorId,
+          batchId,
+          next,
+          current.join(", "),
+          source,
+        );
       }
     }
 
@@ -159,6 +175,7 @@ export class TaskUpdateHistoryOperations extends TaskServiceBase {
           oldValue: null,
           newValue: note,
           batchId: generateId(),
+          source: this.historySource(isMcp),
         })
         .run();
       return this.assemble(this.getRow(taskId));
@@ -188,6 +205,7 @@ export class TaskUpdateHistoryOperations extends TaskServiceBase {
     batchId: string,
     tags: string[],
     oldValue: string,
+    source: TaskHistorySource,
   ): void {
     this.db.delete(taskTags).where(eq(taskTags.taskId, taskId)).run();
     for (const tag of tags) {
@@ -203,6 +221,7 @@ export class TaskUpdateHistoryOperations extends TaskServiceBase {
         oldValue,
         newValue: tags.join(", "),
         batchId,
+        source,
       })
       .run();
   }

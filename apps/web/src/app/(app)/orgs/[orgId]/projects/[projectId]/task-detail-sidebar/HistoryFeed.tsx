@@ -1,5 +1,10 @@
 import type { TaskHistoryDto } from "@kanban/shared";
 
+const SOURCE_LABELS: Record<NonNullable<TaskHistoryDto["source"]>, string> = {
+  mcp: "via MCP",
+  web: "via Web",
+};
+
 export function HistoryFeed({ history }: { history: TaskHistoryDto[] }) {
   if (!history || history.length === 0) {
     return <p className="text-xs text-gray-400">No history yet.</p>;
@@ -12,6 +17,11 @@ export function HistoryFeed({ history }: { history: TaskHistoryDto[] }) {
           <span className="font-medium text-gray-700">
             {entry.actor?.displayName || "System"}
           </span>
+          {entry.source && (
+            <span className="ml-1 text-gray-400">
+              {SOURCE_LABELS[entry.source]}
+            </span>
+          )}
           {" changed "}
           <span className="font-medium">{entry.field}</span>
           {entry.oldValue !== null && (

@@ -9,7 +9,12 @@ import {
 import { TaskServiceBase } from "./base.js";
 
 export class TaskParticipantOperations extends TaskServiceBase {
-  addWatcher(taskId: string, userId: string, actorId: string): TaskDto {
+  addWatcher(
+    taskId: string,
+    userId: string,
+    actorId: string,
+    isMcp?: boolean,
+  ): TaskDto {
     const row = this.getRow(taskId);
     this.assertOrgMember(row.projectId, userId);
     let added = false;
@@ -20,12 +25,24 @@ export class TaskParticipantOperations extends TaskServiceBase {
       // already watching, no-op
     }
     if (added) {
-      this.insertParticipantHistory(taskId, actorId, "watchers", null, userId);
+      this.insertParticipantHistory(
+        taskId,
+        actorId,
+        "watchers",
+        null,
+        userId,
+        isMcp,
+      );
     }
-    return this.broadcastParticipantUpdate(row, actorId);
+    return this.broadcastParticipantUpdate(row, actorId, isMcp);
   }
 
-  removeWatcher(taskId: string, userId: string, actorId: string): TaskDto {
+  removeWatcher(
+    taskId: string,
+    userId: string,
+    actorId: string,
+    isMcp?: boolean,
+  ): TaskDto {
     const row = this.getRow(taskId);
     const existing = this.db
       .select()
@@ -41,12 +58,24 @@ export class TaskParticipantOperations extends TaskServiceBase {
           and(eq(taskWatchers.taskId, taskId), eq(taskWatchers.userId, userId)),
         )
         .run();
-      this.insertParticipantHistory(taskId, actorId, "watchers", userId, null);
+      this.insertParticipantHistory(
+        taskId,
+        actorId,
+        "watchers",
+        userId,
+        null,
+        isMcp,
+      );
     }
-    return this.broadcastParticipantUpdate(row, actorId);
+    return this.broadcastParticipantUpdate(row, actorId, isMcp);
   }
 
-  addAdvisor(taskId: string, userId: string, actorId: string): TaskDto {
+  addAdvisor(
+    taskId: string,
+    userId: string,
+    actorId: string,
+    isMcp?: boolean,
+  ): TaskDto {
     const row = this.getRow(taskId);
     this.assertOrgMember(row.projectId, userId);
     let added = false;
@@ -57,12 +86,24 @@ export class TaskParticipantOperations extends TaskServiceBase {
       // already advising, no-op
     }
     if (added) {
-      this.insertParticipantHistory(taskId, actorId, "advisors", null, userId);
+      this.insertParticipantHistory(
+        taskId,
+        actorId,
+        "advisors",
+        null,
+        userId,
+        isMcp,
+      );
     }
-    return this.broadcastParticipantUpdate(row, actorId);
+    return this.broadcastParticipantUpdate(row, actorId, isMcp);
   }
 
-  removeAdvisor(taskId: string, userId: string, actorId: string): TaskDto {
+  removeAdvisor(
+    taskId: string,
+    userId: string,
+    actorId: string,
+    isMcp?: boolean,
+  ): TaskDto {
     const row = this.getRow(taskId);
     const existing = this.db
       .select()
@@ -78,9 +119,16 @@ export class TaskParticipantOperations extends TaskServiceBase {
           and(eq(taskAdvisors.taskId, taskId), eq(taskAdvisors.userId, userId)),
         )
         .run();
-      this.insertParticipantHistory(taskId, actorId, "advisors", userId, null);
+      this.insertParticipantHistory(
+        taskId,
+        actorId,
+        "advisors",
+        userId,
+        null,
+        isMcp,
+      );
     }
-    return this.broadcastParticipantUpdate(row, actorId);
+    return this.broadcastParticipantUpdate(row, actorId, isMcp);
   }
 
   private insertParticipantHistory(
@@ -89,6 +137,7 @@ export class TaskParticipantOperations extends TaskServiceBase {
     field: "watchers" | "advisors",
     oldValue: string | null,
     newValue: string | null,
+    isMcp?: boolean,
   ) {
     this.db
       .insert(taskHistory)
@@ -100,6 +149,7 @@ export class TaskParticipantOperations extends TaskServiceBase {
         oldValue,
         newValue,
         batchId: null,
+        source: this.historySource(isMcp),
       })
       .run();
   }
@@ -107,12 +157,14 @@ export class TaskParticipantOperations extends TaskServiceBase {
   private broadcastParticipantUpdate(
     row: ReturnType<TaskParticipantOperations["getRow"]>,
     actorId: string,
+    isMcp?: boolean,
   ): TaskDto {
     const dto = this.assemble(row);
     this.broadcast(`project:${row.projectId}`, {
       type: "task.updated",
       payload: dto,
       actorId,
+      isMcp,
     });
     return dto;
   }

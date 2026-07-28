@@ -1,5 +1,5 @@
 import { eq, sql } from "drizzle-orm";
-import type { Column, TaskDto } from "@kanban/shared";
+import type { Column, TaskDto, TaskHistorySource } from "@kanban/shared";
 import { generateId } from "../../../lib/id.js";
 import { unprocessable } from "../../../lib/errors.js";
 import { taskHistory, tasks } from "../../../db/schema/index.js";
@@ -27,6 +27,7 @@ export class TaskMoveOperations extends TaskServiceBase {
       (input.column === "ideas" || input.column === "todo") &&
       row.doerId !== null;
     const position = this.nextPosition(row.projectId, input.column);
+    const source = this.historySource(isMcp);
 
     this.db
       .update(tasks)
@@ -49,13 +50,30 @@ export class TaskMoveOperations extends TaskServiceBase {
         oldColumn,
         input.column,
         batchId,
+        source,
       );
     }
     if (autoAssignDoer) {
-      this.insertMoveHistory(taskId, actorId, "doerId", null, actorId, batchId);
+      this.insertMoveHistory(
+        taskId,
+        actorId,
+        "doerId",
+        null,
+        actorId,
+        batchId,
+        source,
+      );
     }
     if (clearsDoer) {
-      this.insertMoveHistory(taskId, actorId, "doerId", row.doerId, null, null);
+      this.insertMoveHistory(
+        taskId,
+        actorId,
+        "doerId",
+        row.doerId,
+        null,
+        null,
+        source,
+      );
     }
 
     const updated = this.getRow(taskId);
@@ -76,6 +94,7 @@ export class TaskMoveOperations extends TaskServiceBase {
     oldValue: string | null,
     newValue: string | null,
     batchId: string | null,
+    source: TaskHistorySource,
   ) {
     this.db
       .insert(taskHistory)
@@ -87,6 +106,7 @@ export class TaskMoveOperations extends TaskServiceBase {
         oldValue,
         newValue,
         batchId,
+        source,
       })
       .run();
   }

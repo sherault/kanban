@@ -146,3 +146,115 @@ describe("TaskService.getTaskHistory ordering", () => {
     testDb.close();
   });
 });
+
+// changedAt only has second precision and ties break on a random id, so these
+// tests match entries by their values rather than by position.
+describe("TaskService history source", () => {
+  it("records web for a REST update and mcp for an MCP update", async () => {
+    const { testDb, user, task, taskSvc } = await setup();
+
+    taskSvc.updateTask(task.id, user.id, { title: "From the web" });
+    taskSvc.updateTask(task.id, user.id, { title: "From MCP" }, true);
+
+    const titles = taskSvc
+      .getTaskHistory(task.id)
+      .filter((entry) => entry.field === "title");
+    const byNewValue = new Map(
+      titles.map((entry) => [entry.newValue, entry.source]),
+    );
+    expect(byNewValue.get("From the web")).toBe("web");
+    expect(byNewValue.get("From MCP")).toBe("mcp");
+    testDb.close();
+  });
+
+  it("records the source of an appended note", async () => {
+    const { testDb, user, task, taskSvc } = await setup();
+
+    taskSvc.appendTaskNote(task.id, user.id, "web note");
+    taskSvc.appendTaskNote(task.id, user.id, "mcp note", true);
+
+    const notes = taskSvc
+      .getTaskHistory(task.id)
+      .filter((entry) => entry.field === "note");
+    const byNote = new Map(
+      notes.map((entry) => [entry.newValue, entry.source]),
+    );
+    expect(byNote.get("web note")).toBe("web");
+    expect(byNote.get("mcp note")).toBe("mcp");
+    testDb.close();
+  });
+
+  it("records the source of a tag replacement", async () => {
+    const { testDb, user, task, taskSvc } = await setup();
+
+    taskSvc.updateTask(task.id, user.id, { tags: ["alpha"] }, true);
+
+    const tagEntry = taskSvc
+      .getTaskHistory(task.id)
+      .find((entry) => entry.field === "tags");
+    expect(tagEntry?.source).toBe("mcp");
+    testDb.close();
+  });
+
+  it("records the source of a column move", async () => {
+    const { testDb, user, task, taskSvc } = await setup();
+
+    taskSvc.moveTask(task.id, user.id, { column: "done" });
+
+    const moveEntry = taskSvc
+      .getTaskHistory(task.id)
+      .find((entry) => entry.field === "column");
+    expect(moveEntry?.source).toBe("web");
+    testDb.close();
+  });
+
+  it("records the source of archive and restore", async () => {
+    const { testDb, user, project, task, taskSvc } = await setup();
+
+    taskSvc.moveTask(task.id, user.id, { column: "done" });
+    taskSvc.archiveTasks(project.id, [task.id], user.id, true);
+    taskSvc.restoreTask(task.id, user.id);
+
+    const entries = taskSvc
+      .getTaskHistory(task.id)
+      .filter((entry) => entry.field === "archivedAt");
+    // archive sets newValue to the timestamp, restore sets it back to null
+    const archived = entries.find((entry) => entry.newValue !== null);
+    const restored = entries.find((entry) => entry.newValue === null);
+    expect(archived?.source).toBe("mcp");
+    expect(restored?.source).toBe("web");
+    testDb.close();
+  });
+
+  it("records the source of single tag add and remove", async () => {
+    const { testDb, user, task, taskSvc } = await setup();
+
+    taskSvc.addTag(task.id, "alpha", user.id, true);
+    taskSvc.removeTag(task.id, "alpha", user.id);
+
+    const entries = taskSvc
+      .getTaskHistory(task.id)
+      .filter((entry) => entry.field === "tags");
+    const added = entries.find((entry) => entry.newValue === "alpha");
+    const removed = entries.find((entry) => entry.oldValue === "alpha");
+    expect(added?.source).toBe("mcp");
+    expect(removed?.source).toBe("web");
+    testDb.close();
+  });
+
+  it("records the source of watcher changes", async () => {
+    const { testDb, user, task, taskSvc } = await setup();
+
+    taskSvc.addWatcher(task.id, user.id, user.id, true);
+    taskSvc.removeWatcher(task.id, user.id, user.id);
+
+    const entries = taskSvc
+      .getTaskHistory(task.id)
+      .filter((entry) => entry.field === "watchers");
+    const added = entries.find((entry) => entry.newValue === user.id);
+    const removed = entries.find((entry) => entry.oldValue === user.id);
+    expect(added?.source).toBe("mcp");
+    expect(removed?.source).toBe("web");
+    testDb.close();
+  });
+});

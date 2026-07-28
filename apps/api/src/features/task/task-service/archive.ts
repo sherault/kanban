@@ -36,6 +36,7 @@ export class TaskArchiveOperations extends TaskServiceBase {
           oldValue: null,
           newValue: now,
           batchId: null,
+          source: this.historySource(isMcp),
         })
         .run();
       this.broadcast(`project:${projectId}`, {
@@ -74,6 +75,7 @@ export class TaskArchiveOperations extends TaskServiceBase {
             oldValue: row.archivedAt,
             newValue: null,
             batchId: null,
+            source: this.historySource(isMcp),
           })
           .run();
 

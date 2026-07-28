@@ -6,7 +6,12 @@ import { taskHistory, taskLinks, taskTags } from "../../../db/schema/index.js";
 import { TaskServiceBase } from "./base.js";
 
 export class TaskRelationOperations extends TaskServiceBase {
-  addTag(taskId: string, tag: string, actorId: string): TaskDto {
+  addTag(
+    taskId: string,
+    tag: string,
+    actorId: string,
+    isMcp?: boolean,
+  ): TaskDto {
     const row = this.getRow(taskId);
     let inserted = false;
     try {
@@ -28,6 +33,7 @@ export class TaskRelationOperations extends TaskServiceBase {
           newValue: tag,
           changedAt: new Date().toISOString(),
           batchId: null,
+          source: this.historySource(isMcp),
         })
         .run();
     }
@@ -37,11 +43,17 @@ export class TaskRelationOperations extends TaskServiceBase {
       type: "task.updated",
       payload: dto,
       actorId,
+      isMcp,
     });
     return dto;
   }
 
-  removeTag(taskId: string, tag: string, actorId: string): TaskDto {
+  removeTag(
+    taskId: string,
+    tag: string,
+    actorId: string,
+    isMcp?: boolean,
+  ): TaskDto {
     const row = this.getRow(taskId);
     const changes = this.db
       .delete(taskTags)
@@ -59,6 +71,7 @@ export class TaskRelationOperations extends TaskServiceBase {
           newValue: null,
           changedAt: new Date().toISOString(),
           batchId: null,
+          source: this.historySource(isMcp),
         })
         .run();
     }
@@ -68,6 +81,7 @@ export class TaskRelationOperations extends TaskServiceBase {
       type: "task.updated",
       payload: dto,
       actorId,
+      isMcp,
     });
     return dto;
   }

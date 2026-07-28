@@ -86,12 +86,22 @@ export class TaskService {
     return this.updateHistory.getTaskHistory(taskId);
   }
 
-  addTag(taskId: string, tag: string, actorId: string): TaskDto {
-    return this.relations.addTag(taskId, tag, actorId);
+  addTag(
+    taskId: string,
+    tag: string,
+    actorId: string,
+    isMcp?: boolean,
+  ): TaskDto {
+    return this.relations.addTag(taskId, tag, actorId, isMcp);
   }
 
-  removeTag(taskId: string, tag: string, actorId: string): TaskDto {
-    return this.relations.removeTag(taskId, tag, actorId);
+  removeTag(
+    taskId: string,
+    tag: string,
+    actorId: string,
+    isMcp?: boolean,
+  ): TaskDto {
+    return this.relations.removeTag(taskId, tag, actorId, isMcp);
   }
 
   addLink(taskId: string, linkedTaskId: string, actorId?: string): TaskDto {
@@ -102,20 +112,40 @@ export class TaskService {
     return this.relations.removeLink(taskId, linkedTaskId, actorId);
   }
 
-  addWatcher(taskId: string, userId: string, actorId: string): TaskDto {
-    return this.participants.addWatcher(taskId, userId, actorId);
+  addWatcher(
+    taskId: string,
+    userId: string,
+    actorId: string,
+    isMcp?: boolean,
+  ): TaskDto {
+    return this.participants.addWatcher(taskId, userId, actorId, isMcp);
   }
 
-  removeWatcher(taskId: string, userId: string, actorId: string): TaskDto {
-    return this.participants.removeWatcher(taskId, userId, actorId);
+  removeWatcher(
+    taskId: string,
+    userId: string,
+    actorId: string,
+    isMcp?: boolean,
+  ): TaskDto {
+    return this.participants.removeWatcher(taskId, userId, actorId, isMcp);
   }
 
-  addAdvisor(taskId: string, userId: string, actorId: string): TaskDto {
-    return this.participants.addAdvisor(taskId, userId, actorId);
+  addAdvisor(
+    taskId: string,
+    userId: string,
+    actorId: string,
+    isMcp?: boolean,
+  ): TaskDto {
+    return this.participants.addAdvisor(taskId, userId, actorId, isMcp);
   }
 
-  removeAdvisor(taskId: string, userId: string, actorId: string): TaskDto {
-    return this.participants.removeAdvisor(taskId, userId, actorId);
+  removeAdvisor(
+    taskId: string,
+    userId: string,
+    actorId: string,
+    isMcp?: boolean,
+  ): TaskDto {
+    return this.participants.removeAdvisor(taskId, userId, actorId, isMcp);
   }
 
   moveTask(
