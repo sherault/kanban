@@ -125,10 +125,10 @@ export const taskHistory = sqliteTable("task_history", {
 cd apps/api && pnpm drizzle-kit generate
 ```
 
-Expected: creates `apps/api/drizzle/migrations/0009_<two_random_words>.sql` containing
-`ALTER TABLE \`task_history\` ADD \`source\` text;`and updates`drizzle/migrations/meta/`.
-Open the generated `.sql`and confirm it contains only that`ADD COLUMN`statement — if it contains
-any`DROP` or table-recreation statement, stop and report it instead of continuing.
+Expected: creates `apps/api/drizzle/migrations/0009_<two_random_words>.sql` adding a nullable
+`source` text column to `task_history`, and updates `drizzle/migrations/meta/`.
+Open the generated `.sql` and confirm it contains only that ADD COLUMN statement — if it contains
+any DROP or table-recreation statement, stop and report it instead of continuing.
 
 - [ ] **Step 6: Map the column in getTaskHistory**
 
