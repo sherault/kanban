@@ -157,7 +157,7 @@ export function registerTaskCrudTools(
   server.registerTool(
     "append_task_note",
     {
-      description: `Append a note to the end of a task description, atomically server-side. Use this instead of read + update_task(description) for traceability blocks: it never overwrites concurrent edits and needs no prior read. The server prefixes the note with a UTC timestamp heading naming the currently assigned doer. ${KANBAN_LINK_GUIDANCE}`,
+      description: `Append a note to the end of a task description, atomically server-side. Use this instead of read + update_task(description) for traceability blocks: it never overwrites concurrent edits and needs no prior read. The server prefixes the note with a UTC timestamp heading naming the currently assigned doer, and records the note text alone as a "note" history entry readable via get_task_history(field: "note"). ${KANBAN_LINK_GUIDANCE}`,
       inputSchema: {
         taskId: z.string().describe("Task ID"),
         text: z

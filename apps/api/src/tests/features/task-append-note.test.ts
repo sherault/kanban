@@ -144,22 +144,40 @@ describe("TaskService.appendTaskNote", () => {
     testDb.close();
   });
 
-  it("records a description history entry with the full old and new values", async () => {
+  it("records a note history entry holding only the appended text", async () => {
     const { user, project, taskSvc, testDb } = await setup();
     const task = taskSvc.createTask(project.id, user.id, {
       ...baseTask,
       description: "Original body",
     });
 
-    const updated = taskSvc.appendTaskNote(task.id, user.id, "Progress");
+    taskSvc.appendTaskNote(task.id, user.id, "Progress");
 
-    const history = taskSvc
+    const history = taskSvc.getTaskHistory(task.id);
+    expect(
+      history.filter((entry) => entry.field === "description").length,
+    ).toBe(0);
+    const notes = history.filter((entry) => entry.field === "note");
+    expect(notes.length).toBe(1);
+    expect(notes[0]!.oldValue).toBe(null);
+    expect(notes[0]!.newValue).toBe("Progress");
+    expect(notes[0]!.actor.id).toBe(user.id);
+    testDb.close();
+  });
+
+  it("keeps one note entry per append instead of growing copies", async () => {
+    const { user, project, taskSvc, testDb } = await setup();
+    const task = taskSvc.createTask(project.id, user.id, baseTask);
+
+    taskSvc.appendTaskNote(task.id, user.id, "First");
+    taskSvc.appendTaskNote(task.id, user.id, "Second");
+
+    const notes = taskSvc
       .getTaskHistory(task.id)
-      .filter((entry) => entry.field === "description");
-    expect(history.length).toBe(1);
-    expect(history[0]!.oldValue).toBe("Original body");
-    expect(history[0]!.newValue).toBe(updated.description);
-    expect(history[0]!.actor.id).toBe(user.id);
+      .filter((entry) => entry.field === "note")
+      .map((entry) => entry.newValue)
+      .sort();
+    expect(notes).toEqual(["First", "Second"]);
     testDb.close();
   });
 });

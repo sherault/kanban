@@ -151,9 +151,9 @@ export class TaskUpdateHistoryOperations extends TaskServiceBase {
           id: generateId(),
           taskId,
           userId: actorId,
-          field: "description",
-          oldValue: existing.description,
-          newValue: description,
+          field: "note",
+          oldValue: null,
+          newValue: note,
           batchId: generateId(),
         })
         .run();

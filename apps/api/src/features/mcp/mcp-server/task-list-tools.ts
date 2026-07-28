@@ -110,7 +110,7 @@ export function registerTaskListTools(server: McpServer, taskSvc: TaskService) {
           .string()
           .optional()
           .describe(
-            "Filter by changed field name, e.g. column, title, description, doerId",
+            'Filter by changed field name, e.g. column, title, description, doerId. Use "note" to read the task log book: one entry per append_task_note call, holding only the appended text.',
           ),
         page: z.number().int().min(1).default(1).describe("Page number"),
         limit: z
