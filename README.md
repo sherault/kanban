@@ -60,7 +60,7 @@ A self-hosted, real-time project management board with built-in MCP server — s
 - **Ideas column** collapsible to save horizontal space
 - **Color-coded task cards** — set a custom background colour per task
 - Auto-assign the moving user as **doer** when dragging a task to Doing (no doer set)
-- Auto-clear doer when moving back to Todo
+- Auto-clear doer when moving back to Todo (drag-and-drop only — MCP `move_task` never touches the doer)
 - **Stacking task panels** — open multiple tasks side-by-side; inactive panels collapse to vertical title strips
 - **Side-by-side comparison** — hover any task card and click the ⊞ split icon to pin it as a comparison panel alongside your current task
 
@@ -90,7 +90,7 @@ Each task has a rich detail sidebar with:
 - **Tags** — free-form, with autocomplete from existing tags
 - **Linked tasks** — bidirectional links between tasks
 - **Custom background colour** — colour picker
-- **History log** — every field change recorded with who changed it and when
+- **History log** — every field change recorded with who changed it and when, ordered newest-first deterministically (ties broken by insertion order)
 - **Conflict detection** — if two users edit the same field simultaneously, the second user gets a warning with merge options
 
 ### Filtering
@@ -135,9 +135,10 @@ Each task has a rich detail sidebar with:
 - **Streamable HTTP** transport
 - Authenticated via API key (`Authorization: Bearer <key>`)
 - Tools available to AI:
-  - `list_organizations`, `create_organization`
+  - `list_organizations`, `create_organization`, `list_members`
   - `list_projects`, `create_project`
-  - `list_tasks`, `create_task`, `update_task`, `move_task`, `delete_task`
+  - `get_board`
+  - `list_tasks`, `get_task`, `get_task_history`, `create_task`, `update_task`, `append_task_note`, `move_task`, `delete_task`
   - `list_wiki_pages`, `get_wiki_page`, `create_wiki_page`, `update_wiki_page`, `delete_wiki_page`
   - `get_wiki_history`, `search_wiki`
   - `set_wiki_page_property`
@@ -343,13 +344,18 @@ Connect Claude (or any other MCP client) to your board from the **Profile** page
 ### Available Tools
 
 - `list_organizations`: List all organizations the current user belongs to.
+- `list_members`: List the members of an organization with their id, display name, and role — use the returned ids to assign tasks.
 - `create_organization`: Create a new organization.
 - `list_projects`: List all projects within an organization.
 - `create_project`: Create a new project.
-- `list_tasks`: List tasks in a project with filtering and pagination.
-- `create_task`: Create a new task (now supports tags, doer, and validator assignment).
-- `update_task`: Update task details (now supports modifying tags).
-- `move_task`: Change task column.
+- `get_board`: Full board snapshot in one call — every column with each task's doer, deadline, tags, and colour. Use this at session start instead of several paginated `list_tasks` calls. Archived tasks are excluded. `limitPerColumn` is configurable (1–200, default 50) with an overflow indicator per column.
+- `list_tasks`: List tasks in a project with filtering and pagination. Filters: `column`, `tags` (a task must carry every listed tag), `doerId`, `validatorId`, `search`. Always ordered by due date ascending. `tag` remains as a deprecated single-tag alias.
+- `get_task`: Get a single task by ID, including tags, links, watchers, advisors, and assignments. Use it instead of `list_tasks` when the ID is already known; archived tasks come back with an extra `archived: true` field.
+- `get_task_history`: Get the change history of a task, newest first — who changed which field, from what to what, and when. Supports a `field` filter and pagination; long values are truncated to 500 characters.
+- `create_task`: Create a new task (supports tags, doer, and validator assignment).
+- `update_task`: Update task details. Tags can be set wholesale with `tags`, or edited incrementally with `addTags`/`removeTags` (mutually exclusive with `tags`).
+- `append_task_note`: Append a note to the end of a task description, atomically server-side. Use it instead of read + `update_task(description)` for traceability blocks: it never overwrites concurrent edits and needs no prior read. The server prefixes the note with a UTC timestamp heading naming the current doer.
+- `move_task`: Change task column. Unlike drag-and-drop, it never auto-assigns or auto-clears the doer.
 - `delete_task`: Remove a task.
 - `link_tasks`: Add a bidirectional link between two tasks.
 - `unlink_tasks`: Remove a link between two tasks.
