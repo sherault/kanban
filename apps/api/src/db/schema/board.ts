@@ -108,4 +108,6 @@ export const taskHistory = sqliteTable("task_history", {
     .notNull()
     .default(sql`(datetime('now'))`),
   batchId: text("batch_id"),
+  // "mcp" | "web"; NULL on rows written before source tracking existed.
+  source: text("source"),
 });

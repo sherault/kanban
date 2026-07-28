@@ -26,6 +26,8 @@ export interface TaskDto {
   projectName?: string;
 }
 
+export type TaskHistorySource = "mcp" | "web";
+
 export interface TaskHistoryDto {
   id: string;
   taskId: string;
@@ -35,6 +37,7 @@ export interface TaskHistoryDto {
   newValue: string | null;
   changedAt: string;
   batchId: string | null;
+  source: TaskHistorySource | null;
 }
 
 export interface TaskLinkDto {

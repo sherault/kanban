@@ -1,5 +1,9 @@
 import { desc, eq, sql } from "drizzle-orm";
-import type { TaskDto, TaskHistoryDto } from "@kanban/shared";
+import type {
+  TaskDto,
+  TaskHistoryDto,
+  TaskHistorySource,
+} from "@kanban/shared";
 import { generateId } from "../../../lib/id.js";
 import { unprocessable } from "../../../lib/errors.js";
 import {
@@ -244,6 +248,7 @@ export class TaskUpdateHistoryOperations extends TaskServiceBase {
         newValue: row.newValue,
         changedAt: row.changedAt,
         batchId: row.batchId,
+        source: row.source as TaskHistorySource | null,
       };
     });
   }

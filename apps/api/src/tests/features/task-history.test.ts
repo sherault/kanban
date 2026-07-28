@@ -129,4 +129,20 @@ describe("TaskService.getTaskHistory ordering", () => {
     expect(history[0]!.actor).toEqual({ id: user.id, displayName: "Alice" });
     testDb.close();
   });
+
+  it("returns source null for rows written before source tracking", async () => {
+    const { testDb, user, task, taskSvc } = await setup();
+    insertHistory(testDb, {
+      id: "h-legacy",
+      taskId: task.id,
+      userId: user.id,
+      field: "title",
+      changedAt: "2026-02-02 09:00:00",
+    });
+
+    const history = taskSvc.getTaskHistory(task.id);
+
+    expect(history[0]!.source).toBeNull();
+    testDb.close();
+  });
 });
