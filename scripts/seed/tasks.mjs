@@ -37,7 +37,7 @@ export async function linkTasks(projectId, taskIds, pairs, token) {
     if (typeof a !== 'string' || typeof b !== 'string') continue
     const already = dbGet(`SELECT 1 FROM task_links WHERE (task_id='${a}' AND linked_task_id='${b}') OR (task_id='${b}' AND linked_task_id='${a}')`)
     if (!already) {
-      try { await postEmpty(`/projects/${projectId}/tasks/${a}/links/${b}`, token) } catch {}
+      try { await postEmpty(`/projects/${projectId}/tasks/${a}/links/${b}`, token) } catch { /* seed script: ignore link failures */ }
     }
   }
 }
@@ -46,7 +46,7 @@ export async function addWatcher(projectId, taskId, userId, token) {
   if (typeof taskId !== 'string') return
   const hasWatcher = dbGet(`SELECT 1 FROM task_watchers WHERE task_id='${taskId}' AND user_id='${userId}'`)
   if (!hasWatcher) {
-    try { await postEmpty(`/projects/${projectId}/tasks/${taskId}/watchers/${userId}`, token) } catch {}
+    try { await postEmpty(`/projects/${projectId}/tasks/${taskId}/watchers/${userId}`, token) } catch { /* seed script: ignore watcher failures */ }
   }
 }
 

@@ -26,5 +26,11 @@ export default tseslint.config(
       '@typescript-eslint/unbound-method': 'off',
       '@typescript-eslint/require-await': 'off',
     },
+  },
+  // Plain JS files (eslint.config.js, scripts, *.cjs) are not covered by any
+  // tsconfig, so typed rules would throw "requires type information".
+  {
+    files: ['**/*.js', '**/*.mjs', '**/*.cjs'],
+    ...tseslint.configs.disableTypeChecked,
   }
 )

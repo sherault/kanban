@@ -1,5 +1,5 @@
 import { readFileSync } from "node:fs";
-import { join, relative } from "node:path";
+import { join } from "node:path";
 import ts from "typescript";
 
 const repoRoot = new URL("..", import.meta.url).pathname;

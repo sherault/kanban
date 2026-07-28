@@ -10,10 +10,33 @@ export default [
       ".turbo/**",
       "apps/web/.next/**",
       "apps/api/drizzle/migrations/**",
-      "packages/shared/tsdown.config.ts",
+      // Build/tool config files live outside every tsconfig `include`, so
+      // typed linting cannot resolve a program for them.
+      "**/*.config.ts",
     ],
   },
   ...baseConfig,
+  // Node scripts and CommonJS config files: plain JS, Node globals.
+  {
+    files: ["scripts/**/*.mjs", "**/*.cjs"],
+    languageOptions: {
+      globals: {
+        console: "readonly",
+        process: "readonly",
+        fetch: "readonly",
+        URL: "readonly",
+        URLSearchParams: "readonly",
+        Buffer: "readonly",
+        setTimeout: "readonly",
+        clearTimeout: "readonly",
+        setInterval: "readonly",
+        clearInterval: "readonly",
+        module: "writable",
+        require: "readonly",
+        __dirname: "readonly",
+      },
+    },
+  },
   // API settings
   {
     files: ["apps/api/**/*.ts"],

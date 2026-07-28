@@ -29,7 +29,7 @@ if (errors.length > 0) {
   process.exit(1);
 }
 
-console.log(`Checked ${checkedFiles} \"use server\" file(s).`);
+console.log(`Checked ${checkedFiles} "use server" file(s).`);
 
 function* walk(dir) {
   for (const entry of readdirSync(dir)) {

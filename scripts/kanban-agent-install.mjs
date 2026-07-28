@@ -5,7 +5,6 @@ import { randomBytes } from "node:crypto";
 import {
   existsSync,
   mkdirSync,
-  readFileSync,
   writeFileSync,
   chmodSync,
 } from "node:fs";

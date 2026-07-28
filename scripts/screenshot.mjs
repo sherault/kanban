@@ -57,7 +57,6 @@ async function main() {
 
   // ── 6. Click a task card to open sidebar ──────────────────────────────────
   console.log('📸 task detail sidebar...')
-  const taskCard = page.locator('[data-column="todo"], .bg-white').filter({ hasText: 'Redesign homepage hero' }).first()
   // Try clicking the first todo task card
   const cards = page.locator('.cursor-pointer').filter({ hasText: 'Redesign homepage' })
   if (await cards.count() > 0) {
