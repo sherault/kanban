@@ -1,6 +1,10 @@
 import { Hono } from "hono";
 import { zValidator } from "@hono/zod-validator";
 import { z } from "zod";
+import {
+  MAX_MEMBER_SEARCH_LENGTH,
+  MIN_MEMBER_SEARCH_LENGTH,
+} from "@kanban/shared";
 import type { AppDb, Broadcaster, HonoEnv } from "../../types.js";
 import { noopBroadcaster } from "../../types.js";
 import { authnMiddleware } from "../../middleware/authn.js";
@@ -25,6 +29,14 @@ const transferSchema = z.object({
 
 const updateMemberRoleSchema = z.object({
   role: z.enum(["member", "manager"]),
+});
+
+const addMemberSchema = z.object({
+  userId: z.string().uuid(),
+});
+
+const memberCandidatesQuerySchema = z.object({
+  q: z.string().min(MIN_MEMBER_SEARCH_LENGTH).max(MAX_MEMBER_SEARCH_LENGTH),
 });
 
 export function organizationRoutes(
@@ -76,6 +88,34 @@ export function organizationRoutes(
     "/:orgId/members",
     authz.requireOrgRole("member", (c) => c.req.param("orgId")),
     (c) => c.json(svc.listMembers(c.req.param("orgId"))),
+  );
+
+  router.get(
+    "/:orgId/member-candidates",
+    authz.requireOrgRole("manager", (c) => c.req.param("orgId")),
+    zValidator("query", memberCandidatesQuerySchema),
+    (c) =>
+      c.json(
+        svc.searchMemberCandidates(
+          c.req.param("orgId"),
+          c.get("userId"),
+          c.req.valid("query").q,
+        ),
+      ),
+  );
+
+  router.post(
+    "/:orgId/members",
+    authz.requireOrgRole("manager", (c) => c.req.param("orgId")),
+    zValidator("json", addMemberSchema),
+    (c) => {
+      const membership = svc.addMember(
+        c.req.param("orgId"),
+        c.get("userId"),
+        c.req.valid("json").userId,
+      );
+      return c.json(membership, 201);
+    },
   );
 
   router.patch(

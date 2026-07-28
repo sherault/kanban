@@ -1,5 +1,6 @@
 import type {
   InvitationTokenDto,
+  MemberCandidateDto,
   MembershipDto,
   OrganizationDto,
 } from "@kanban/shared";
@@ -32,6 +33,19 @@ export const orgsApi = {
   },
   listMembers(token: string, orgId: string) {
     return apiFetch<MembershipDto[]>(`/organizations/${orgId}/members`, {
+      token,
+    });
+  },
+  searchMemberCandidates(token: string, orgId: string, q: string) {
+    return apiFetch<MemberCandidateDto[]>(
+      `/organizations/${orgId}/member-candidates?q=${encodeURIComponent(q)}`,
+      { token },
+    );
+  },
+  addMember(token: string, orgId: string, userId: string) {
+    return apiFetch<MembershipDto>(`/organizations/${orgId}/members`, {
+      method: "POST",
+      body: JSON.stringify({ userId }),
       token,
     });
   },

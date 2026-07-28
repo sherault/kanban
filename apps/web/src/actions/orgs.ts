@@ -2,6 +2,10 @@
 
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
+import {
+  MIN_MEMBER_SEARCH_LENGTH,
+  type MemberCandidateDto,
+} from "@kanban/shared";
 import { api, ApiError } from "../lib/api";
 import { getAccessToken, getUserId } from "../lib/session";
 
@@ -19,6 +23,46 @@ export async function updateMemberRoleAction(
   } catch (e) {
     return {
       error: e instanceof ApiError ? e.message : "Failed to update role",
+    };
+  }
+}
+
+export async function searchMemberCandidatesAction(
+  orgId: string,
+  query: string,
+): Promise<{ candidates: MemberCandidateDto[]; error?: string }> {
+  if (query.trim().length < MIN_MEMBER_SEARCH_LENGTH) return { candidates: [] };
+
+  const token = await getAccessToken();
+  if (!token) redirect("/login");
+  try {
+    const { data } = await api.orgs.searchMemberCandidates(
+      token,
+      orgId,
+      query.trim(),
+    );
+    return { candidates: data };
+  } catch (e) {
+    return {
+      candidates: [],
+      error: e instanceof ApiError ? e.message : "Failed to search users",
+    };
+  }
+}
+
+export async function addMemberAction(
+  orgId: string,
+  userId: string,
+): Promise<{ error?: string }> {
+  const token = await getAccessToken();
+  if (!token) redirect("/login");
+  try {
+    await api.orgs.addMember(token, orgId, userId);
+    revalidatePath(`/orgs/${orgId}/settings`);
+    return {};
+  } catch (e) {
+    return {
+      error: e instanceof ApiError ? e.message : "Failed to add member",
     };
   }
 }

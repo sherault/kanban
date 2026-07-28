@@ -4,6 +4,7 @@ import { memberships, users } from "../../../db/schema/index.js";
 import { forbidden, notFound, unprocessable } from "../../../lib/errors.js";
 import type { OrganizationServiceContext } from "./context.js";
 import { toMembershipDto } from "./mappers.js";
+import { isCoVisibleUser } from "./member-search.js";
 
 type MemberRole = "member" | "manager";
 
@@ -25,6 +26,48 @@ export function listOrganizationMembers(
     .all();
 
   return rows.map(toMembershipDto);
+}
+
+export function addOrganizationMember(
+  ctx: OrganizationServiceContext,
+  orgId: string,
+  actorId: string,
+  targetUserId: string,
+): MembershipDto {
+  const target = ctx.db
+    .select({ email: users.email, displayName: users.displayName })
+    .from(users)
+    .where(eq(users.id, targetUserId))
+    .get();
+  if (!target) throw notFound("User not found");
+
+  if (getMemberRole(ctx, orgId, targetUserId)) {
+    throw unprocessable("User is already a member of this organization");
+  }
+
+  // Re-checked here, not only in search: otherwise a manager could bypass the
+  // co-visibility constraint by posting an arbitrary user id.
+  if (!isCoVisibleUser(ctx, actorId, targetUserId)) throw forbidden();
+
+  ctx.db
+    .insert(memberships)
+    .values({ organizationId: orgId, userId: targetUserId, role: "member" })
+    .run();
+
+  const membership = toMembershipDto({
+    userId: targetUserId,
+    organizationId: orgId,
+    role: "member",
+    userEmail: target.email,
+    userDisplayName: target.displayName,
+  });
+
+  ctx.broadcast(`org:${orgId}`, {
+    type: "member.added",
+    payload: membership,
+  });
+
+  return membership;
 }
 
 export function updateOrganizationMemberRole(

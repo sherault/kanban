@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useTransition } from "react";
+import { useCallback, useEffect, useState, useTransition } from "react";
 import { createPortal } from "react-dom";
 import { getOrgSettingsDataAction } from "@/actions/orgs";
 import { MembersSection } from "./org/MembersSection";
@@ -30,8 +30,7 @@ export function OrgSettingsModal({
   const [isPending, startTransition] = useTransition();
   const [mounted, setMounted] = useState(false);
 
-  useEffect(() => {
-    queueMicrotask(() => setMounted(true));
+  const refreshData = useCallback(() => {
     startTransition(async () => {
       const result = await getOrgSettingsDataAction(orgId);
       if (result) {
@@ -39,6 +38,11 @@ export function OrgSettingsModal({
       }
     });
   }, [orgId]);
+
+  useEffect(() => {
+    queueMicrotask(() => setMounted(true));
+    refreshData();
+  }, [refreshData]);
 
   // Close on ESC
   useEffect(() => {
@@ -155,7 +159,7 @@ export function OrgSettingsModal({
 
                 {activeTab === "invites" && (
                   <div className="animate-in fade-in slide-in-from-bottom-2 duration-300">
-                    <InviteSection orgId={orgId} />
+                    <InviteSection orgId={orgId} onMemberAdded={refreshData} />
                   </div>
                 )}
 

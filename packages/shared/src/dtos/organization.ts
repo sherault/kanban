@@ -15,6 +15,9 @@ export interface MembershipDto {
   user: Pick<UserDto, "id" | "displayName" | "email">;
 }
 
+/** A user who may be added to an organization, as returned by member search. */
+export type MemberCandidateDto = Pick<UserDto, "id" | "displayName" | "email">;
+
 export interface InvitationTokenDto {
   id: string;
   organizationId: string;

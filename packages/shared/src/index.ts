@@ -6,4 +6,5 @@ export * from "./dtos/project";
 export * from "./dtos/board";
 export * from "./dtos/wiki";
 export * from "./constants/auth";
+export * from "./constants/organization";
 export * from "./utils/logger";
