@@ -1,5 +1,5 @@
 import { and, eq, max, or } from "drizzle-orm";
-import type { Column, TaskDto } from "@kanban/shared";
+import type { Column, TaskDto, TaskHistorySource } from "@kanban/shared";
 import { createLogger } from "@kanban/shared";
 import type { AppDb, Broadcaster } from "../../../types.js";
 import { notFound } from "../../../lib/errors.js";
@@ -101,6 +101,14 @@ export class TaskServiceBase {
     protected readonly db: AppDb,
     protected readonly broadcast: Broadcaster,
   ) {}
+
+  /**
+   * Origin recorded on task_history rows. Anything that is not an MCP call is
+   * the web front, which is the only other client today.
+   */
+  protected historySource(isMcp?: boolean): TaskHistorySource {
+    return isMcp ? "mcp" : "web";
+  }
 
   protected nextPosition(projectId: string, column: Column): number {
     const result = this.db
