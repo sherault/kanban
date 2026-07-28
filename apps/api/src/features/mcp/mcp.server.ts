@@ -4,6 +4,7 @@ import { OrganizationService } from "../organization/organization.service.js";
 import { ProjectService } from "../project/project.service.js";
 import { TaskService } from "../task/task.service.js";
 import { WikiService } from "../wiki/wiki.service.js";
+import { registerBoardTools } from "./mcp-server/board-tools.js";
 import { registerMcpResources } from "./mcp-server/resources.js";
 import { registerOrganizationTools } from "./mcp-server/organization-tools.js";
 import { registerProjectTools } from "./mcp-server/project-tools.js";
@@ -35,6 +36,7 @@ export function createMcpServer(
   registerOrganizationTools(server, orgSvc, userId);
   registerProjectTools(server, projectSvc, userId);
   registerTaskListTools(server, taskSvc);
+  registerBoardTools(server, taskSvc);
   registerTaskCrudTools(server, taskSvc, userId);
   registerTaskLifecycleTools(server, taskSvc, userId);
   registerTaskLinkTools(server, taskSvc, userId);
