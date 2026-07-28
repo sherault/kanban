@@ -14,6 +14,7 @@ import {
   updateTaskAction,
 } from "@/actions/tasks";
 import { getActiveConflict } from "./conflicts";
+import { resolveTaskShell } from "./taskShell";
 import { useTaskLinks } from "./useTaskLinks";
 import { useConflictField } from "./useConflictField";
 import type { TaskDetailSidebarProps, TaskUpdateBody } from "./types";
@@ -27,21 +28,19 @@ export function useTaskDetailController({
   width,
   onWidthChange,
 }: TaskDetailSidebarProps) {
-  const [task, setTask] = useState<TaskDto | null>(initialTask as TaskDto);
-  const [loading, setLoading] = useState(false);
+  const { isShell, initialId, initialTaskDto } = resolveTaskShell(initialTask);
+  const [task, setTask] = useState<TaskDto | null>(initialTaskDto);
+  const [loading, setLoading] = useState(isShell);
   const [history, setHistory] = useState<TaskHistoryDto[] | null>(null);
   const [showHistory, setShowHistory] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [isPending, startTransition] = useTransition();
-  const shellTaskId = "taskId" in initialTask ? initialTask.taskId : undefined;
-  const initialId = initialTask.id || shellTaskId;
-  const isShell = !initialTask.id && !!shellTaskId;
   const [prevInitialTask, setPrevInitialTask] = useState(initialTask);
 
   if (!isShell && prevInitialTask !== initialTask) {
     setPrevInitialTask(initialTask);
-    setTask(initialTask as TaskDto);
+    setTask(initialTaskDto);
   }
 
   useEffect(() => {

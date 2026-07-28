@@ -17,7 +17,7 @@ export function useTaskLinks({
 }) {
   const [linkedTasks, setLinkedTasks] = useState<TaskDto[]>([]);
   const [loadingLinks, setLoadingLinks] = useState(false);
-  const linkedIdsString = task?.linkedTaskIds.join(",") ?? "";
+  const linkedIdsString = task?.linkedTaskIds?.join(",") ?? "";
 
   useEffect(() => {
     let cancelled = false;
