@@ -42,7 +42,7 @@ describe("WikiService page operations", () => {
     expect(page.properties).toEqual({ status: "draft" });
     expect(await wikiSvc.getHistory(page.id)).toHaveLength(1);
     expect(events[0]).toMatchObject({
-      room: org.id,
+      room: `org:${org.id}`,
       event: { type: "wiki.page_created", page: { id: page.id } },
     });
     testDb.close();
@@ -65,7 +65,7 @@ describe("WikiService page operations", () => {
     expect(updated.properties).toEqual({ state: "ready" });
     expect(await wikiSvc.getHistory(page.id)).toHaveLength(2);
     expect(events.at(-1)).toMatchObject({
-      room: org.id,
+      room: `org:${org.id}`,
       event: { type: "wiki.page_updated", page: { id: page.id } },
     });
     testDb.close();
@@ -157,7 +157,7 @@ describe("WikiService page operations", () => {
 
     expect(await wikiSvc.getPage(page.id)).toBeUndefined();
     expect(events.at(-1)).toEqual({
-      room: org.id,
+      room: `org:${org.id}`,
       event: { type: "wiki.page_deleted", pageId: page.id },
     });
     testDb.close();

@@ -359,7 +359,7 @@ function createTrackedWikiPage(
     .run();
 
   const dto = toWikiPageDto(page);
-  ctx.broadcast(orgId, { type: "wiki.page_created", page: dto });
+  ctx.broadcast(`org:${orgId}`, { type: "wiki.page_created", page: dto });
   return dto;
 }
 
@@ -395,7 +395,7 @@ function updateTrackedWikiPage(
     .run();
 
   const dto = toWikiPageDto(updated);
-  ctx.broadcast(updated.organizationId, {
+  ctx.broadcast(`org:${updated.organizationId}`, {
     type: "wiki.page_updated",
     page: dto,
   });

@@ -51,7 +51,7 @@ export async function createWikiPage(
   });
 
   const dto = toWikiPageDto(page!);
-  ctx.broadcast(orgId, { type: "wiki.page_created", page: dto });
+  ctx.broadcast(`org:${orgId}`, { type: "wiki.page_created", page: dto });
   return dto;
 }
 
@@ -97,7 +97,7 @@ export async function updateWikiPage(
   }
 
   const dto = toWikiPageDto(updated!);
-  ctx.broadcast(existing.organizationId, {
+  ctx.broadcast(`org:${existing.organizationId}`, {
     type: "wiki.page_updated",
     page: dto,
   });
@@ -112,5 +112,8 @@ export async function deleteWikiPage(
   if (!existing) return;
 
   await ctx.db.delete(wikiPages).where(eq(wikiPages.id, pageId));
-  ctx.broadcast(existing.organizationId, { type: "wiki.page_deleted", pageId });
+  ctx.broadcast(`org:${existing.organizationId}`, {
+    type: "wiki.page_deleted",
+    pageId,
+  });
 }

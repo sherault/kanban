@@ -1,6 +1,13 @@
 "use client";
 
-import { createContext, useContext, useState, useCallback } from "react";
+import {
+  createContext,
+  useContext,
+  useState,
+  useCallback,
+  useEffect,
+  useRef,
+} from "react";
 import type { ReactNode } from "react";
 import type { WikiPageSummaryDto } from "@kanban/shared";
 import { useWikiSocket } from "@/hooks/useWikiSocket";
@@ -51,12 +58,35 @@ export function WikiProvider({
   children: ReactNode;
   orgId: string;
 }) {
+  // Mirrors pageContents so socket callbacks read fresh values without
+  // re-subscribing on every keystroke.
+  const pageContentsRef = useRef<Record<string, string>>({});
+
   const { ws, isConnected, tabId } = useWikiSocket(orgId, {
     onPageCreated: () => {
       window.dispatchEvent(new CustomEvent("kanban_wiki_page_updated"));
     },
-    onPageUpdated: (_p) => {
+    onPageUpdated: (page) => {
       window.dispatchEvent(new CustomEvent("kanban_wiki_page_updated"));
+
+      // Writes that bypass the yjs relay (MCP, REST) only surface here.
+      // Apply them to open pages whose cached content is now stale.
+      const cached = pageContentsRef.current[page.id];
+      if (cached === undefined || cached === page.content) return;
+
+      const properties = page.properties as
+        | Record<string, unknown>
+        | undefined
+        | null;
+      if (properties) {
+        setPagePropertiesState((prev) => ({ ...prev, [page.id]: properties }));
+      }
+      setPageContents((prev) => ({ ...prev, [page.id]: page.content }));
+      window.dispatchEvent(
+        new CustomEvent(`wiki_remote_update_${page.id}`, {
+          detail: { content: page.content, properties },
+        }),
+      );
     },
     onPageDeleted: () => {
       window.dispatchEvent(new CustomEvent("kanban_wiki_page_updated"));
@@ -104,6 +134,10 @@ export function WikiProvider({
   ]);
   const [isSplit, setIsSplit] = useState(false);
   const [activeSplitIndex, setActiveSplitIndex] = useState(0);
+
+  useEffect(() => {
+    pageContentsRef.current = pageContents;
+  }, [pageContents]);
 
   const setPageMode = useCallback(
     (pageId: string, mode: "edit" | "view" | "split" | "visual") => {
