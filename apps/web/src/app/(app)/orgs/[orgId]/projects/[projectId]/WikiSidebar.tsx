@@ -16,9 +16,15 @@ interface Props {
   orgId: string;
   projectId: string;
   onRefresh: () => void;
+  enableSecondBrain: boolean;
 }
 
-export function WikiSidebar({ orgId, projectId, onRefresh }: Props) {
+export function WikiSidebar({
+  orgId,
+  projectId,
+  onRefresh,
+  enableSecondBrain,
+}: Props) {
   const { pages, isLoading } = useWiki();
   useWikiSidebarCreatePage({ orgId, projectId, onRefresh });
   const {
@@ -33,12 +39,14 @@ export function WikiSidebar({ orgId, projectId, onRefresh }: Props) {
   return (
     <aside className="w-64 bg-white border-r border-gray-200 shrink-0 h-full flex flex-col shadow-sm">
       <WikiSidebarHeader onRefresh={onRefresh} />
-      <SecondBrainPanel
-        orgId={orgId}
-        projectId={projectId}
-        pages={pages}
-        onRefresh={onRefresh}
-      />
+      {enableSecondBrain && (
+        <SecondBrainPanel
+          orgId={orgId}
+          projectId={projectId}
+          pages={pages}
+          onRefresh={onRefresh}
+        />
+      )}
       <DndKit.DndContext
         sensors={sensors}
         collisionDetection={DndKit.closestCenter}

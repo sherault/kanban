@@ -24,6 +24,7 @@ interface Props {
     enableNotifications: boolean;
     maxNotifications: number;
     notificationDuration: number;
+    enableSecondBrain: boolean;
   };
 }
 export function ProjectClientLayout(props: Props) {
@@ -151,6 +152,7 @@ function ProjectClientLayoutInner({
           orgId={orgId}
           projectId={projectId}
           onRefresh={fetchPages}
+          enableSecondBrain={userPreferences.enableSecondBrain}
         />
       )}
 
