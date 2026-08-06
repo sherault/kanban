@@ -28,4 +28,5 @@ export const settingsSchema = z.object({
   enableNotifications: z.boolean().optional(),
   maxNotifications: z.number().min(1).max(5).optional(),
   notificationDuration: z.number().min(1).max(30).optional(),
+  enableSecondBrain: z.boolean().optional(),
 });

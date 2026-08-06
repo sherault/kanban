@@ -78,5 +78,8 @@ export function normalizeUserSettings(settings: UserSettingsInput) {
         Math.max(1, settings.notificationDuration),
       ),
     }),
+    ...(settings.enableSecondBrain !== undefined && {
+      enableSecondBrain: settings.enableSecondBrain,
+    }),
   };
 }

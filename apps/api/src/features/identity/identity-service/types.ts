@@ -34,4 +34,5 @@ export interface UserSettingsInput {
   enableNotifications?: boolean | undefined;
   maxNotifications?: number | undefined;
   notificationDuration?: number | undefined;
+  enableSecondBrain?: boolean | undefined;
 }

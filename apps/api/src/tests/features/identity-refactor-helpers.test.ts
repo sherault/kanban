@@ -21,4 +21,13 @@ describe("normalizeUserSettings", () => {
       enableNotifications: false,
     });
   });
+
+  it("passes enableSecondBrain through untouched", () => {
+    expect(normalizeUserSettings({ enableSecondBrain: true })).toEqual({
+      enableSecondBrain: true,
+    });
+    expect(normalizeUserSettings({ enableSecondBrain: false })).toEqual({
+      enableSecondBrain: false,
+    });
+  });
 });

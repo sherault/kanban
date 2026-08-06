@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeAll } from "vitest";
-import { createTestDb } from "../../db/test-utils.js";
+import { createTestDb, loginTestUser } from "../../db/test-utils.js";
 import { createApp } from "../../app.js";
 
 beforeAll(() => {
@@ -10,7 +10,7 @@ beforeAll(() => {
 function setup() {
   const testDb = createTestDb();
   const app = createApp(testDb.db);
-  return { app, close: testDb.close };
+  return { app, db: testDb.db, close: testDb.close };
 }
 
 const REGISTER_PAYLOAD = {
@@ -32,6 +32,56 @@ describe("second brain user preference", () => {
       user: { enableSecondBrain: boolean };
     };
     expect(body.user.enableSecondBrain).toBe(false);
+    close();
+  });
+
+  it("persists enableSecondBrain and returns it from /auth/me", async () => {
+    const { app, db, close } = setup();
+    const { accessToken: token } = await loginTestUser(app, db, {
+      email: REGISTER_PAYLOAD.email,
+      password: REGISTER_PAYLOAD.password,
+      displayName: REGISTER_PAYLOAD.displayName,
+    });
+
+    const patch = await app.request("/auth/me/settings", {
+      method: "PATCH",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify({ enableSecondBrain: true }),
+    });
+    expect(patch.status).toBe(200);
+    const patched = (await patch.json()) as {
+      user: { enableSecondBrain: boolean };
+    };
+    expect(patched.user.enableSecondBrain).toBe(true);
+
+    const me = await app.request("/auth/me", {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    const meBody = (await me.json()) as { enableSecondBrain: boolean };
+    expect(meBody.enableSecondBrain).toBe(true);
+    close();
+  });
+
+  it("rejects a non-boolean enableSecondBrain", async () => {
+    const { app, db, close } = setup();
+    const { accessToken: token } = await loginTestUser(app, db, {
+      email: REGISTER_PAYLOAD.email,
+      password: REGISTER_PAYLOAD.password,
+      displayName: REGISTER_PAYLOAD.displayName,
+    });
+
+    const res = await app.request("/auth/me/settings", {
+      method: "PATCH",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify({ enableSecondBrain: "yes" }),
+    });
+    expect(res.status).toBe(400);
     close();
   });
 });
