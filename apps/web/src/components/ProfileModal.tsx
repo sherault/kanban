@@ -78,6 +78,7 @@ export function ProfileModal({ onClose }: { onClose: () => void }) {
               initialEnableNotifications={data.me.enableNotifications}
               initialMaxNotifications={data.me.maxNotifications}
               initialNotificationDuration={data.me.notificationDuration}
+              initialEnableSecondBrain={data.me.enableSecondBrain}
             />
           </div>
         )}

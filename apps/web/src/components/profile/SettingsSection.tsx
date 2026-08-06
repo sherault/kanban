@@ -9,6 +9,7 @@ interface Props {
   initialEnableNotifications: boolean;
   initialMaxNotifications: number;
   initialNotificationDuration: number;
+  initialEnableSecondBrain: boolean;
 }
 
 export function SettingsSection({
@@ -16,6 +17,7 @@ export function SettingsSection({
   initialEnableNotifications,
   initialMaxNotifications,
   initialNotificationDuration,
+  initialEnableSecondBrain,
 }: Props) {
   const [maxPanels, setMaxPanels] = useState(initialMaxOpenPanels);
   const [enableNotifications, setEnableNotifications] = useState(
@@ -27,6 +29,9 @@ export function SettingsSection({
   const [notificationDuration, setNotificationDuration] = useState(
     initialNotificationDuration,
   );
+  const [enableSecondBrain, setEnableSecondBrain] = useState(
+    initialEnableSecondBrain,
+  );
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const router = useRouter();
@@ -36,6 +41,7 @@ export function SettingsSection({
     enableNotifications?: boolean;
     maxNotifications?: number;
     notificationDuration?: number;
+    enableSecondBrain?: boolean;
   }) => {
     setSaving(true);
     setError(null);
@@ -53,6 +59,8 @@ export function SettingsSection({
         setMaxNotifications(updates.maxNotifications);
       if (updates.notificationDuration !== undefined)
         setNotificationDuration(updates.notificationDuration);
+      if (updates.enableSecondBrain !== undefined)
+        setEnableSecondBrain(updates.enableSecondBrain);
       router.refresh();
     } catch {
       setError("An unexpected error occurred");
@@ -167,6 +175,26 @@ export function SettingsSection({
           disabled={saving}
           className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-blue-600"
         />
+      </div>
+
+      <div className="bg-white border border-gray-200 rounded-lg p-4 mt-4">
+        <div className="flex items-center justify-between mb-2">
+          <label className="text-sm font-medium text-gray-700">
+            Enable Second Brain
+          </label>
+          <input
+            type="checkbox"
+            checked={enableSecondBrain}
+            disabled={saving}
+            onChange={(e) =>
+              handleUpdate({ enableSecondBrain: e.target.checked })
+            }
+            className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+          />
+        </div>
+        <p className="mt-1 text-xs text-gray-400 italic">
+          Show the capture inbox and review-due panel in the wiki sidebar.
+        </p>
       </div>
     </section>
   );

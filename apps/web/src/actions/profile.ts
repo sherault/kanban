@@ -116,6 +116,7 @@ export async function updateSettingsAction(updates: {
   enableNotifications?: boolean;
   maxNotifications?: number;
   notificationDuration?: number;
+  enableSecondBrain?: boolean;
 }) {
   const token = await getAccessToken();
   if (!token) return { error: "Unauthorized" };

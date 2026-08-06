@@ -75,6 +75,7 @@ export const authApi = {
       enableNotifications?: boolean;
       maxNotifications?: number;
       notificationDuration?: number;
+      enableSecondBrain?: boolean;
     },
   ) {
     return apiFetch<{ user: UserDto }>("/auth/me/settings", {
