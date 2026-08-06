@@ -4,6 +4,7 @@ import { useEffect, useRef } from "react";
 import type { TaskDto } from "@kanban/shared";
 import { WikiTabs } from "@/components/WikiTabs";
 import { useWiki } from "@/context/WikiContext";
+import { readWikiTabs, writeWikiTabs } from "@/lib/wikiTabsStorage";
 import dynamic from "next/dynamic";
 
 import { useRouter, useParams } from "next/navigation";
@@ -30,6 +31,7 @@ interface Props {
 export function WikiClient({ orgId, projectId, tasks }: Props) {
   const router = useRouter();
   const {
+    pages,
     splits,
     setSplits,
     isSplit,
@@ -49,6 +51,74 @@ export function WikiClient({ orgId, projectId, tasks }: Props) {
     activeSplitRef.current = activeSplitIndex;
   }, [activeSplitIndex]);
 
+  // Open tabs only live in context, so a reload would lose everything but the
+  // page in the URL. Restore the persisted set once, before any other effect
+  // reads or pushes the URL. Runs client-side only (this tree renders after the
+  // layout has hydrated).
+  const isRestoredRef = useRef(false);
+  const skipNextWriteRef = useRef(false);
+  const restoredPageIdsRef = useRef<string[] | null>(null);
+  useEffect(() => {
+    if (isRestoredRef.current) return;
+    isRestoredRef.current = true;
+    const stored = readWikiTabs(orgId);
+    if (stored) {
+      // The write effect below runs in this same commit, when `splits` is still
+      // the pre-restore default — let it skip that stale pass.
+      skipNextWriteRef.current = true;
+      restoredPageIdsRef.current = stored.splits.flatMap((s) => s.openPageIds);
+      const targetIndex = stored.activeSplitIndex;
+      setSplits(
+        stored.splits.map((split, idx) => {
+          if (idx !== targetIndex || !urlWikiPageId) return split;
+          // The URL wins over the persisted active page on reload.
+          return {
+            activePageId: urlWikiPageId,
+            openPageIds: split.openPageIds.includes(urlWikiPageId)
+              ? split.openPageIds
+              : [...split.openPageIds, urlWikiPageId],
+          };
+        }),
+      );
+      setIsSplit(stored.isSplit);
+      setActiveSplitIndex(targetIndex);
+      activeSplitRef.current = targetIndex;
+    }
+  }, [orgId, urlWikiPageId, setSplits, setIsSplit, setActiveSplitIndex]);
+
+  useEffect(() => {
+    if (!isRestoredRef.current) return;
+    if (skipNextWriteRef.current) {
+      skipNextWriteRef.current = false;
+      return;
+    }
+    writeWikiTabs(orgId, { splits, isSplit, activeSplitIndex });
+  }, [orgId, splits, isSplit, activeSplitIndex]);
+
+  // Drop restored tabs whose page no longer exists. Limited to the restored ids
+  // so a freshly created page can't be pruned before it lands in `pages`.
+  useEffect(() => {
+    const restoredIds = restoredPageIdsRef.current;
+    if (!restoredIds || pages.length === 0) return;
+    restoredPageIdsRef.current = null;
+    const known = new Set(pages.map((p) => p.id));
+    const stale = restoredIds.filter((id) => !known.has(id));
+    if (stale.length === 0) return;
+    setSplits((prev) =>
+      prev.map((split) => {
+        const openPageIds = split.openPageIds.filter(
+          (id) => !stale.includes(id),
+        );
+        if (openPageIds.length === split.openPageIds.length) return split;
+        const activePageId =
+          split.activePageId && stale.includes(split.activePageId)
+            ? openPageIds[openPageIds.length - 1] || null
+            : split.activePageId;
+        return { activePageId, openPageIds };
+      }),
+    );
+  }, [pages, setSplits]);
+
   useEffect(() => {
     if (urlWikiPageId) {
       openPageInSplit(urlWikiPageId, activeSplitRef.current);
@@ -60,6 +130,7 @@ export function WikiClient({ orgId, projectId, tasks }: Props) {
   // activePageId when a click bubbles up from inside the editor.
   const focusedPageId = splits[activeSplitIndex]?.activePageId ?? null;
   useEffect(() => {
+    if (!isRestoredRef.current) return;
     if (!focusedPageId || focusedPageId === urlWikiPageId) return;
     router.push(`/orgs/${orgId}/projects/${projectId}/wiki/${focusedPageId}`);
   }, [focusedPageId, urlWikiPageId, orgId, projectId, router]);
