@@ -1,5 +1,7 @@
 import type { WikiPageSummaryDto } from "@kanban/shared";
 
+export const SECOND_BRAIN_COLLAPSED_KEY = "kanban_second_brain_collapsed";
+
 export function isCaptureInboxPage(page: WikiPageSummaryDto) {
   return (
     stringProperty(page.properties?.["doc_type"]) === "capture_inbox" ||
@@ -60,7 +62,7 @@ function todayString() {
   return new Date().toISOString().slice(0, 10);
 }
 
-export function stringProperty(value: unknown, fallback = "") {
+function stringProperty(value: unknown, fallback = "") {
   return typeof value === "string" ? value : fallback;
 }
 

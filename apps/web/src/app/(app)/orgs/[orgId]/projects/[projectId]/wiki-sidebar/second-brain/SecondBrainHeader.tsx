@@ -1,7 +1,5 @@
 "use client";
 
-export const SECOND_BRAIN_COLLAPSED_KEY = "kanban_second_brain_collapsed";
-
 interface Props {
   collapsed: boolean;
   onToggle: () => void;
@@ -9,6 +7,7 @@ interface Props {
   reviewCount: number;
   onCapture: () => void;
   captureDisabled: boolean;
+  bodyId: string;
 }
 
 export function SecondBrainHeader({
@@ -18,6 +17,7 @@ export function SecondBrainHeader({
   reviewCount,
   onCapture,
   captureDisabled,
+  bodyId,
 }: Props) {
   return (
     <div className="flex items-center justify-between gap-2">
@@ -25,6 +25,7 @@ export function SecondBrainHeader({
         type="button"
         onClick={onToggle}
         aria-expanded={!collapsed}
+        aria-controls={bodyId}
         title={collapsed ? "Expand Second Brain" : "Collapse Second Brain"}
         className="flex min-w-0 flex-1 items-center gap-1.5 rounded-md px-1 py-1 text-left hover:bg-gray-100"
       >

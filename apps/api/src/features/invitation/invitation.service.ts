@@ -6,6 +6,7 @@ import { generateToken, hashToken } from "../../lib/token.js";
 import { hashPassword } from "../../lib/password.js";
 import { signAccessToken } from "../../lib/jwt.js";
 import { notFound, conflict } from "../../lib/errors.js";
+import { toUserDto } from "../identity/identity-service/base.js";
 import {
   invitationTokens,
   users,
@@ -166,19 +167,7 @@ export class InvitationService {
 
     const accessToken = await signAccessToken({ sub: userId, sessionId });
     return {
-      user: {
-        id: user.id,
-        email: user.email,
-        displayName: user.displayName,
-        createdAt: user.createdAt,
-        emailVerified: user.emailVerified,
-        totpEnabled: user.totpEnabled,
-        maxOpenPanels: user.maxOpenPanels,
-        enableNotifications: user.enableNotifications,
-        maxNotifications: user.maxNotifications,
-        notificationDuration: user.notificationDuration,
-        enableSecondBrain: user.enableSecondBrain,
-      },
+      user: toUserDto(user),
       accessToken,
       refreshToken: rawRefreshToken,
     };

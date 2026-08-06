@@ -10,12 +10,12 @@ import {
   markWikiPageTriagedAction,
 } from "@/actions/wiki";
 import { FreshnessRow } from "./second-brain/FreshnessRow";
+import { SECOND_BRAIN_COLLAPSED_KEY } from "./second-brain/helpers";
 import { InboxCaptureRow } from "./second-brain/InboxCaptureRow";
-import {
-  SECOND_BRAIN_COLLAPSED_KEY,
-  SecondBrainHeader,
-} from "./second-brain/SecondBrainHeader";
+import { SecondBrainHeader } from "./second-brain/SecondBrainHeader";
 import { useSecondBrainData } from "./second-brain/useSecondBrainData";
+
+const SECOND_BRAIN_BODY_ID = "second-brain-body";
 
 interface SecondBrainPanelProps {
   orgId: string;
@@ -49,11 +49,18 @@ export function SecondBrainPanel({
     );
   }, []);
 
-  const toggleCollapsed = () => {
-    const next = !collapsed;
+  const persistCollapsed = (next: boolean) => {
     setCollapsed(next);
     window.localStorage.setItem(SECOND_BRAIN_COLLAPSED_KEY, String(next));
-    if (next) setIsCaptureOpen(false);
+  };
+
+  const toggleCollapsed = () => {
+    const next = !collapsed;
+    persistCollapsed(next);
+    if (next) {
+      setIsCaptureOpen(false);
+      setNotice(null);
+    }
   };
 
   const { inboxPage, inboxCaptures, freshnessPages, inboxCount, reviewCount } =
@@ -129,15 +136,18 @@ export function SecondBrainPanel({
         inboxCount={inboxCount}
         reviewCount={reviewCount}
         onCapture={() => {
-          setCollapsed(false);
-          window.localStorage.setItem(SECOND_BRAIN_COLLAPSED_KEY, "false");
+          persistCollapsed(false);
           setIsCaptureOpen((open) => !open);
         }}
         captureDisabled={isPending}
+        bodyId={SECOND_BRAIN_BODY_ID}
       />
 
       {!collapsed && (
-        <div className="max-h-64 overflow-y-auto scrollbar-thin">
+        <div
+          id={SECOND_BRAIN_BODY_ID}
+          className="max-h-64 overflow-y-auto scrollbar-thin"
+        >
           {notice && (
             <p
               className={`mt-2 rounded-md border px-2 py-1 text-[11px] ${
