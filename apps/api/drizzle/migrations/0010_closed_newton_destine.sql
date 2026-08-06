@@ -1,0 +1,1 @@
+ALTER TABLE `users` ADD `enable_second_brain` integer DEFAULT false NOT NULL;

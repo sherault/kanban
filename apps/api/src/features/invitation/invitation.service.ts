@@ -177,6 +177,7 @@ export class InvitationService {
         enableNotifications: user.enableNotifications,
         maxNotifications: user.maxNotifications,
         notificationDuration: user.notificationDuration,
+        enableSecondBrain: user.enableSecondBrain,
       },
       accessToken,
       refreshToken: rawRefreshToken,

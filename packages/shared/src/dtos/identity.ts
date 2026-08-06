@@ -9,6 +9,7 @@ export interface UserDto {
   enableNotifications: boolean;
   maxNotifications: number;
   notificationDuration: number;
+  enableSecondBrain: boolean;
 }
 
 export interface ApiKeyDto {

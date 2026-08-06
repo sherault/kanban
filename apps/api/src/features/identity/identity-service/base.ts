@@ -43,6 +43,7 @@ export function toUserDto(row: typeof users.$inferSelect): UserDto {
     enableNotifications: row.enableNotifications,
     maxNotifications: row.maxNotifications,
     notificationDuration: row.notificationDuration,
+    enableSecondBrain: row.enableSecondBrain,
     createdAt: row.createdAt,
   };
 }

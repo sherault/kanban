@@ -21,6 +21,9 @@ export const users = sqliteTable("users", {
     .default(true),
   maxNotifications: integer("max_notifications").notNull().default(3),
   notificationDuration: integer("notification_duration").notNull().default(5),
+  enableSecondBrain: integer("enable_second_brain", { mode: "boolean" })
+    .notNull()
+    .default(false),
   createdAt: text("created_at")
     .notNull()
     .default(sql`(datetime('now'))`),
