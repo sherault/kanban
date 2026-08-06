@@ -50,12 +50,10 @@ export function SecondBrainPanel({
   }, []);
 
   const toggleCollapsed = () => {
-    setCollapsed((previous) => {
-      const next = !previous;
-      window.localStorage.setItem(SECOND_BRAIN_COLLAPSED_KEY, String(next));
-      if (next) setIsCaptureOpen(false);
-      return next;
-    });
+    const next = !collapsed;
+    setCollapsed(next);
+    window.localStorage.setItem(SECOND_BRAIN_COLLAPSED_KEY, String(next));
+    if (next) setIsCaptureOpen(false);
   };
 
   const { inboxPage, inboxCaptures, freshnessPages, inboxCount, reviewCount } =
