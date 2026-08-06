@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState, useTransition } from "react";
+import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import type { WikiPageSummaryDto } from "@kanban/shared";
 import {
@@ -9,6 +9,9 @@ import {
   createTriageTaskForWikiPageAction,
   markWikiPageTriagedAction,
 } from "@/actions/wiki";
+import { FreshnessRow } from "./second-brain/FreshnessRow";
+import { InboxCaptureRow } from "./second-brain/InboxCaptureRow";
+import { useSecondBrainData } from "./second-brain/useSecondBrainData";
 
 interface SecondBrainPanelProps {
   orgId: string;
@@ -35,18 +38,10 @@ export function SecondBrainPanel({
   const [notice, setNotice] = useState<Notice | null>(null);
   const [isPending, startTransition] = useTransition();
 
-  const scopedPages = useMemo(
-    () =>
-      pages.filter(
-        (page) => page.projectId === null || page.projectId === projectId,
-      ),
-    [pages, projectId],
+  const { inboxPage, inboxCaptures, freshnessPages } = useSecondBrainData(
+    pages,
+    projectId,
   );
-  const inboxPage = scopedPages.find(isCaptureInboxPage);
-  const inboxCaptures = scopedPages.filter(isInboxCapture);
-  const freshnessPages = scopedPages
-    .map((page) => ({ page, reasons: freshnessReasons(page) }))
-    .filter((item) => !isInboxCapture(item.page) && item.reasons.length > 0);
 
   const openPage = (pageId: string) => {
     router.push(`/orgs/${orgId}/projects/${projectId}/wiki/${pageId}`);
@@ -250,122 +245,6 @@ function SecondBrainGroup({
   );
 }
 
-function InboxCaptureRow({
-  page,
-  disabled,
-  onOpen,
-  onTask,
-  onDone,
-}: {
-  page: WikiPageSummaryDto;
-  disabled: boolean;
-  onOpen: () => void;
-  onTask: () => void;
-  onDone: () => void;
-}) {
-  const hasTask =
-    arrayProperty(page.properties?.["related_task_ids"]).length > 0;
-
-  return (
-    <div className="rounded-md border border-gray-200 bg-white p-2">
-      <button
-        type="button"
-        onClick={onOpen}
-        className="block w-full truncate text-left text-xs font-medium text-gray-800 hover:text-blue-700"
-      >
-        {page.title}
-      </button>
-      <div className="mt-2 flex items-center gap-1">
-        <MiniButton title="Open page" onClick={onOpen} disabled={disabled}>
-          Open
-        </MiniButton>
-        <MiniButton
-          title={hasTask ? "Triage task already linked" : "Create triage task"}
-          onClick={onTask}
-          disabled={disabled || hasTask}
-        >
-          Task
-        </MiniButton>
-        <MiniButton title="Mark triaged" onClick={onDone} disabled={disabled}>
-          Done
-        </MiniButton>
-      </div>
-    </div>
-  );
-}
-
-function FreshnessRow({
-  page,
-  reasons,
-  disabled,
-  onOpen,
-  onTask,
-}: {
-  page: WikiPageSummaryDto;
-  reasons: string[];
-  disabled: boolean;
-  onOpen: () => void;
-  onTask: () => void;
-}) {
-  const freshness = objectProperty(page.properties?.["freshness"]);
-  const hasReviewTask = typeof freshness["review_task_id"] === "string";
-
-  return (
-    <div className="rounded-md border border-gray-200 bg-white p-2">
-      <button
-        type="button"
-        onClick={onOpen}
-        className="block w-full truncate text-left text-xs font-medium text-gray-800 hover:text-blue-700"
-      >
-        {page.title}
-      </button>
-      <div className="mt-1 truncate text-[10px] text-gray-500">
-        {reasons.join(", ")}
-      </div>
-      <div className="mt-2 flex items-center gap-1">
-        <MiniButton title="Open page" onClick={onOpen} disabled={disabled}>
-          Open
-        </MiniButton>
-        <MiniButton
-          title={
-            hasReviewTask
-              ? "Freshness task already linked"
-              : "Create review task"
-          }
-          onClick={onTask}
-          disabled={disabled || hasReviewTask}
-        >
-          Review
-        </MiniButton>
-      </div>
-    </div>
-  );
-}
-
-function MiniButton({
-  title,
-  onClick,
-  disabled,
-  children,
-}: {
-  title: string;
-  onClick: () => void;
-  disabled: boolean;
-  children: React.ReactNode;
-}) {
-  return (
-    <button
-      type="button"
-      title={title}
-      onClick={onClick}
-      disabled={disabled}
-      className="h-6 rounded border border-gray-200 px-2 text-[11px] font-medium text-gray-600 hover:border-gray-300 hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-50"
-    >
-      {children}
-    </button>
-  );
-}
-
 function StatusPill({ label, value }: { label: string; value: number }) {
   return (
     <span className="rounded-full border border-gray-200 bg-white px-2 py-0.5">
@@ -387,80 +266,4 @@ function PlusIcon() {
       <path d="M10 4v12M4 10h12" strokeLinecap="round" />
     </svg>
   );
-}
-
-function isCaptureInboxPage(page: WikiPageSummaryDto) {
-  return (
-    stringProperty(page.properties?.["doc_type"]) === "capture_inbox" ||
-    page.title.toLowerCase() === "second brain inbox"
-  );
-}
-
-function isInboxCapture(page: WikiPageSummaryDto) {
-  const properties = page.properties ?? {};
-  return (
-    stringProperty(properties["doc_type"]) === "capture" &&
-    stringProperty(properties["status"], "inbox") === "inbox"
-  );
-}
-
-function freshnessReasons(page: WikiPageSummaryDto) {
-  const properties = page.properties ?? {};
-  const freshness = objectProperty(properties["freshness"]);
-  const reasons = new Set<string>();
-
-  if (isDueDate(stringProperty(properties["review_after"]))) {
-    reasons.add("review_after");
-  }
-  if (
-    isDueDate(stringProperty(freshness["review_after"])) ||
-    isDueDate(stringProperty(freshness["next_review"]))
-  ) {
-    reasons.add("freshness");
-  }
-  if (isDueDate(stringProperty(properties["effective_to"]))) {
-    reasons.add("expired");
-  }
-  if (
-    properties["cite_required"] === true &&
-    arrayProperty(properties["source_urls"]).length === 0
-  ) {
-    reasons.add("sources");
-  }
-  if (
-    ["draft", "needs_validation", "unvalidated"].includes(
-      stringProperty(properties["validation_status"]),
-    )
-  ) {
-    reasons.add("validation");
-  }
-  if (["stale", "expired"].includes(stringProperty(freshness["status"]))) {
-    reasons.add(stringProperty(freshness["status"]));
-  }
-
-  return [...reasons];
-}
-
-function isDueDate(value: string) {
-  return /^\d{4}-\d{2}-\d{2}$/.test(value) && value <= todayString();
-}
-
-function todayString() {
-  return new Date().toISOString().slice(0, 10);
-}
-
-function stringProperty(value: unknown, fallback = "") {
-  return typeof value === "string" ? value : fallback;
-}
-
-function arrayProperty(value: unknown): string[] {
-  return Array.isArray(value)
-    ? value.filter((item): item is string => typeof item === "string")
-    : [];
-}
-
-function objectProperty(value: unknown): Record<string, unknown> {
-  return typeof value === "object" && value !== null && !Array.isArray(value)
-    ? (value as Record<string, unknown>)
-    : {};
 }
