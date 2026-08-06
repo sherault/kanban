@@ -60,6 +60,7 @@ export function MarkdownLink({
     const handleClick = (e: MouseEvent) => {
       if (e.metaKey || e.ctrlKey) return;
       e.preventDefault();
+      e.stopPropagation();
       if (!exists) {
         alert(`Wiki page does not exist: ${wikiPageId}`);
         return;
@@ -112,6 +113,7 @@ export function MarkdownLink({
     const handleClick = (e: MouseEvent) => {
       if (e.metaKey || e.ctrlKey) return;
       e.preventDefault();
+      e.stopPropagation();
       window.dispatchEvent(
         new CustomEvent("kanban_tab_changed", { detail: "board" }),
       );

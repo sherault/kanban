@@ -55,6 +55,15 @@ export function WikiClient({ orgId, projectId, tasks }: Props) {
     }
   }, [urlWikiPageId, openPageInSplit]);
 
+  // Keep the URL in sync with the focused split's active page. Doing this in an
+  // effect (rather than pushing from click handlers) avoids stale reads of
+  // activePageId when a click bubbles up from inside the editor.
+  const focusedPageId = splits[activeSplitIndex]?.activePageId ?? null;
+  useEffect(() => {
+    if (!focusedPageId || focusedPageId === urlWikiPageId) return;
+    router.push(`/orgs/${orgId}/projects/${projectId}/wiki/${focusedPageId}`);
+  }, [focusedPageId, urlWikiPageId, orgId, projectId, router]);
+
   useEffect(() => {
     const handleOpenPage = (e: Event) => {
       if (!(e instanceof CustomEvent) || typeof e.detail !== "string") return;
@@ -111,14 +120,7 @@ export function WikiClient({ orgId, projectId, tasks }: Props) {
             className={`flex-1 flex flex-col min-w-0 border-l border-gray-200 first:border-l-0 ${
               activeSplitIndex === idx ? "bg-white" : "bg-gray-50/50"
             }`}
-            onClick={() => {
-              setActiveSplitIndex(idx);
-              if (split.activePageId) {
-                router.push(
-                  `/orgs/${orgId}/projects/${projectId}/wiki/${split.activePageId}`,
-                );
-              }
-            }}
+            onClick={() => setActiveSplitIndex(idx)}
           >
             <WikiTabs
               activePageId={split.activePageId}
@@ -126,7 +128,6 @@ export function WikiClient({ orgId, projectId, tasks }: Props) {
               onTabClick={(id) => {
                 setActiveSplitIndex(idx);
                 openPageInSplit(id, idx);
-                router.push(`/orgs/${orgId}/projects/${projectId}/wiki/${id}`);
               }}
               onTabClose={(id) => closePageInSplit(id, idx)}
             />
