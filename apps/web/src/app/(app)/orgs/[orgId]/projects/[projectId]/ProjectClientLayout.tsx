@@ -159,7 +159,7 @@ function ProjectClientLayoutInner({
       )}
 
       <div className="flex-1 flex flex-col min-w-0 overflow-hidden relative">
-        {currentProject?.archivedAt && (
+        {activeTab === "board" && currentProject?.archivedAt && (
           <ArchivedProjectBanner projectName={currentProject.name} />
         )}
         <ProjectContentArea
