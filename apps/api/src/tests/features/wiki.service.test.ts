@@ -94,6 +94,27 @@ describe("WikiService page operations", () => {
     testDb.close();
   });
 
+  it("skips history, updatedAt and broadcast when nothing changed", async () => {
+    const { testDb, wikiSvc, events, user, org } = await setup();
+    const page = await wikiSvc.createPage(org.id, user.id, {
+      title: "Draft",
+      content: "Same",
+      properties: { state: "ready" },
+    });
+    const eventCount = events.length;
+
+    const unchanged = await wikiSvc.updatePage(page.id, user.id, {
+      title: "Draft",
+      content: "Same",
+      properties: { state: "ready" },
+    });
+
+    expect(unchanged.updatedAt).toBe(page.updatedAt);
+    expect((await wikiSvc.getHistory(page.id)).items).toHaveLength(1);
+    expect(events).toHaveLength(eventCount);
+    testDb.close();
+  });
+
   it("creates an organization root page with project wiki links", async () => {
     const { testDb, wikiSvc, user, org, project } = await setup();
 

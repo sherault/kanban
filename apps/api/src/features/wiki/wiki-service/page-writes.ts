@@ -68,20 +68,43 @@ export async function updateWikiPage(
   const existing = await getWikiPage(ctx, pageId);
   if (!existing) throw new Error("Page not found");
 
+  const titleChanged =
+    data.title !== undefined && data.title !== existing.title;
+  const contentChanged =
+    data.content !== undefined && data.content !== existing.content;
+  const propertiesChanged =
+    data.properties !== undefined &&
+    stringifyProperties(data.properties) !==
+      stringifyProperties(existing.properties);
+  const parentChanged =
+    data.parentId !== undefined && data.parentId !== existing.parentId;
+
+  // No-op save (autosave or forced): keep the page and its history untouched.
+  if (
+    !titleChanged &&
+    !contentChanged &&
+    !propertiesChanged &&
+    !parentChanged
+  ) {
+    return existing;
+  }
+
   const updateData: Partial<typeof wikiPages.$inferInsert> = {
     updatedBy: userId,
     updatedAt: new Date().toISOString(),
   };
 
-  if (data.title !== undefined) {
+  if (titleChanged && data.title !== undefined) {
     updateData.title = data.title;
     updateData.slug = generateWikiSlug(data.title);
   }
-  if (data.content !== undefined) updateData.content = data.content;
-  if (data.properties !== undefined) {
+  if (contentChanged && data.content !== undefined) {
+    updateData.content = data.content;
+  }
+  if (propertiesChanged) {
     updateData.properties = stringifyProperties(data.properties);
   }
-  if (data.parentId !== undefined) updateData.parentId = data.parentId;
+  if (parentChanged) updateData.parentId = data.parentId;
 
   const [updated] = await ctx.db
     .update(wikiPages)
@@ -89,7 +112,7 @@ export async function updateWikiPage(
     .where(eq(wikiPages.id, pageId))
     .returning();
 
-  if (data.content !== undefined || data.title !== undefined) {
+  if (titleChanged || contentChanged) {
     await ctx.db.insert(wikiPageHistory).values({
       id: uuidv4(),
       pageId,
