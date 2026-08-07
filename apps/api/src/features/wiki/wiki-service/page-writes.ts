@@ -7,6 +7,7 @@ import type {
 import { eq } from "drizzle-orm";
 import { v4 as uuidv4 } from "uuid";
 import { wikiPageHistory, wikiPages } from "../../../db/schema/wiki.js";
+import { conflict } from "../../../lib/errors.js";
 import type { WikiServiceContext } from "./context.js";
 import { generateWikiSlug, toWikiPageDto } from "./mappers.js";
 import { getWikiPage } from "./page-reads.js";
@@ -138,6 +139,11 @@ export async function deleteWikiPage(
 ): Promise<void> {
   const existing = await getWikiPage(ctx, pageId);
   if (!existing) return;
+  // Project knowledge bases hang under the index page, so deleting it would
+  // cascade over the whole organization wiki.
+  if (existing.slug === "root") {
+    throw conflict("The organization index page cannot be deleted");
+  }
 
   await ctx.db.delete(wikiPages).where(eq(wikiPages.id, pageId));
   ctx.broadcast(`org:${existing.organizationId}`, {

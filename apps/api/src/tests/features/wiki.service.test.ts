@@ -133,9 +133,37 @@ describe("WikiService page operations", () => {
         (page) =>
           page.title === "KB: Sprint" &&
           page.projectId === project.id &&
-          page.parentId === null,
+          page.parentId === root.id,
       ),
     ).toBeTruthy();
+    testDb.close();
+  });
+
+  it("nests knowledge bases of later projects under the organization index", async () => {
+    const { testDb, projectSvc, wikiSvc, user, org } = await setup();
+    const root = await wikiSvc.ensureRootPage(org.id, user.id);
+
+    const project = projectSvc.createProject(
+      org.id,
+      { name: "Roadmap" },
+      user.id,
+    );
+    const pages = await wikiSvc.listPages(org.id, user.id);
+    const kbPage = pages.find((page) => page.projectId === project.id);
+
+    expect(kbPage?.title).toBe("KB: Roadmap");
+    expect(kbPage?.parentId).toBe(root.id);
+    testDb.close();
+  });
+
+  it("refuses to delete the organization index page", async () => {
+    const { testDb, wikiSvc, user, org } = await setup();
+    const root = await wikiSvc.ensureRootPage(org.id, user.id);
+
+    await expect(wikiSvc.deletePage(root.id, user.id)).rejects.toThrow(
+      "The organization index page cannot be deleted",
+    );
+    expect(await wikiSvc.getPage(root.id)).toBeTruthy();
     testDb.close();
   });
 
@@ -166,7 +194,7 @@ describe("WikiService page operations", () => {
   it("marks deleted project knowledge bases and removes board links from the organization index", async () => {
     const { testDb, projectSvc, wikiSvc, user, org, project } = await setup();
     const projectPage = (await wikiSvc.listPages(org.id, user.id)).find(
-      (page) => page.projectId === project.id && page.parentId === null,
+      (page) => page.projectId === project.id,
     );
 
     expect(projectPage).toBeTruthy();

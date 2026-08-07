@@ -1,5 +1,5 @@
 import type { WikiPageDto } from "@kanban/shared";
-import { and, eq, isNull } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 import { v4 as uuidv4 } from "uuid";
 import { memberships, projects } from "../../../db/schema/index.js";
 import { wikiPageHistory, wikiPages } from "../../../db/schema/wiki.js";
@@ -35,15 +35,8 @@ export function ensureOrganizationIndexPage(
 export function syncOrganizationIndexForProjectCreated(
   ctx: WikiServiceContext,
   orgId: string,
-  project: ProjectIndexRow,
   userId?: string,
 ): WikiPageDto {
-  findOrCreateProjectKnowledgeBase(
-    ctx,
-    orgId,
-    resolveIndexUserId(ctx, orgId, userId),
-    project,
-  );
   return syncOrganizationIndex(ctx, orgId, userId);
 }
 
@@ -55,7 +48,8 @@ export function syncOrganizationIndexForProjectDeleted(
   deletedAt = new Date(),
 ): WikiPageDto {
   const actorId = resolveIndexUserId(ctx, orgId, userId);
-  const topPage = findProjectKnowledgeBase(ctx, orgId, project.id);
+  const rootPage = findOrCreateOrganizationIndexPage(ctx, orgId, actorId);
+  const topPage = findProjectKnowledgeBase(ctx, orgId, project.id, rootPage.id);
   if (topPage) markProjectKnowledgeBaseDeleted(ctx, topPage, actorId);
 
   return syncOrganizationIndex(ctx, orgId, actorId, {
@@ -75,36 +69,50 @@ function syncOrganizationIndex(
   options: SyncIndexOptions = {},
 ): WikiPageDto {
   const actorId = resolveIndexUserId(ctx, orgId, userId);
-  const rootPage = findOrganizationIndexPage(ctx, orgId);
+  // Knowledge base pages are created as children of the index, so the index
+  // page has to exist before the automated block is built.
+  const rootPage = findOrCreateOrganizationIndexPage(ctx, orgId, actorId);
   const liveProjects = listActiveProjects(ctx, orgId, options.excludeProjectId);
   const deletedProjects = mergeDeletedProjectEntries(
-    extractDeletedProjectEntries(rootPage?.content ?? ""),
+    extractDeletedProjectEntries(rootPage.content),
     options.deletedProject,
   );
   const content = upsertAutomatedIndexBlock(
-    rootPage?.content ?? defaultOrganizationIndexContent(),
+    rootPage.content,
     buildAutomatedIndexBlock(
       ctx,
       orgId,
       actorId,
+      rootPage.id,
       liveProjects,
       deletedProjects,
     ),
   );
 
-  if (!rootPage) {
-    return createTrackedWikiPage(ctx, orgId, actorId, {
-      title: "Organization Index",
-      slug: "root",
-      content,
-      projectId: null,
-      parentId: null,
-    });
-  }
-
   if (rootPage.content === content) return toWikiPageDto(rootPage);
 
   return updateTrackedWikiPage(ctx, rootPage, actorId, { content });
+}
+
+function findOrCreateOrganizationIndexPage(
+  ctx: WikiServiceContext,
+  orgId: string,
+  userId: string,
+): WikiPageRow {
+  const existing = findOrganizationIndexPage(ctx, orgId);
+  if (existing) return existing;
+
+  createTrackedWikiPage(ctx, orgId, userId, {
+    title: "Organization Index",
+    slug: "root",
+    content: defaultOrganizationIndexContent(),
+    projectId: null,
+    parentId: null,
+  });
+
+  const created = findOrganizationIndexPage(ctx, orgId);
+  if (!created) throw new Error("Failed to create organization index page");
+  return created;
 }
 
 function findOrganizationIndexPage(
@@ -137,6 +145,7 @@ function buildAutomatedIndexBlock(
   ctx: WikiServiceContext,
   orgId: string,
   userId: string,
+  rootPageId: string,
   activeProjects: ProjectIndexRow[],
   deletedProjects: DeletedProjectEntry[],
 ): string {
@@ -150,6 +159,7 @@ function buildAutomatedIndexBlock(
         ctx,
         orgId,
         userId,
+        rootPageId,
         project,
       ).id;
       lines.push(
@@ -178,6 +188,7 @@ function findProjectKnowledgeBase(
   ctx: WikiServiceContext,
   orgId: string,
   projectId: string,
+  rootPageId: string,
 ): WikiPageRow | undefined {
   return ctx.db
     .select()
@@ -186,7 +197,7 @@ function findProjectKnowledgeBase(
       and(
         eq(wikiPages.organizationId, orgId),
         eq(wikiPages.projectId, projectId),
-        isNull(wikiPages.parentId),
+        eq(wikiPages.parentId, rootPageId),
       ),
     )
     .limit(1)
@@ -197,9 +208,10 @@ function findOrCreateProjectKnowledgeBase(
   ctx: WikiServiceContext,
   orgId: string,
   userId: string,
+  rootPageId: string,
   project: ProjectIndexRow,
 ): WikiPageDto {
-  const existing = findProjectKnowledgeBase(ctx, orgId, project.id);
+  const existing = findProjectKnowledgeBase(ctx, orgId, project.id, rootPageId);
   if (existing) return toWikiPageDto(existing);
 
   const title = projectKnowledgeBaseTitle(project.name);
@@ -207,7 +219,7 @@ function findOrCreateProjectKnowledgeBase(
     title,
     content: `# ${title}\n\nDocumentation for project ${project.name} starts here.`,
     projectId: project.id,
-    parentId: null,
+    parentId: rootPageId,
   });
 }
 

@@ -42,7 +42,6 @@ export class ProjectService {
     syncOrganizationIndexForProjectCreated(
       { db: this.db, broadcast: this.broadcast },
       orgId,
-      row,
       userId,
     );
     return dto;

@@ -92,6 +92,13 @@
       "when": 1786060800000,
       "tag": "0012_rename_project_knowledge_bases",
       "breakpoints": true
+    },
+    {
+      "idx": 13,
+      "version": "6",
+      "when": 1786061400000,
+      "tag": "0013_nest_knowledge_bases_under_index",
+      "breakpoints": true
     }
   ]
 }
