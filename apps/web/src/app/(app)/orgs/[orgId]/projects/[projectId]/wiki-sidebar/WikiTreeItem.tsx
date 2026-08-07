@@ -40,9 +40,16 @@ export function WikiTreeItem({
     ? { transform: `translate3d(${transform.x}px, ${transform.y}px, 0)` }
     : undefined;
 
+  // Only on entering edit mode: focus once and park the caret at the end.
+  // Depending on draftTitle would re-run (and reset the caret) on every keystroke.
+  const isEditing = draftTitle !== null;
   useEffect(() => {
-    if (draftTitle !== null) inputRef.current?.select();
-  }, [draftTitle]);
+    if (!isEditing) return;
+    const input = inputRef.current;
+    if (!input) return;
+    input.focus();
+    input.setSelectionRange(input.value.length, input.value.length);
+  }, [isEditing]);
 
   const commitRename = async () => {
     const nextTitle = draftTitle?.trim() ?? "";
@@ -98,11 +105,10 @@ export function WikiTreeItem({
             </svg>
           )}
         </div>
-        {draftTitle !== null ? (
+        {isEditing ? (
           <input
             ref={inputRef}
-            autoFocus
-            value={draftTitle}
+            value={draftTitle ?? ""}
             disabled={isSaving}
             onChange={(event) => setDraftTitle(event.target.value)}
             onBlur={commitRename}
