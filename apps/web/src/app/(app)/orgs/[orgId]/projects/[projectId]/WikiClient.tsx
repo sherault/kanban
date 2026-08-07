@@ -26,9 +26,11 @@ interface Props {
   orgId: string;
   projectId: string;
   tasks?: TaskDto[];
+  /** False while the board tab is showing — this tree stays mounted but hidden. */
+  isActive: boolean;
 }
 
-export function WikiClient({ orgId, projectId, tasks }: Props) {
+export function WikiClient({ orgId, projectId, tasks, isActive }: Props) {
   const router = useRouter();
   const {
     pages,
@@ -130,10 +132,13 @@ export function WikiClient({ orgId, projectId, tasks }: Props) {
   // activePageId when a click bubbles up from inside the editor.
   const focusedPageId = splits[activeSplitIndex]?.activePageId ?? null;
   useEffect(() => {
+    // Restored tabs give us a focused page even on the board, so pushing here
+    // unconditionally would bounce the board straight to the wiki.
+    if (!isActive) return;
     if (!isRestoredRef.current) return;
     if (!focusedPageId || focusedPageId === urlWikiPageId) return;
     router.push(`/orgs/${orgId}/projects/${projectId}/wiki/${focusedPageId}`);
-  }, [focusedPageId, urlWikiPageId, orgId, projectId, router]);
+  }, [isActive, focusedPageId, urlWikiPageId, orgId, projectId, router]);
 
   useEffect(() => {
     const handleOpenPage = (e: Event) => {
