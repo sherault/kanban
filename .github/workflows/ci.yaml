@@ -14,11 +14,11 @@ jobs:
             code: ${{ steps.filter.outputs.code }}
         steps:
             - name: Checkout
-              uses: actions/checkout@v4
+              uses: actions/checkout@v7
 
             - name: Path Filter
               id: filter
-              uses: dorny/paths-filter@v3
+              uses: dorny/paths-filter@v4
               with:
                   filters: |
                       code:
@@ -38,15 +38,15 @@ jobs:
         runs-on: ubuntu-latest
         steps:
             - name: Checkout
-              uses: actions/checkout@v4
+              uses: actions/checkout@v7
 
             - name: Setup pnpm
-              uses: pnpm/action-setup@v4
+              uses: pnpm/action-setup@v6
               with:
                   version: 10.33.0
 
             - name: Setup Node
-              uses: actions/setup-node@v4
+              uses: actions/setup-node@v7
               with:
                   node-version: "24"
                   cache: "pnpm"
@@ -64,15 +64,15 @@ jobs:
         runs-on: ubuntu-latest
         steps:
             - name: Checkout
-              uses: actions/checkout@v4
+              uses: actions/checkout@v7
 
             - name: Setup pnpm
-              uses: pnpm/action-setup@v4
+              uses: pnpm/action-setup@v6
               with:
                   version: 10.33.0
 
             - name: Setup Node
-              uses: actions/setup-node@v4
+              uses: actions/setup-node@v7
               with:
                   node-version: "24"
                   cache: "pnpm"
@@ -90,7 +90,7 @@ jobs:
         runs-on: ubuntu-latest
         steps:
             - name: Checkout
-              uses: actions/checkout@v4
+              uses: actions/checkout@v7
 
             - name: Get latest release
               id: get_release
@@ -102,12 +102,12 @@ jobs:
                   echo "tag=$LATEST_TAG" >> $GITHUB_OUTPUT
 
             - name: Setup pnpm
-              uses: pnpm/action-setup@v4
+              uses: pnpm/action-setup@v6
               with:
                   version: 10.33.0
 
             - name: Setup Node
-              uses: actions/setup-node@v4
+              uses: actions/setup-node@v7
               with:
                   node-version: "24"
                   cache: "pnpm"
@@ -141,17 +141,17 @@ jobs:
         runs-on: ubuntu-latest
         steps:
             - name: Checkout
-              uses: actions/checkout@v4
+              uses: actions/checkout@v7
               with:
                   fetch-depth: 0
 
             - name: Setup pnpm
-              uses: pnpm/action-setup@v4
+              uses: pnpm/action-setup@v6
               with:
                   version: 10.33.0
 
             - name: Setup Node
-              uses: actions/setup-node@v4
+              uses: actions/setup-node@v7
               with:
                   node-version: "24"
                   cache: "pnpm"
@@ -160,6 +160,6 @@ jobs:
               run: pnpm install --frozen-lockfile
 
             - name: Semantic Release
-              uses: cycjimmy/semantic-release-action@v4
+              uses: cycjimmy/semantic-release-action@v6
               env:
                   GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
