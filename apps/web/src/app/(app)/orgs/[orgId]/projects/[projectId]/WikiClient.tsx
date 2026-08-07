@@ -7,7 +7,7 @@ import { useWiki } from "@/context/WikiContext";
 import { readWikiTabs, writeWikiTabs } from "@/lib/wikiTabsStorage";
 import dynamic from "next/dynamic";
 
-import { useRouter, useParams } from "next/navigation";
+import { useRouter, useParams, usePathname } from "next/navigation";
 
 const WikiEditor = dynamic(
   () => import("@/components/WikiEditor").then((m) => m.WikiEditor),
@@ -26,11 +26,9 @@ interface Props {
   orgId: string;
   projectId: string;
   tasks?: TaskDto[];
-  /** False while the board tab is showing — this tree stays mounted but hidden. */
-  isActive: boolean;
 }
 
-export function WikiClient({ orgId, projectId, tasks, isActive }: Props) {
+export function WikiClient({ orgId, projectId, tasks }: Props) {
   const router = useRouter();
   const {
     pages,
@@ -47,6 +45,16 @@ export function WikiClient({ orgId, projectId, tasks, isActive }: Props) {
   const params = useParams();
   const wikiParam = params.wikiPageId;
   const urlWikiPageId = wikiParam as string | undefined;
+
+  // This tree stays mounted on the board tab (hidden via CSS), so URL syncing
+  // has to be gated on the route. Read it from the pathname rather than the
+  // layout's `activeTab` state: that state is set in a parent effect, which
+  // runs after this component's effects, so it still says "wiki" on the render
+  // that lands on the board — long enough to push us back to the wiki.
+  const pathname = usePathname();
+  const isWikiRoute = pathname.startsWith(
+    `/orgs/${orgId}/projects/${projectId}/wiki`,
+  );
 
   const activeSplitRef = useRef(activeSplitIndex);
   useEffect(() => {
@@ -134,11 +142,11 @@ export function WikiClient({ orgId, projectId, tasks, isActive }: Props) {
   useEffect(() => {
     // Restored tabs give us a focused page even on the board, so pushing here
     // unconditionally would bounce the board straight to the wiki.
-    if (!isActive) return;
+    if (!isWikiRoute) return;
     if (!isRestoredRef.current) return;
     if (!focusedPageId || focusedPageId === urlWikiPageId) return;
     router.push(`/orgs/${orgId}/projects/${projectId}/wiki/${focusedPageId}`);
-  }, [isActive, focusedPageId, urlWikiPageId, orgId, projectId, router]);
+  }, [isWikiRoute, focusedPageId, urlWikiPageId, orgId, projectId, router]);
 
   useEffect(() => {
     const handleOpenPage = (e: Event) => {

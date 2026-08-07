@@ -43,12 +43,7 @@ export function ProjectContentArea({
         />
       </div>
       <div className={`h-full ${activeTab === "wiki" ? "block" : "hidden"}`}>
-        <WikiClient
-          orgId={orgId}
-          projectId={projectId}
-          tasks={initialTasks}
-          isActive={activeTab === "wiki"}
-        />
+        <WikiClient orgId={orgId} projectId={projectId} tasks={initialTasks} />
       </div>
       <div className="hidden">{children}</div>
     </main>
