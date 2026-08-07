@@ -17,6 +17,9 @@ export function ProjectListClient({ projects, orgId }: Props) {
     string | null
   >(null);
 
+  const activeProjects = projects.filter((p) => p.archivedAt === null);
+  const archivedProjects = projects.filter((p) => p.archivedAt !== null);
+
   return (
     <div className="max-w-4xl mx-auto">
       <nav className="flex items-center gap-1 text-sm text-gray-500 mb-6 font-medium animate-in slide-in-from-left-4 duration-300">
@@ -47,7 +50,7 @@ export function ProjectListClient({ projects, orgId }: Props) {
         </div>
       </div>
 
-      {projects.length === 0 ? (
+      {activeProjects.length === 0 ? (
         <div className="text-center py-24 bg-gray-50/50 rounded-3xl border-2 border-dashed border-gray-100 animate-in fade-in duration-700">
           <div className="text-4xl mb-4">📂</div>
           <p className="text-xl font-semibold text-gray-900 mb-2">
@@ -59,7 +62,7 @@ export function ProjectListClient({ projects, orgId }: Props) {
         </div>
       ) : (
         <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-2 animate-in fade-in slide-in-from-bottom-6 duration-700">
-          {projects.map((p) => (
+          {activeProjects.map((p) => (
             <div key={p.id} className="relative group">
               <Link
                 href={`/orgs/${orgId}/projects/${p.id}`}
@@ -106,6 +109,68 @@ export function ProjectListClient({ projects, orgId }: Props) {
             </div>
           ))}
         </div>
+      )}
+
+      {archivedProjects.length > 0 && (
+        <details className="mt-10 group/archived">
+          <summary className="cursor-pointer list-none flex items-center gap-2 text-sm font-semibold text-gray-500 hover:text-gray-700 transition-colors select-none">
+            <span className="transition-transform group-open/archived:rotate-90">
+              ▶
+            </span>
+            Archived projects ({archivedProjects.length})
+          </summary>
+          <div className="grid gap-6 sm:grid-cols-2 mt-6">
+            {archivedProjects.map((p) => (
+              <div key={p.id} className="relative group">
+                <Link
+                  href={`/orgs/${orgId}/projects/${p.id}`}
+                  className="block bg-gray-50 border border-gray-200 rounded-2xl p-6 opacity-75 hover:opacity-100 hover:border-gray-400 transition-all duration-300 h-full"
+                >
+                  <div className="flex items-center gap-2 pr-10">
+                    <span className="font-bold text-gray-700 text-lg truncate">
+                      {p.name}
+                    </span>
+                    <span className="shrink-0 text-[10px] font-bold uppercase tracking-wide text-amber-700 bg-amber-100 px-2 py-0.5 rounded-full">
+                      Archived
+                    </span>
+                  </div>
+                  <div className="text-xs font-medium text-gray-400 mt-2">
+                    Archived{" "}
+                    {new Date(p.archivedAt as string).toLocaleDateString(
+                      undefined,
+                      { month: "short", day: "numeric", year: "numeric" },
+                    )}
+                  </div>
+                </Link>
+                <button
+                  onClick={() => setActiveProjectSettings(p.id)}
+                  className="absolute top-6 right-6 text-gray-300 hover:text-blue-600 hover:rotate-90 transition-all duration-300 opacity-0 group-hover:opacity-100 p-2"
+                  title="Project settings"
+                >
+                  <svg
+                    className="w-5 h-5"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"
+                    />
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"
+                    />
+                  </svg>
+                </button>
+              </div>
+            ))}
+          </div>
+        </details>
       )}
 
       {activeOrgSettings && (
