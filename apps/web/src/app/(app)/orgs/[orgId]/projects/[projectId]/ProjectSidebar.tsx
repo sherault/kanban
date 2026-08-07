@@ -25,11 +25,14 @@ export function ProjectSidebar({ projects, orgId, projectId }: Props) {
   const [activeProjectSettings, setActiveProjectSettings] = useState<
     string | null
   >(null);
-  // null = follow the default (open when the current project is archived);
-  // true/false = the user's explicit choice for this session.
-  const [archivedOverride, setArchivedOverride] = useState<boolean | null>(
-    null,
-  );
+  // The user's explicit choice for the archived section, scoped to the
+  // project it was made on. Navigating to a different project falls back to
+  // the derived default (open when the current project is archived) instead
+  // of carrying a stale override along — see showArchived below.
+  const [archivedOverride, setArchivedOverride] = useState<{
+    projectId: string;
+    open: boolean;
+  } | null>(null);
   const hoverTimerRef = useRef<NodeJS.Timeout | null>(null);
 
   useEffect(() => {
@@ -70,7 +73,10 @@ export function ProjectSidebar({ projects, orgId, projectId }: Props) {
   const activeProjects = projects.filter((p) => p.archivedAt === null);
   const archivedProjects = projects.filter((p) => p.archivedAt !== null);
   const currentIsArchived = archivedProjects.some((p) => p.id === projectId);
-  const showArchived = archivedOverride ?? currentIsArchived;
+  const showArchived =
+    archivedOverride?.projectId === projectId
+      ? archivedOverride.open
+      : currentIsArchived;
 
   return (
     <div
@@ -143,7 +149,9 @@ export function ProjectSidebar({ projects, orgId, projectId }: Props) {
             {archivedProjects.length > 0 && (
               <div className="space-y-0.5">
                 <button
-                  onClick={() => setArchivedOverride(!showArchived)}
+                  onClick={() =>
+                    setArchivedOverride({ projectId, open: !showArchived })
+                  }
                   className="w-full flex items-center gap-1.5 px-3 py-2 rounded-md text-sm text-gray-500 hover:bg-gray-100 transition-colors"
                 >
                   <span

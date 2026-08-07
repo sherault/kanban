@@ -54,10 +54,14 @@ export function ProjectListClient({ projects, orgId }: Props) {
         <div className="text-center py-24 bg-gray-50/50 rounded-3xl border-2 border-dashed border-gray-100 animate-in fade-in duration-700">
           <div className="text-4xl mb-4">📂</div>
           <p className="text-xl font-semibold text-gray-900 mb-2">
-            No projects yet
+            {archivedProjects.length === 0
+              ? "No projects yet"
+              : "No active projects"}
           </p>
           <p className="text-sm text-gray-500 max-w-xs mx-auto">
-            Create a project to start organizing your work and collaboration.
+            {archivedProjects.length === 0
+              ? "Create a project to start organizing your work and collaboration."
+              : "All your projects are archived. Create a new one, or check the archived projects below."}
           </p>
         </div>
       ) : (
