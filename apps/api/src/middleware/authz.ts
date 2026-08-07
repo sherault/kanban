@@ -2,14 +2,9 @@ import { eq, and } from "drizzle-orm";
 import type { Context, MiddlewareHandler } from "hono";
 import type { AppDb, HonoEnv } from "../types.js";
 import { forbidden } from "../lib/errors.js";
+import { hasMinRole } from "../lib/roles.js";
 import { memberships } from "../db/schema/index.js";
 import type { Role } from "@kanban/shared";
-
-const ROLE_ORDER: Role[] = ["member", "manager", "owner"];
-
-function hasMinRole(userRole: Role, minRole: Role): boolean {
-  return ROLE_ORDER.indexOf(userRole) >= ROLE_ORDER.indexOf(minRole);
-}
 
 export function makeAuthz(db: AppDb) {
   return {

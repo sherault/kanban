@@ -1,6 +1,7 @@
 import { describe, it, expect, beforeAll } from "vitest";
 import { createTestDb, loginTestUser } from "../../db/test-utils.js";
 import { createApp } from "../../app.js";
+import { memberships } from "../../db/schema/index.js";
 import { ProjectService } from "../../features/project/project.service.js";
 import { registerProjectTools } from "../../features/mcp/mcp-server/project-tools.js";
 
@@ -48,7 +49,35 @@ async function setup() {
   const project = svc.createProject(org.id, { name: "Sprint" }, userId);
   const { server, handlers } = collectTools();
   registerProjectTools(server as never, svc, userId);
-  return { handlers, orgId: org.id, project, close: testDb.close };
+  return {
+    app,
+    db: testDb.db,
+    accessToken,
+    svc,
+    handlers,
+    orgId: org.id,
+    project,
+    close: testDb.close,
+  };
+}
+
+/** Registers a second set of MCP tool handlers acting as `memberUserId`. */
+function toolsFor(svc: ProjectService, memberUserId: string) {
+  const { server, handlers } = collectTools();
+  registerProjectTools(server as never, svc, memberUserId);
+  return handlers;
+}
+
+/** Seeds a membership directly, bypassing the co-visibility constraint on
+ * POST /organizations/:orgId/members (see organization-member-search.test.ts
+ * for the same pattern). */
+function addMembership(
+  db: ReturnType<typeof createTestDb>["db"],
+  orgId: string,
+  userId: string,
+  role: "member" | "manager" | "owner" = "member",
+) {
+  db.insert(memberships).values({ organizationId: orgId, userId, role }).run();
 }
 
 describe("archive_project / restore_project MCP tools", () => {
@@ -98,6 +127,72 @@ describe("archive_project / restore_project MCP tools", () => {
     expect(() =>
       handlers.get("archive_project")!({ orgId, projectId: project.id }),
     ).toThrow(/already archived/);
+    close();
+  });
+});
+
+describe("archive_project / restore_project MCP tools: role gate", () => {
+  it("rejects archive_project for a plain member", async () => {
+    const { app, db, svc, orgId, project, close } = await setup();
+    const { userId: bobId } = await loginTestUser(app, db, {
+      email: "bob@example.com",
+      password: "password123",
+      displayName: "Bob",
+    });
+    addMembership(db, orgId, bobId, "member");
+    const bobHandlers = toolsFor(svc, bobId);
+
+    expect(() =>
+      bobHandlers.get("archive_project")!({ orgId, projectId: project.id }),
+    ).toThrow();
+    close();
+  });
+
+  it("rejects restore_project for a plain member", async () => {
+    const { app, db, svc, orgId, project, close } = await setup();
+    svc.archiveProject(orgId, project.id, undefined);
+    const { userId: bobId } = await loginTestUser(app, db, {
+      email: "bob@example.com",
+      password: "password123",
+      displayName: "Bob",
+    });
+    addMembership(db, orgId, bobId, "member");
+    const bobHandlers = toolsFor(svc, bobId);
+
+    expect(() =>
+      bobHandlers.get("restore_project")!({ orgId, projectId: project.id }),
+    ).toThrow();
+    close();
+  });
+
+  it("still allows archive_project / restore_project for a manager", async () => {
+    const { app, db, svc, orgId, project, close } = await setup();
+    const { userId: carolId } = await loginTestUser(app, db, {
+      email: "carol@example.com",
+      password: "password123",
+      displayName: "Carol",
+    });
+    addMembership(db, orgId, carolId, "manager");
+    const carolHandlers = toolsFor(svc, carolId);
+
+    const archived = parse(
+      carolHandlers.get("archive_project")!({ orgId, projectId: project.id }),
+    );
+    expect(archived.archivedAt).toMatch(/^\d{4}-\d{2}-\d{2}T/);
+
+    const restored = parse(
+      carolHandlers.get("restore_project")!({ orgId, projectId: project.id }),
+    );
+    expect(restored.archivedAt).toBeNull();
+    close();
+  });
+
+  it("still allows archive_project for the owner", async () => {
+    const { handlers, orgId, project, close } = await setup();
+    const archived = parse(
+      handlers.get("archive_project")!({ orgId, projectId: project.id }),
+    );
+    expect(archived.archivedAt).toMatch(/^\d{4}-\d{2}-\d{2}T/);
     close();
   });
 });

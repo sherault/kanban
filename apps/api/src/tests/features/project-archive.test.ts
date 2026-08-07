@@ -1,6 +1,7 @@
 import { describe, it, expect, beforeAll } from "vitest";
 import { createTestDb, loginTestUser } from "../../db/test-utils.js";
 import { createApp } from "../../app.js";
+import { memberships } from "../../db/schema/index.js";
 
 beforeAll(() => {
   process.env["JWT_SECRET"] = "test-jwt-secret-must-be-at-least-32-chars!!";
@@ -63,6 +64,18 @@ function restore(
     method: "POST",
     headers: auth(token),
   });
+}
+
+/** Seeds a membership directly, bypassing the co-visibility constraint on
+ * POST /organizations/:orgId/members (see organization-member-search.test.ts
+ * for the same pattern). */
+function addMembership(
+  db: ReturnType<typeof createTestDb>["db"],
+  orgId: string,
+  userId: string,
+  role: "member" | "manager" | "owner" = "member",
+) {
+  db.insert(memberships).values({ organizationId: orgId, userId, role }).run();
 }
 
 describe("POST /organizations/:orgId/projects/:projectId/archive", () => {
@@ -132,6 +145,39 @@ describe("POST /organizations/:orgId/projects/:projectId/restore", () => {
     const { app, accessToken, orgId, close } = await setup();
     const res = await restore(app, accessToken, orgId, "does-not-exist");
     expect(res.status).toBe(404);
+    close();
+  });
+});
+
+describe("Authorization", () => {
+  it("returns 403 when a plain member tries to archive a project", async () => {
+    const { app, db, orgId, projectId, close } = await setup();
+
+    const { accessToken: bobToken, userId: bobId } = await loginTestUser(
+      app,
+      db,
+      { email: "bob@example.com", password: "password123", displayName: "Bob" },
+    );
+    addMembership(db, orgId, bobId, "member");
+
+    const res = await archive(app, bobToken, orgId, projectId);
+    expect(res.status).toBe(403);
+    close();
+  });
+
+  it("returns 403 when a plain member tries to restore an archived project", async () => {
+    const { app, db, accessToken, orgId, projectId, close } = await setup();
+    await archive(app, accessToken, orgId, projectId);
+
+    const { accessToken: bobToken, userId: bobId } = await loginTestUser(
+      app,
+      db,
+      { email: "bob@example.com", password: "password123", displayName: "Bob" },
+    );
+    addMembership(db, orgId, bobId, "member");
+
+    const res = await restore(app, bobToken, orgId, projectId);
+    expect(res.status).toBe(403);
     close();
   });
 });

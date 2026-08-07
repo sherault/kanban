@@ -1,10 +1,11 @@
-import { eq } from "drizzle-orm";
+import { eq, and } from "drizzle-orm";
 import type { AppDb, Broadcaster } from "../../types.js";
 import { noopBroadcaster } from "../../types.js";
-import type { ProjectDto } from "@kanban/shared";
+import type { ProjectDto, Role } from "@kanban/shared";
 import { generateId } from "../../lib/id.js";
-import { notFound, unprocessable } from "../../lib/errors.js";
-import { projects } from "../../db/schema/index.js";
+import { forbidden, notFound, unprocessable } from "../../lib/errors.js";
+import { hasMinRole } from "../../lib/roles.js";
+import { memberships, projects } from "../../db/schema/index.js";
 import {
   syncOrganizationIndexForProjectArchived,
   syncOrganizationIndexForProjectCreated,
@@ -92,6 +93,7 @@ export class ProjectService {
     userId?: string,
   ): ProjectDto {
     const existing = this.requireProject(orgId, projectId);
+    this.requireManagerRole(orgId, userId);
     if (existing.archivedAt) throw unprocessable("Project is already archived");
     const updated = this.db
       .update(projects)
@@ -107,6 +109,7 @@ export class ProjectService {
       orgId,
       { id: updated.id, name: updated.name },
       userId,
+      updated.archivedAt ? new Date(updated.archivedAt) : undefined,
     );
     return dto;
   }
@@ -117,6 +120,7 @@ export class ProjectService {
     userId?: string,
   ): ProjectDto {
     const existing = this.requireProject(orgId, projectId);
+    this.requireManagerRole(orgId, userId);
     if (!existing.archivedAt) throw unprocessable("Project is not archived");
     const updated = this.db
       .update(projects)
@@ -134,6 +138,29 @@ export class ProjectService {
       userId,
     );
     return dto;
+  }
+
+  /**
+   * Defence in depth for entry points that don't go through HTTP middleware
+   * (e.g. the MCP server). When userId is present, only managers and owners
+   * may archive/restore. Internal call paths that pass no userId (wiki sync,
+   * tests) are left untouched.
+   */
+  private requireManagerRole(orgId: string, userId?: string): void {
+    if (!userId) return;
+    const membership = this.db
+      .select({ role: memberships.role })
+      .from(memberships)
+      .where(
+        and(
+          eq(memberships.userId, userId),
+          eq(memberships.organizationId, orgId),
+        ),
+      )
+      .get();
+    if (!membership || !hasMinRole(membership.role as Role, "manager")) {
+      throw forbidden();
+    }
   }
 
   deleteProject(orgId: string, projectId: string, userId?: string): void {
