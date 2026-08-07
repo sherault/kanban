@@ -81,22 +81,35 @@ export function registerWikiTools(
   server.registerTool(
     "update_wiki_page",
     {
-      description: `Update an existing wiki page (title, content, parent, or metadata properties). ${KANBAN_LINK_GUIDANCE} ${WIKI_PROPERTIES_GUIDANCE}`,
+      description: `Partially update an existing wiki page (title, content, parent, or metadata properties). Only the fields you pass are changed; omitted fields keep their current value. Passing properties replaces the whole properties object — use set_wiki_page_property to change a single key. ${KANBAN_LINK_GUIDANCE} ${WIKI_PROPERTIES_GUIDANCE}`,
       inputSchema: {
         pageId: z.string().describe("Wiki Page ID"),
-        title: z.string().min(1).max(200).optional().describe("New title"),
+        title: z
+          .string()
+          .min(1)
+          .max(200)
+          .optional()
+          .describe("New title. Omit to keep the current title."),
         content: z
           .string()
           .optional()
           .describe(
-            "New human-readable Markdown content. Use wiki:// and task:// Markdown links for durable references.",
+            "New human-readable Markdown content. Use wiki:// and task:// Markdown links for durable references. Omit to keep the current content.",
           ),
-        parentId: z.string().optional().describe("New parent page ID"),
+        parentId: z
+          .string()
+          .nullable()
+          .optional()
+          .describe(
+            "New parent page ID. Omit to keep the current parent, or pass null to detach the page.",
+          ),
         properties: z
           .record(z.string(), z.any())
           .nullable()
           .optional()
-          .describe("New frontmatter-like metadata properties"),
+          .describe(
+            "New frontmatter-like metadata properties. Replaces the whole properties object. Omit to keep the current properties, or pass null to clear them.",
+          ),
       },
     },
     async ({ pageId, title, content, parentId, properties }) =>
@@ -104,12 +117,7 @@ export function registerWikiTools(
         await wikiSvc.updatePage(
           pageId,
           userId,
-          {
-            title,
-            content,
-            parentId,
-            properties: properties ?? null,
-          },
+          { title, content, parentId, properties },
           "mcp",
         ),
       ),
@@ -158,9 +166,7 @@ export function registerWikiTools(
       }
 
       return jsonText(
-        await wikiSvc.updatePage(pageId, userId, {
-          properties,
-        }),
+        await wikiSvc.updatePage(pageId, userId, { properties }, "mcp"),
       );
     },
   );
