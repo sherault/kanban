@@ -1,22 +1,119 @@
+"use client";
+
+import { useState } from "react";
 import type { ProjectDto } from "@kanban/shared";
 
 export function ProjectDangerTab({
   project,
   confirmDeleteText,
   deleteError,
+  archiveError,
   isPending,
   onConfirmTextChange,
   onDelete,
+  onArchive,
+  onRestore,
 }: {
   project: ProjectDto;
   confirmDeleteText: string;
   deleteError: string | null;
+  archiveError: string | null;
   isPending: boolean;
   onConfirmTextChange: (value: string) => void;
   onDelete: () => void;
+  onArchive: () => void;
+  onRestore: () => void;
 }) {
+  const [confirmingArchive, setConfirmingArchive] = useState(false);
+  const isArchived = project.archivedAt !== null;
+
   return (
     <div className="space-y-6 animate-in fade-in slide-in-from-bottom-2 duration-300">
+      <div className="bg-amber-50/50 border border-amber-100 rounded-xl p-8 shadow-sm">
+        <div className="flex items-start gap-4 mb-6">
+          <div className="w-12 h-12 rounded-full bg-amber-100 flex items-center justify-center shrink-0 text-xl">
+            📦
+          </div>
+          <div>
+            <h4 className="text-lg font-bold text-amber-900">
+              {isArchived ? "Restore Project" : "Archive Project"}
+            </h4>
+            <p className="text-sm text-amber-800 mt-1">
+              {isArchived ? (
+                <>
+                  Archived on{" "}
+                  <span className="font-bold">
+                    {new Date(project.archivedAt as string).toLocaleDateString(
+                      undefined,
+                      { month: "short", day: "numeric", year: "numeric" },
+                    )}
+                  </span>
+                  . Restoring puts it back in the main project lists and removes
+                  the archive notice from its wiki page.
+                </>
+              ) : (
+                <>
+                  Archiving hides{" "}
+                  <span className="font-bold">"{project.name}"</span> from the
+                  main project lists and adds an archive notice to its wiki
+                  page. Nothing is deleted, the project stays editable, and you
+                  can restore it at any time.
+                </>
+              )}
+            </p>
+          </div>
+        </div>
+
+        {isArchived ? (
+          <button
+            onClick={onRestore}
+            disabled={isPending}
+            className="w-full px-4 py-3 text-sm font-bold text-white bg-amber-600 rounded-lg hover:bg-amber-700 transition-all shadow-md shadow-amber-200 disabled:opacity-50 disabled:cursor-not-allowed active:scale-[0.98]"
+          >
+            {isPending ? "Restoring Project..." : "Restore Project"}
+          </button>
+        ) : confirmingArchive ? (
+          <div className="space-y-3">
+            <p className="text-sm font-semibold text-amber-900">
+              Archive "{project.name}"?
+            </p>
+            <div className="flex gap-3">
+              <button
+                onClick={() => {
+                  setConfirmingArchive(false);
+                  onArchive();
+                }}
+                disabled={isPending}
+                className="flex-1 px-4 py-3 text-sm font-bold text-white bg-amber-600 rounded-lg hover:bg-amber-700 transition-all shadow-md shadow-amber-200 disabled:opacity-50 active:scale-[0.98]"
+              >
+                {isPending ? "Archiving Project..." : "Yes, archive it"}
+              </button>
+              <button
+                onClick={() => setConfirmingArchive(false)}
+                disabled={isPending}
+                className="flex-1 px-4 py-3 text-sm font-bold text-amber-900 bg-white border border-amber-200 rounded-lg hover:bg-amber-50 transition-all disabled:opacity-50 active:scale-[0.98]"
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        ) : (
+          <button
+            onClick={() => setConfirmingArchive(true)}
+            disabled={isPending}
+            className="w-full px-4 py-3 text-sm font-bold text-amber-900 bg-white border border-amber-300 rounded-lg hover:bg-amber-100 transition-all disabled:opacity-50 active:scale-[0.98]"
+          >
+            Archive Project
+          </button>
+        )}
+
+        {archiveError && (
+          <p className="text-xs text-amber-700 mt-4 font-bold">
+            {archiveError}
+          </p>
+        )}
+      </div>
+
       <div className="bg-red-50/50 border border-red-100 rounded-xl p-8 shadow-sm">
         <div className="flex items-start gap-4 mb-6">
           <div className="w-12 h-12 rounded-full bg-red-100 flex items-center justify-center shrink-0">

@@ -4,8 +4,10 @@ import { useEffect, useState, useTransition } from "react";
 import { createPortal } from "react-dom";
 import { useRouter } from "next/navigation";
 import {
+  archiveProjectAction,
   deleteProjectAction,
   getProjectSettingsDataAction,
+  restoreProjectAction,
   updateProjectAction,
 } from "@/actions/projects";
 import type { ProjectDto, Role } from "@kanban/shared";
@@ -41,6 +43,7 @@ export function ProjectSettingsModal({
   const [name, setName] = useState("");
   const [nameError, setNameError] = useState<string | null>(null);
   const [deleteError, setDeleteError] = useState<string | null>(null);
+  const [archiveError, setArchiveError] = useState<string | null>(null);
   const [confirmDeleteText, setConfirmDeleteText] = useState("");
   const [mounted, setMounted] = useState(false);
   const router = useRouter();
@@ -102,9 +105,12 @@ export function ProjectSettingsModal({
             project={data.project}
             confirmDeleteText={confirmDeleteText}
             deleteError={deleteError}
+            archiveError={archiveError}
             isPending={isPending}
             onConfirmTextChange={setConfirmDeleteText}
             onDelete={() => handleDelete(orgId, projectId)}
+            onArchive={() => handleArchiveToggle(orgId, projectId, "archive")}
+            onRestore={() => handleArchiveToggle(orgId, projectId, "restore")}
           />
         )}
       </SettingsModalShell>
@@ -141,6 +147,27 @@ export function ProjectSettingsModal({
         onClose();
         router.push(`/orgs/${currentOrgId}`);
       }
+    });
+  }
+
+  function handleArchiveToggle(
+    currentOrgId: string,
+    currentProjectId: string,
+    mode: "archive" | "restore",
+  ) {
+    setArchiveError(null);
+    startTransition(async () => {
+      const result =
+        mode === "archive"
+          ? await archiveProjectAction(currentOrgId, currentProjectId)
+          : await restoreProjectAction(currentOrgId, currentProjectId);
+      if (result.error || !result.project) {
+        setArchiveError(result.error ?? "Failed to update project");
+        return;
+      }
+      const project = result.project;
+      setData((prev) => (prev ? { ...prev, project } : null));
+      router.refresh();
     });
   }
 }
