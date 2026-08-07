@@ -78,5 +78,31 @@ export function projectRoutes(
     },
   );
 
+  router.post(
+    "/:orgId/projects/:projectId/archive",
+    authz.requireOrgRole("manager", (c) => c.req.param("orgId")),
+    (c) =>
+      c.json(
+        svc.archiveProject(
+          c.req.param("orgId"),
+          c.req.param("projectId"),
+          c.get("userId"),
+        ),
+      ),
+  );
+
+  router.post(
+    "/:orgId/projects/:projectId/restore",
+    authz.requireOrgRole("manager", (c) => c.req.param("orgId")),
+    (c) =>
+      c.json(
+        svc.restoreProject(
+          c.req.param("orgId"),
+          c.req.param("projectId"),
+          c.get("userId"),
+        ),
+      ),
+  );
+
   return router;
 }

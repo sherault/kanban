@@ -3,7 +3,7 @@ import type { AppDb, Broadcaster } from "../../types.js";
 import { noopBroadcaster } from "../../types.js";
 import type { ProjectDto } from "@kanban/shared";
 import { generateId } from "../../lib/id.js";
-import { notFound } from "../../lib/errors.js";
+import { notFound, unprocessable } from "../../lib/errors.js";
 import { projects } from "../../db/schema/index.js";
 import {
   syncOrganizationIndexForProjectCreated,
@@ -71,13 +71,7 @@ export class ProjectService {
     projectId: string,
     input: { name: string },
   ): ProjectDto {
-    const existing = this.db
-      .select()
-      .from(projects)
-      .where(eq(projects.id, projectId))
-      .get();
-    if (!existing) throw notFound("Project not found");
-    if (existing.organizationId !== orgId) throw notFound("Project not found");
+    this.requireProject(orgId, projectId);
     const updated = this.db
       .update(projects)
       .set({ name: input.name })
@@ -90,14 +84,46 @@ export class ProjectService {
     return dto;
   }
 
-  deleteProject(orgId: string, projectId: string, userId?: string): void {
-    const existing = this.db
-      .select()
-      .from(projects)
+  archiveProject(
+    orgId: string,
+    projectId: string,
+    _userId?: string,
+  ): ProjectDto {
+    const existing = this.requireProject(orgId, projectId);
+    if (existing.archivedAt) throw unprocessable("Project is already archived");
+    const updated = this.db
+      .update(projects)
+      .set({ archivedAt: new Date().toISOString() })
       .where(eq(projects.id, projectId))
+      .returning()
       .get();
-    if (!existing) throw notFound("Project not found");
-    if (existing.organizationId !== orgId) throw notFound("Project not found");
+    if (!updated) throw new Error("Failed to archive project");
+    const dto = toDto(updated);
+    this.broadcast(`org:${orgId}`, { type: "project.updated", payload: dto });
+    return dto;
+  }
+
+  restoreProject(
+    orgId: string,
+    projectId: string,
+    _userId?: string,
+  ): ProjectDto {
+    const existing = this.requireProject(orgId, projectId);
+    if (!existing.archivedAt) throw unprocessable("Project is not archived");
+    const updated = this.db
+      .update(projects)
+      .set({ archivedAt: null })
+      .where(eq(projects.id, projectId))
+      .returning()
+      .get();
+    if (!updated) throw new Error("Failed to restore project");
+    const dto = toDto(updated);
+    this.broadcast(`org:${orgId}`, { type: "project.updated", payload: dto });
+    return dto;
+  }
+
+  deleteProject(orgId: string, projectId: string, userId?: string): void {
+    const existing = this.requireProject(orgId, projectId);
     syncOrganizationIndexForProjectDeleted(
       { db: this.db, broadcast: this.broadcast },
       orgId,
@@ -109,5 +135,16 @@ export class ProjectService {
       type: "project.deleted",
       payload: { id: projectId },
     });
+  }
+
+  private requireProject(orgId: string, projectId: string) {
+    const existing = this.db
+      .select()
+      .from(projects)
+      .where(eq(projects.id, projectId))
+      .get();
+    if (!existing) throw notFound("Project not found");
+    if (existing.organizationId !== orgId) throw notFound("Project not found");
+    return existing;
   }
 }
