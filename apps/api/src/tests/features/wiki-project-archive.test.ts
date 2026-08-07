@@ -145,6 +145,32 @@ describe("knowledge base archive notice", () => {
     expect(kbContent(db, orgId, project.id)).toBe(before);
     close();
   });
+
+  it("preserves the KB page's own leading/trailing whitespace across an archive/restore round trip", async () => {
+    const { db, svc, orgId, project, userId, close } = await setup();
+    const page = db
+      .select()
+      .from(wikiPages)
+      .where(
+        and(
+          eq(wikiPages.organizationId, orgId),
+          eq(wikiPages.projectId, project.id),
+        ),
+      )
+      .get();
+    if (!page) throw new Error("KB page not found");
+    const withOwnWhitespace = "\n\n# KB: Sprint\n\nBody\n\n";
+    db.update(wikiPages)
+      .set({ content: withOwnWhitespace })
+      .where(eq(wikiPages.id, page.id))
+      .run();
+
+    svc.archiveProject(orgId, project.id, userId);
+    svc.restoreProject(orgId, project.id, userId);
+
+    expect(kbContent(db, orgId, project.id)).toBe(withOwnWhitespace);
+    close();
+  });
 });
 
 describe("deleting an archived project", () => {

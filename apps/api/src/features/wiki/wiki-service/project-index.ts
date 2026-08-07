@@ -541,7 +541,14 @@ function stripArchivedNotice(content: string): string {
   const start = content.indexOf(ARCHIVED_NOTICE_START);
   const end = content.indexOf(ARCHIVED_NOTICE_END);
   if (start === -1 || end === -1 || end < start) return content;
-  return `${content.slice(0, start)}${content.slice(end + ARCHIVED_NOTICE_END.length)}`.trim();
+  // Remove exactly the "\n\n" separator upsertArchivedNotice inserted between
+  // the notice and the rest of the content — not a blanket .trim(), which
+  // would also eat whitespace that belongs to the user's own content.
+  const before = content.slice(0, start);
+  const after = content
+    .slice(end + ARCHIVED_NOTICE_END.length)
+    .replace(/^\n\n/, "");
+  return `${before}${after}`;
 }
 
 function escapeMarkdownText(text: string): string {
