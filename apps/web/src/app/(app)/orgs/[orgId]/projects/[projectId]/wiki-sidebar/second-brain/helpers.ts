@@ -2,6 +2,32 @@ import type { WikiPageSummaryDto } from "@kanban/shared";
 
 export const SECOND_BRAIN_COLLAPSED_KEY = "kanban_second_brain_collapsed";
 
+const collapsedListeners = new Set<() => void>();
+
+export function subscribeCollapsed(listener: () => void) {
+  collapsedListeners.add(listener);
+  window.addEventListener("storage", listener);
+  return () => {
+    collapsedListeners.delete(listener);
+    window.removeEventListener("storage", listener);
+  };
+}
+
+export function getCollapsedSnapshot() {
+  return window.localStorage.getItem(SECOND_BRAIN_COLLAPSED_KEY) !== "false";
+}
+
+export function getCollapsedServerSnapshot() {
+  return true;
+}
+
+export function storeCollapsed(next: boolean) {
+  window.localStorage.setItem(SECOND_BRAIN_COLLAPSED_KEY, String(next));
+  for (const listener of collapsedListeners) {
+    listener();
+  }
+}
+
 export function isCaptureInboxPage(page: WikiPageSummaryDto) {
   return (
     stringProperty(page.properties?.["doc_type"]) === "capture_inbox" ||

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useTransition } from "react";
+import { useState, useSyncExternalStore, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import type { WikiPageSummaryDto } from "@kanban/shared";
 import {
@@ -10,7 +10,12 @@ import {
   markWikiPageTriagedAction,
 } from "@/actions/wiki";
 import { FreshnessRow } from "./second-brain/FreshnessRow";
-import { SECOND_BRAIN_COLLAPSED_KEY } from "./second-brain/helpers";
+import {
+  getCollapsedServerSnapshot,
+  getCollapsedSnapshot,
+  storeCollapsed,
+  subscribeCollapsed,
+} from "./second-brain/helpers";
 import { InboxCaptureRow } from "./second-brain/InboxCaptureRow";
 import { SecondBrainHeader } from "./second-brain/SecondBrainHeader";
 import { useSecondBrainData } from "./second-brain/useSecondBrainData";
@@ -41,22 +46,15 @@ export function SecondBrainPanel({
   const [captureContent, setCaptureContent] = useState("");
   const [notice, setNotice] = useState<Notice | null>(null);
   const [isPending, startTransition] = useTransition();
-  const [collapsed, setCollapsed] = useState(true);
-
-  useEffect(() => {
-    setCollapsed(
-      window.localStorage.getItem(SECOND_BRAIN_COLLAPSED_KEY) !== "false",
-    );
-  }, []);
-
-  const persistCollapsed = (next: boolean) => {
-    setCollapsed(next);
-    window.localStorage.setItem(SECOND_BRAIN_COLLAPSED_KEY, String(next));
-  };
+  const collapsed = useSyncExternalStore(
+    subscribeCollapsed,
+    getCollapsedSnapshot,
+    getCollapsedServerSnapshot,
+  );
 
   const toggleCollapsed = () => {
     const next = !collapsed;
-    persistCollapsed(next);
+    storeCollapsed(next);
     if (next) {
       setIsCaptureOpen(false);
       setNotice(null);
@@ -136,7 +134,7 @@ export function SecondBrainPanel({
         inboxCount={inboxCount}
         reviewCount={reviewCount}
         onCapture={() => {
-          persistCollapsed(false);
+          storeCollapsed(false);
           setIsCaptureOpen((open) => !open);
         }}
         captureDisabled={isPending}
