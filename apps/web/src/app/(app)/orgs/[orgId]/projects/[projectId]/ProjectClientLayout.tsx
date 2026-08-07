@@ -7,6 +7,7 @@ import { WikiProvider, useWiki } from "@/context/WikiContext";
 import type { ProjectDto, TaskDto, MembershipDto } from "@kanban/shared";
 import { listWikiPagesAction } from "@/actions/wiki";
 import { searchTasksInOrgAction } from "@/actions/tasks";
+import { ArchivedProjectBanner } from "./project-layout/ArchivedProjectBanner";
 import { ProjectContentArea } from "./project-layout/ProjectContentArea";
 import { ProjectHydrationSkeleton } from "./project-layout/ProjectHydrationSkeleton";
 import { ProjectSearchFooter } from "./project-layout/ProjectSearchFooter";
@@ -135,6 +136,7 @@ function ProjectClientLayoutInner({
     return <ProjectHydrationSkeleton />;
   }
 
+  const currentProject = projects.find((p) => p.id === projectId);
   const filteredPages = pages.filter((p) =>
     p.title.toLowerCase().includes(searchQuery.toLowerCase()),
   );
@@ -157,6 +159,9 @@ function ProjectClientLayoutInner({
       )}
 
       <div className="flex-1 flex flex-col min-w-0 overflow-hidden relative">
+        {currentProject?.archivedAt && (
+          <ArchivedProjectBanner projectName={currentProject.name} />
+        )}
         <ProjectContentArea
           activeTab={activeTab}
           initialTasks={initialTasks}

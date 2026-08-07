@@ -25,6 +25,11 @@ export function ProjectSidebar({ projects, orgId, projectId }: Props) {
   const [activeProjectSettings, setActiveProjectSettings] = useState<
     string | null
   >(null);
+  // null = follow the default (open when the current project is archived);
+  // true/false = the user's explicit choice for this session.
+  const [archivedOverride, setArchivedOverride] = useState<boolean | null>(
+    null,
+  );
   const hoverTimerRef = useRef<NodeJS.Timeout | null>(null);
 
   useEffect(() => {
@@ -62,6 +67,10 @@ export function ProjectSidebar({ projects, orgId, projectId }: Props) {
   }
 
   const actuallyExpanded = !isCollapsed || isTempExpanded;
+  const activeProjects = projects.filter((p) => p.archivedAt === null);
+  const archivedProjects = projects.filter((p) => p.archivedAt !== null);
+  const currentIsArchived = archivedProjects.some((p) => p.id === projectId);
+  const showArchived = archivedOverride ?? currentIsArchived;
 
   return (
     <div
@@ -106,7 +115,7 @@ export function ProjectSidebar({ projects, orgId, projectId }: Props) {
 
           {/* Project List - Scrollable */}
           <nav className="flex-1 p-2 space-y-0.5 overflow-y-auto">
-            {projects.map((p) => (
+            {activeProjects.map((p) => (
               <div key={p.id} className="group flex items-center gap-1">
                 <Link
                   href={`/orgs/${orgId}/projects/${p.id}`}
@@ -131,6 +140,45 @@ export function ProjectSidebar({ projects, orgId, projectId }: Props) {
 
           {/* Footer - Fixed at bottom */}
           <div className="flex-none p-2 border-t border-gray-100 space-y-1 bg-white">
+            {archivedProjects.length > 0 && (
+              <div className="space-y-0.5">
+                <button
+                  onClick={() => setArchivedOverride(!showArchived)}
+                  className="w-full flex items-center gap-1.5 px-3 py-2 rounded-md text-sm text-gray-500 hover:bg-gray-100 transition-colors"
+                >
+                  <span
+                    className={`text-[10px] transition-transform ${
+                      showArchived ? "rotate-90" : ""
+                    }`}
+                  >
+                    ▶
+                  </span>
+                  Archived ({archivedProjects.length})
+                </button>
+                {showArchived &&
+                  archivedProjects.map((p) => (
+                    <div key={p.id} className="group flex items-center gap-1">
+                      <Link
+                        href={`/orgs/${orgId}/projects/${p.id}`}
+                        className={`flex-1 flex items-center px-3 py-2 pl-6 rounded-md text-sm transition-colors truncate ${
+                          p.id === projectId
+                            ? "bg-amber-50 text-amber-800 font-medium"
+                            : "text-gray-400 hover:bg-gray-100"
+                        }`}
+                      >
+                        {p.name}
+                      </Link>
+                      <button
+                        onClick={() => setActiveProjectSettings(p.id)}
+                        className="shrink-0 px-1 text-gray-300 hover:text-gray-600 opacity-0 group-hover:opacity-100 transition-all text-sm"
+                        title="Settings"
+                      >
+                        ⚙️
+                      </button>
+                    </div>
+                  ))}
+              </div>
+            )}
             <Link
               href={`/orgs/${orgId}/projects/new`}
               className="flex items-center gap-1.5 px-3 py-2 rounded-md text-sm text-gray-500 hover:bg-gray-100 transition-colors"
