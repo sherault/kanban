@@ -115,7 +115,7 @@ function findOrCreateOrganizationIndexPage(
   return created;
 }
 
-function findOrganizationIndexPage(
+export function findOrganizationIndexPage(
   ctx: WikiServiceContext,
   orgId: string,
 ): WikiPageRow | undefined {

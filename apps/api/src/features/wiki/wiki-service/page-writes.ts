@@ -4,6 +4,7 @@ import type {
   WikiEditSource,
   WikiPageDto,
 } from "@kanban/shared";
+import { ORGANIZATION_INDEX_SLUG, isWikiPageRenamable } from "@kanban/shared";
 import { eq } from "drizzle-orm";
 import { v4 as uuidv4 } from "uuid";
 import { wikiPageHistory, wikiPages } from "../../../db/schema/wiki.js";
@@ -11,6 +12,7 @@ import { conflict } from "../../../lib/errors.js";
 import type { WikiServiceContext } from "./context.js";
 import { generateWikiSlug, toWikiPageDto } from "./mappers.js";
 import { getWikiPage } from "./page-reads.js";
+import { findOrganizationIndexPage } from "./project-index.js";
 
 type CreateWikiPageInput = CreateWikiPageDto & { slug?: string };
 
@@ -90,6 +92,8 @@ export async function updateWikiPage(
     return existing;
   }
 
+  if (titleChanged) assertRenamable(ctx, existing);
+
   const updateData: Partial<typeof wikiPages.$inferInsert> = {
     updatedBy: userId,
     updatedAt: new Date().toISOString(),
@@ -131,6 +135,17 @@ export async function updateWikiPage(
     page: dto,
   });
   return dto;
+}
+
+function assertRenamable(ctx: WikiServiceContext, page: WikiPageDto): void {
+  if (page.slug === ORGANIZATION_INDEX_SLUG) {
+    throw conflict("The organization index page cannot be renamed");
+  }
+
+  const indexPage = findOrganizationIndexPage(ctx, page.organizationId);
+  if (!isWikiPageRenamable(page, indexPage?.id)) {
+    throw conflict("Project knowledge base pages cannot be renamed");
+  }
 }
 
 export async function deleteWikiPage(

@@ -1,7 +1,9 @@
 "use client";
 
+import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import * as DndKit from "@dnd-kit/core";
+import { updateWikiPageAction } from "@/actions/wiki";
 import type { WikiPageSummaryDto } from "@kanban/shared";
 
 interface WikiTreeItemProps {
@@ -10,7 +12,9 @@ interface WikiTreeItemProps {
   projectId: string;
   hasChildren: boolean;
   isExpanded: boolean;
+  isRenamable: boolean;
   onToggle: () => void;
+  onRenamed: () => void;
 }
 
 export function WikiTreeItem({
@@ -19,9 +23,14 @@ export function WikiTreeItem({
   projectId,
   hasChildren,
   isExpanded,
+  isRenamable,
   onToggle,
+  onRenamed,
 }: WikiTreeItemProps) {
   const router = useRouter();
+  const [draftTitle, setDraftTitle] = useState<string | null>(null);
+  const [isSaving, setIsSaving] = useState(false);
+  const inputRef = useRef<HTMLInputElement>(null);
   const { attributes, listeners, setNodeRef, transform, isDragging } =
     DndKit.useDraggable({ id: page.id });
   const { setNodeRef: setDropRef, isOver } = DndKit.useDroppable({
@@ -30,6 +39,30 @@ export function WikiTreeItem({
   const style = transform
     ? { transform: `translate3d(${transform.x}px, ${transform.y}px, 0)` }
     : undefined;
+
+  useEffect(() => {
+    if (draftTitle !== null) inputRef.current?.select();
+  }, [draftTitle]);
+
+  const commitRename = async () => {
+    const nextTitle = draftTitle?.trim() ?? "";
+    setDraftTitle(null);
+    if (!nextTitle || nextTitle === page.title) return;
+
+    setIsSaving(true);
+    try {
+      const result = await updateWikiPageAction(page.id, { title: nextTitle });
+      if (result.error) {
+        console.error("Failed to rename page", result.error);
+        return;
+      }
+      onRenamed();
+    } catch (error) {
+      console.error("Failed to rename page", error);
+    } finally {
+      setIsSaving(false);
+    }
+  };
 
   return (
     <div
@@ -65,17 +98,50 @@ export function WikiTreeItem({
             </svg>
           )}
         </div>
-        <div
-          className="flex-1 text-sm text-gray-700 truncate font-medium select-none cursor-pointer"
-          onClick={() => {
-            router.push(`/orgs/${orgId}/projects/${projectId}/wiki/${page.id}`);
-            window.dispatchEvent(
-              new CustomEvent("kanban_open_wiki_page", { detail: page.id }),
-            );
-          }}
-        >
-          {page.title}
-        </div>
+        {draftTitle !== null ? (
+          <input
+            ref={inputRef}
+            autoFocus
+            value={draftTitle}
+            disabled={isSaving}
+            onChange={(event) => setDraftTitle(event.target.value)}
+            onBlur={commitRename}
+            onKeyDown={(event) => {
+              if (event.key === "Enter") {
+                event.preventDefault();
+                void commitRename();
+              } else if (event.key === "Escape") {
+                event.preventDefault();
+                setDraftTitle(null);
+              }
+            }}
+            className="flex-1 min-w-0 text-sm text-gray-700 font-medium bg-white border border-blue-300 rounded px-1 py-0.5 outline-none focus:ring-2 focus:ring-blue-200"
+          />
+        ) : (
+          <div
+            className={`flex-1 text-sm text-gray-700 truncate font-medium select-none cursor-pointer ${isSaving ? "opacity-50" : ""}`}
+            title={
+              isRenamable
+                ? "Double-click to rename"
+                : "This page is managed automatically and cannot be renamed"
+            }
+            onClick={() => {
+              router.push(
+                `/orgs/${orgId}/projects/${projectId}/wiki/${page.id}`,
+              );
+              window.dispatchEvent(
+                new CustomEvent("kanban_open_wiki_page", { detail: page.id }),
+              );
+            }}
+            onDoubleClick={(event) => {
+              if (!isRenamable) return;
+              event.stopPropagation();
+              setDraftTitle(page.title);
+            }}
+          >
+            {page.title}
+          </div>
+        )}
         <div
           {...listeners}
           className="p-1 opacity-0 group-hover:opacity-100 cursor-grab text-gray-300 hover:text-gray-500 transition-opacity"

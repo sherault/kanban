@@ -1,4 +1,8 @@
-import type { WikiPageSummaryDto } from "@kanban/shared";
+import {
+  ORGANIZATION_INDEX_SLUG,
+  isWikiPageRenamable,
+  type WikiPageSummaryDto,
+} from "@kanban/shared";
 import { WikiTreeItem } from "./WikiTreeItem";
 
 interface WikiTreeProps {
@@ -7,6 +11,7 @@ interface WikiTreeProps {
   projectId: string;
   expandedIds: Set<string>;
   onToggle: (pageId: string) => void;
+  onRefresh: () => void;
 }
 
 export function WikiTree({
@@ -15,7 +20,11 @@ export function WikiTree({
   projectId,
   expandedIds,
   onToggle,
+  onRefresh,
 }: WikiTreeProps) {
+  const indexPageId =
+    pages.find((page) => page.slug === ORGANIZATION_INDEX_SLUG)?.id ?? null;
+
   const renderItem = (page: WikiPageSummaryDto) => {
     const hasChildren = pages.some(
       (candidate) => candidate.parentId === page.id,
@@ -30,7 +39,9 @@ export function WikiTree({
           projectId={projectId}
           hasChildren={hasChildren}
           isExpanded={isExpanded}
+          isRenamable={isWikiPageRenamable(page, indexPageId)}
           onToggle={() => onToggle(page.id)}
+          onRenamed={onRefresh}
         />
         {isExpanded && (
           <div className="ml-3 border-l border-gray-100 pl-1">

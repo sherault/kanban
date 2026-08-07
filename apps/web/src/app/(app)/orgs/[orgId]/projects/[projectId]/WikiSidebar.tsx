@@ -34,7 +34,7 @@ export function WikiSidebar({
     sensors,
     setActiveId,
     toggleExpanded,
-  } = useWikiSidebarDrag(pages, onRefresh);
+  } = useWikiSidebarDrag(pages, onRefresh, orgId);
 
   return (
     <aside className="w-64 bg-white border-r border-gray-200 shrink-0 h-full flex flex-col shadow-sm">
@@ -66,6 +66,7 @@ export function WikiSidebar({
                 projectId={projectId}
                 expandedIds={expandedIds}
                 onToggle={toggleExpanded}
+                onRefresh={onRefresh}
               />
               <WikiDragOverlay activeId={activeId} pages={pages} />
             </>

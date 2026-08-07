@@ -167,6 +167,62 @@ describe("WikiService page operations", () => {
     testDb.close();
   });
 
+  it("refuses to rename the organization index and project knowledge bases", async () => {
+    const { testDb, wikiSvc, user, org, project } = await setup();
+    const root = await wikiSvc.ensureRootPage(org.id, user.id);
+    const kbPage = (await wikiSvc.listPages(org.id, user.id)).find(
+      (page) => page.projectId === project.id,
+    );
+
+    await expect(
+      wikiSvc.updatePage(root.id, user.id, { title: "My Index" }),
+    ).rejects.toThrow("The organization index page cannot be renamed");
+    await expect(
+      wikiSvc.updatePage(kbPage!.id, user.id, { title: "Sprint Docs" }),
+    ).rejects.toThrow("Project knowledge base pages cannot be renamed");
+
+    // Content edits on those pages stay allowed.
+    const edited = await wikiSvc.updatePage(kbPage!.id, user.id, {
+      content: "Updated body",
+    });
+    expect(edited.title).toBe("KB: Sprint");
+    expect(edited.content).toBe("Updated body");
+    testDb.close();
+  });
+
+  it("renames a regular page and regenerates its slug", async () => {
+    const { testDb, wikiSvc, user, org, project } = await setup();
+    const root = await wikiSvc.ensureRootPage(org.id, user.id);
+    const kbPage = (await wikiSvc.listPages(org.id, user.id)).find(
+      (page) => page.projectId === project.id,
+    );
+
+    // A project-scoped page that is not the knowledge base root stays renamable.
+    const child = await wikiSvc.createPage(org.id, user.id, {
+      title: "Draft Notes",
+      content: "body",
+      projectId: project.id,
+      parentId: kbPage!.id,
+    });
+    const renamedChild = await wikiSvc.updatePage(child.id, user.id, {
+      title: "Architecture",
+    });
+    expect(renamedChild.title).toBe("Architecture");
+    expect(renamedChild.slug).toBe("architecture");
+
+    const orgPage = await wikiSvc.createPage(org.id, user.id, {
+      title: "Meeting",
+      content: "body",
+      parentId: root.id,
+    });
+    const renamedOrgPage = await wikiSvc.updatePage(orgPage.id, user.id, {
+      title: "Weekly Meeting",
+    });
+    expect(renamedOrgPage.slug).toBe("weekly-meeting");
+    expect((await wikiSvc.getHistory(orgPage.id)).items).toHaveLength(2);
+    testDb.close();
+  });
+
   it("recreates the organization index automated part when a project is created", async () => {
     const { testDb, projectSvc, wikiSvc, user, org } = await setup();
     const root = await wikiSvc.ensureRootPage(org.id, user.id);

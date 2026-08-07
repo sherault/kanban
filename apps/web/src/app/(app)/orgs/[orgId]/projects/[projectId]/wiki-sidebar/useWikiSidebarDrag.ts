@@ -4,25 +4,40 @@ import { useCallback, useEffect, useState } from "react";
 import * as DndKit from "@dnd-kit/core";
 import { updateWikiPageAction } from "@/actions/wiki";
 import type { WikiPageSummaryDto } from "@kanban/shared";
+import { readWikiExpanded, writeWikiExpanded } from "@/lib/wikiExpandedStorage";
 import { ROOT_DROPPABLE_ID } from "./constants";
+
+const EMPTY_EXPANDED: Set<string> = new Set();
 
 export function useWikiSidebarDrag(
   pages: WikiPageSummaryDto[],
   onRefresh: () => void,
+  orgId: string,
 ) {
-  const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set());
+  // null = nothing restored yet, so the root-expansion default still applies.
+  const [expandedIds, setExpandedIds] = useState<Set<string> | null>(() =>
+    readWikiExpanded(orgId),
+  );
   const [activeId, setActiveId] = useState<string | null>(null);
 
   useEffect(() => {
-    if (pages.length > 0 && expandedIds.size === 0) {
+    setExpandedIds(readWikiExpanded(orgId));
+  }, [orgId]);
+
+  useEffect(() => {
+    if (pages.length > 0 && expandedIds === null) {
       const rootIds = pages.filter((p) => p.parentId === null).map((p) => p.id);
       queueMicrotask(() => setExpandedIds(new Set(rootIds)));
     }
-  }, [pages, expandedIds.size]);
+  }, [pages, expandedIds]);
+
+  useEffect(() => {
+    if (expandedIds !== null) writeWikiExpanded(orgId, expandedIds);
+  }, [orgId, expandedIds]);
 
   const toggleExpanded = useCallback((pageId: string) => {
     setExpandedIds((prev) => {
-      const next = new Set(prev);
+      const next = new Set(prev ?? EMPTY_EXPANDED);
       if (next.has(pageId)) {
         next.delete(pageId);
       } else {
@@ -52,7 +67,9 @@ export function useWikiSidebarDrag(
 
         onRefresh();
         if (newParentId) {
-          setExpandedIds((prev) => new Set([...Array.from(prev), newParentId]));
+          setExpandedIds(
+            (prev) => new Set([...(prev ?? EMPTY_EXPANDED), newParentId]),
+          );
         }
       } catch (error) {
         console.error("Failed to move page", error);
@@ -69,7 +86,7 @@ export function useWikiSidebarDrag(
 
   return {
     activeId,
-    expandedIds,
+    expandedIds: expandedIds ?? EMPTY_EXPANDED,
     handleDragEnd,
     sensors,
     setActiveId,

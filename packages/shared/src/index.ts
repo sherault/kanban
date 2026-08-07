@@ -8,3 +8,4 @@ export * from "./dtos/wiki";
 export * from "./constants/auth";
 export * from "./constants/organization";
 export * from "./utils/logger";
+export * from "./utils/wikiRename";
