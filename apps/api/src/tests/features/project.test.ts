@@ -137,6 +137,35 @@ describe("Authorization", () => {
   });
 });
 
+describe("project archivedAt field", () => {
+  it("returns archivedAt: null for a freshly created project", async () => {
+    const { app, accessToken, orgId, close } = await setup();
+    const res = await app.request(`/organizations/${orgId}/projects`, {
+      method: "POST",
+      headers: { ...auth(accessToken), "Content-Type": "application/json" },
+      body: JSON.stringify({ name: "Sprint 1" }),
+    });
+    const body = (await res.json()) as { archivedAt: string | null };
+    expect(body.archivedAt).toBeNull();
+    close();
+  });
+
+  it("exposes archivedAt on the list endpoint", async () => {
+    const { app, accessToken, orgId, close } = await setup();
+    await app.request(`/organizations/${orgId}/projects`, {
+      method: "POST",
+      headers: { ...auth(accessToken), "Content-Type": "application/json" },
+      body: JSON.stringify({ name: "Sprint 1" }),
+    });
+    const res = await app.request(`/organizations/${orgId}/projects`, {
+      headers: auth(accessToken),
+    });
+    const body = (await res.json()) as Array<{ archivedAt: string | null }>;
+    expect(body[0]).toHaveProperty("archivedAt", null);
+    close();
+  });
+});
+
 describe("DELETE /organizations/:orgId/projects/:projectId", () => {
   it("deletes the project", async () => {
     const { app, accessToken, orgId, close } = await setup();

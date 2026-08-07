@@ -15,6 +15,7 @@ function toDto(row: typeof projects.$inferSelect): ProjectDto {
     id: row.id,
     organizationId: row.organizationId,
     name: row.name,
+    archivedAt: row.archivedAt ?? null,
     createdAt: row.createdAt,
   };
 }

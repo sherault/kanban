@@ -8,6 +8,7 @@ export const projects = sqliteTable("projects", {
     .notNull()
     .references(() => organizations.id, { onDelete: "cascade" }),
   name: text("name").notNull(),
+  archivedAt: text("archived_at"),
   createdAt: text("created_at")
     .notNull()
     .default(sql`(datetime('now'))`),
