@@ -47,6 +47,50 @@ export async function deleteProjectAction(
   }
 }
 
+export async function archiveProjectAction(
+  orgId: string,
+  projectId: string,
+): Promise<{ error?: string; project?: ProjectDto }> {
+  const token = await getAccessToken();
+  if (!token) redirect("/login");
+  try {
+    const { data: project } = await api.projects.archive(
+      token,
+      orgId,
+      projectId,
+    );
+    revalidatePath(`/orgs/${orgId}`);
+    revalidatePath(`/orgs/${orgId}/projects/${projectId}`);
+    return { project };
+  } catch (e) {
+    return {
+      error: e instanceof ApiError ? e.message : "Failed to archive project",
+    };
+  }
+}
+
+export async function restoreProjectAction(
+  orgId: string,
+  projectId: string,
+): Promise<{ error?: string; project?: ProjectDto }> {
+  const token = await getAccessToken();
+  if (!token) redirect("/login");
+  try {
+    const { data: project } = await api.projects.restore(
+      token,
+      orgId,
+      projectId,
+    );
+    revalidatePath(`/orgs/${orgId}`);
+    revalidatePath(`/orgs/${orgId}/projects/${projectId}`);
+    return { project };
+  } catch (e) {
+    return {
+      error: e instanceof ApiError ? e.message : "Failed to restore project",
+    };
+  }
+}
+
 export async function createProjectAction(
   orgId: string,
   _prev: { error?: string },

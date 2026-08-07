@@ -31,4 +31,16 @@ export const projectsApi = {
       { method: "DELETE", token },
     );
   },
+  archive(token: string, orgId: string, projectId: string) {
+    return apiFetch<ProjectDto>(
+      `/organizations/${orgId}/projects/${projectId}/archive`,
+      { method: "POST", token },
+    );
+  },
+  restore(token: string, orgId: string, projectId: string) {
+    return apiFetch<ProjectDto>(
+      `/organizations/${orgId}/projects/${projectId}/restore`,
+      { method: "POST", token },
+    );
+  },
 };
