@@ -125,13 +125,13 @@ describe("WikiService page operations", () => {
     expect(root.content).toContain("<!-- kanban:auto-project-index:start -->");
     expect(root.content).toContain(`/orgs/${org.id}/projects/${project.id}`);
     expect(pages.map((page) => page.slug).sort()).toEqual([
-      "knowledge-base",
+      "kb-sprint",
       "root",
     ]);
     expect(
       pages.find(
         (page) =>
-          page.title === "Knowledge Base" &&
+          page.title === "KB: Sprint" &&
           page.projectId === project.id &&
           page.parentId === null,
       ),

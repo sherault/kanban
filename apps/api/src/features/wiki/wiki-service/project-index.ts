@@ -202,12 +202,17 @@ function findOrCreateProjectKnowledgeBase(
   const existing = findProjectKnowledgeBase(ctx, orgId, project.id);
   if (existing) return toWikiPageDto(existing);
 
+  const title = projectKnowledgeBaseTitle(project.name);
   return createTrackedWikiPage(ctx, orgId, userId, {
-    title: "Knowledge Base",
-    content: `# Knowledge Base\n\nDocumentation for project ${project.name} starts here.`,
+    title,
+    content: `# ${title}\n\nDocumentation for project ${project.name} starts here.`,
     projectId: project.id,
     parentId: null,
   });
+}
+
+function projectKnowledgeBaseTitle(projectName: string): string {
+  return `KB: ${projectName}`;
 }
 
 function markProjectKnowledgeBaseDeleted(

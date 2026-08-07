@@ -85,6 +85,13 @@
       "when": 1786048907174,
       "tag": "0011_ambiguous_captain_flint",
       "breakpoints": true
+    },
+    {
+      "idx": 12,
+      "version": "6",
+      "when": 1786060800000,
+      "tag": "0012_rename_project_knowledge_bases",
+      "breakpoints": true
     }
   ]
 }
