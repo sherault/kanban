@@ -6,8 +6,10 @@ import { generateId } from "../../lib/id.js";
 import { notFound, unprocessable } from "../../lib/errors.js";
 import { projects } from "../../db/schema/index.js";
 import {
+  syncOrganizationIndexForProjectArchived,
   syncOrganizationIndexForProjectCreated,
   syncOrganizationIndexForProjectDeleted,
+  syncOrganizationIndexForProjectRestored,
 } from "../wiki/wiki-service/project-index.js";
 
 function toDto(row: typeof projects.$inferSelect): ProjectDto {
@@ -87,7 +89,7 @@ export class ProjectService {
   archiveProject(
     orgId: string,
     projectId: string,
-    _userId?: string,
+    userId?: string,
   ): ProjectDto {
     const existing = this.requireProject(orgId, projectId);
     if (existing.archivedAt) throw unprocessable("Project is already archived");
@@ -100,13 +102,19 @@ export class ProjectService {
     if (!updated) throw new Error("Failed to archive project");
     const dto = toDto(updated);
     this.broadcast(`org:${orgId}`, { type: "project.updated", payload: dto });
+    syncOrganizationIndexForProjectArchived(
+      { db: this.db, broadcast: this.broadcast },
+      orgId,
+      { id: updated.id, name: updated.name },
+      userId,
+    );
     return dto;
   }
 
   restoreProject(
     orgId: string,
     projectId: string,
-    _userId?: string,
+    userId?: string,
   ): ProjectDto {
     const existing = this.requireProject(orgId, projectId);
     if (!existing.archivedAt) throw unprocessable("Project is not archived");
@@ -119,6 +127,12 @@ export class ProjectService {
     if (!updated) throw new Error("Failed to restore project");
     const dto = toDto(updated);
     this.broadcast(`org:${orgId}`, { type: "project.updated", payload: dto });
+    syncOrganizationIndexForProjectRestored(
+      { db: this.db, broadcast: this.broadcast },
+      orgId,
+      { id: updated.id, name: updated.name },
+      userId,
+    );
     return dto;
   }
 

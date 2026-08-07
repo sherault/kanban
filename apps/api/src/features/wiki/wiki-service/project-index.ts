@@ -1,5 +1,5 @@
 import type { WikiPageDto } from "@kanban/shared";
-import { and, eq } from "drizzle-orm";
+import { and, eq, isNotNull, isNull } from "drizzle-orm";
 import { v4 as uuidv4 } from "uuid";
 import { memberships, projects } from "../../../db/schema/index.js";
 import { wikiPageHistory, wikiPages } from "../../../db/schema/wiki.js";
@@ -9,8 +9,11 @@ import { generateWikiSlug, toWikiPageDto } from "./mappers.js";
 const AUTO_INDEX_START = "<!-- kanban:auto-project-index:start -->";
 const AUTO_INDEX_END = "<!-- kanban:auto-project-index:end -->";
 const DELETED_PROJECT_PREFIX = "[DELETED PROJECT]";
+const ARCHIVED_NOTICE_START = "<!-- kanban:project-archived:start -->";
+const ARCHIVED_NOTICE_END = "<!-- kanban:project-archived:end -->";
 
 type ProjectIndexRow = Pick<typeof projects.$inferSelect, "id" | "name">;
+type ArchivedProjectRow = ProjectIndexRow & { archivedAt: string };
 type WikiPageRow = typeof wikiPages.$inferSelect;
 
 type DeletedProjectEntry = {
@@ -62,6 +65,37 @@ export function syncOrganizationIndexForProjectDeleted(
   });
 }
 
+export function syncOrganizationIndexForProjectArchived(
+  ctx: WikiServiceContext,
+  orgId: string,
+  project: ProjectIndexRow,
+  userId?: string,
+  archivedAt = new Date(),
+): WikiPageDto {
+  const actorId = resolveIndexUserId(ctx, orgId, userId);
+  // Sync first: it creates the knowledge base page when it does not exist yet.
+  const indexPage = syncOrganizationIndex(ctx, orgId, actorId);
+  const rootPage = findOrCreateOrganizationIndexPage(ctx, orgId, actorId);
+  const kbPage = findProjectKnowledgeBase(ctx, orgId, project.id, rootPage.id);
+  if (kbPage) {
+    upsertArchivedNotice(ctx, kbPage, actorId, formatDeletedAt(archivedAt));
+  }
+  return indexPage;
+}
+
+export function syncOrganizationIndexForProjectRestored(
+  ctx: WikiServiceContext,
+  orgId: string,
+  project: ProjectIndexRow,
+  userId?: string,
+): WikiPageDto {
+  const actorId = resolveIndexUserId(ctx, orgId, userId);
+  const rootPage = findOrCreateOrganizationIndexPage(ctx, orgId, actorId);
+  const kbPage = findProjectKnowledgeBase(ctx, orgId, project.id, rootPage.id);
+  if (kbPage) removeArchivedNotice(ctx, kbPage, actorId);
+  return syncOrganizationIndex(ctx, orgId, actorId);
+}
+
 function syncOrganizationIndex(
   ctx: WikiServiceContext,
   orgId: string,
@@ -73,6 +107,11 @@ function syncOrganizationIndex(
   // page has to exist before the automated block is built.
   const rootPage = findOrCreateOrganizationIndexPage(ctx, orgId, actorId);
   const liveProjects = listActiveProjects(ctx, orgId, options.excludeProjectId);
+  const archivedProjects = listArchivedProjects(
+    ctx,
+    orgId,
+    options.excludeProjectId,
+  );
   const deletedProjects = mergeDeletedProjectEntries(
     extractDeletedProjectEntries(rootPage.content),
     options.deletedProject,
@@ -85,6 +124,7 @@ function syncOrganizationIndex(
       actorId,
       rootPage.id,
       liveProjects,
+      archivedProjects,
       deletedProjects,
     ),
   );
@@ -135,9 +175,30 @@ function listActiveProjects(
   return ctx.db
     .select({ id: projects.id, name: projects.name })
     .from(projects)
-    .where(eq(projects.organizationId, orgId))
+    .where(and(eq(projects.organizationId, orgId), isNull(projects.archivedAt)))
     .all()
     .filter((project) => project.id !== excludeProjectId)
+    .sort((left, right) => left.name.localeCompare(right.name));
+}
+
+function listArchivedProjects(
+  ctx: WikiServiceContext,
+  orgId: string,
+  excludeProjectId?: string,
+): ArchivedProjectRow[] {
+  return ctx.db
+    .select({
+      id: projects.id,
+      name: projects.name,
+      archivedAt: projects.archivedAt,
+    })
+    .from(projects)
+    .where(
+      and(eq(projects.organizationId, orgId), isNotNull(projects.archivedAt)),
+    )
+    .all()
+    .filter((project) => project.id !== excludeProjectId)
+    .map((project) => ({ ...project, archivedAt: project.archivedAt ?? "" }))
     .sort((left, right) => left.name.localeCompare(right.name));
 }
 
@@ -147,6 +208,7 @@ function buildAutomatedIndexBlock(
   userId: string,
   rootPageId: string,
   activeProjects: ProjectIndexRow[],
+  archivedProjects: ArchivedProjectRow[],
   deletedProjects: DeletedProjectEntry[],
 ): string {
   const lines = [AUTO_INDEX_START, "## Projects", "", "### Active", ""];
@@ -164,6 +226,22 @@ function buildAutomatedIndexBlock(
       ).id;
       lines.push(
         `- **${escapeMarkdownText(project.name)}**: [Board](/orgs/${orgId}/projects/${project.id}) | [Knowledge Base](/orgs/${orgId}/projects/${project.id}/wiki/${pageId})`,
+      );
+    }
+  }
+
+  if (archivedProjects.length > 0) {
+    lines.push("", "### Archived", "");
+    for (const project of archivedProjects) {
+      const pageId = findOrCreateProjectKnowledgeBase(
+        ctx,
+        orgId,
+        userId,
+        rootPageId,
+        project,
+      ).id;
+      lines.push(
+        `- **${escapeMarkdownText(project.name)}**: archived on ${formatDeletedAt(new Date(project.archivedAt))} | [Board](/orgs/${orgId}/projects/${project.id}) | [Knowledge Base](/orgs/${orgId}/projects/${project.id}/wiki/${pageId})`,
       );
     }
   }
@@ -421,6 +499,49 @@ function updateTrackedWikiPage(
 
 function formatDeletedAt(date: Date): string {
   return date.toISOString().slice(0, 10);
+}
+
+function buildArchivedNotice(archivedOn: string): string {
+  return [
+    ARCHIVED_NOTICE_START,
+    "<details>",
+    "<summary>⚠️ Archived project</summary>",
+    "",
+    `This project was archived on ${archivedOn}.`,
+    "",
+    "</details>",
+    ARCHIVED_NOTICE_END,
+  ].join("\n");
+}
+
+function upsertArchivedNotice(
+  ctx: WikiServiceContext,
+  page: WikiPageRow,
+  userId: string,
+  archivedOn: string,
+): WikiPageDto {
+  const notice = buildArchivedNotice(archivedOn);
+  const stripped = stripArchivedNotice(page.content);
+  const content = stripped ? `${notice}\n\n${stripped}` : notice;
+  if (content === page.content) return toWikiPageDto(page);
+  return updateTrackedWikiPage(ctx, page, userId, { content });
+}
+
+function removeArchivedNotice(
+  ctx: WikiServiceContext,
+  page: WikiPageRow,
+  userId: string,
+): WikiPageDto {
+  const content = stripArchivedNotice(page.content);
+  if (content === page.content) return toWikiPageDto(page);
+  return updateTrackedWikiPage(ctx, page, userId, { content });
+}
+
+function stripArchivedNotice(content: string): string {
+  const start = content.indexOf(ARCHIVED_NOTICE_START);
+  const end = content.indexOf(ARCHIVED_NOTICE_END);
+  if (start === -1 || end === -1 || end < start) return content;
+  return `${content.slice(0, start)}${content.slice(end + ARCHIVED_NOTICE_END.length)}`.trim();
 }
 
 function escapeMarkdownText(text: string): string {
