@@ -1,6 +1,7 @@
 import type {
   CreateWikiPageDto,
   UpdateWikiPageDto,
+  WikiEditSource,
   WikiPageDto,
 } from "@kanban/shared";
 import { eq } from "drizzle-orm";
@@ -21,6 +22,7 @@ export async function createWikiPage(
   orgId: string,
   userId: string,
   data: CreateWikiPageInput,
+  source: WikiEditSource = "web",
 ): Promise<WikiPageDto> {
   const id = uuidv4();
   const slug = data.slug ?? generateWikiSlug(data.title);
@@ -48,6 +50,7 @@ export async function createWikiPage(
     content: data.content,
     properties: stringifyProperties(data.properties),
     changedBy: userId,
+    source,
   });
 
   const dto = toWikiPageDto(page!);
@@ -60,6 +63,7 @@ export async function updateWikiPage(
   pageId: string,
   userId: string,
   data: UpdateWikiPageDto,
+  source: WikiEditSource = "web",
 ): Promise<WikiPageDto> {
   const existing = await getWikiPage(ctx, pageId);
   if (!existing) throw new Error("Page not found");
@@ -93,6 +97,7 @@ export async function updateWikiPage(
       content: updated!.content,
       properties: updated!.properties,
       changedBy: userId,
+      source,
     });
   }
 

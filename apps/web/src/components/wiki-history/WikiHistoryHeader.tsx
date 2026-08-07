@@ -1,29 +1,25 @@
 export function WikiHistoryHeader({
-  pageId,
+  count,
   onClose,
 }: {
-  pageId: string;
+  count: number;
   onClose: () => void;
 }) {
   return (
-    <div className="flex-none h-16 border-b border-gray-200 px-6 flex items-center justify-between bg-white shadow-sm">
-      <div className="flex flex-col">
-        <div className="flex items-center gap-3">
-          <h2 className="text-lg font-bold text-gray-900">Version History</h2>
-          <span className="px-2 py-0.5 text-[10px] font-mono bg-gray-100 text-gray-500 rounded border border-gray-200 uppercase tracking-tighter">
-            ID: {pageId}
-          </span>
-        </div>
-        <p className="text-xs text-gray-500 mt-0.5">
-          Compare edits and recover previous versions
-        </p>
+    <div className="flex-none h-14 border-b border-gray-100 px-4 flex items-center justify-between bg-white">
+      <div className="flex items-center gap-2">
+        <h2 className="text-sm font-bold text-gray-900">History</h2>
+        <span className="text-[10px] text-gray-400 font-medium bg-gray-100 px-1.5 py-0.5 rounded">
+          {count} loaded
+        </span>
       </div>
       <button
         onClick={onClose}
-        className="p-2 hover:bg-gray-100 rounded-full transition-all group"
+        aria-label="Close history"
+        className="p-1.5 hover:bg-gray-100 rounded-full transition-all group"
       >
         <svg
-          className="w-6 h-6 text-gray-400 group-hover:text-gray-600"
+          className="w-5 h-5 text-gray-400 group-hover:text-gray-600"
           fill="none"
           stroke="currentColor"
           viewBox="0 0 24 24"

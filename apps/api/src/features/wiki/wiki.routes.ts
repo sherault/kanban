@@ -21,6 +21,11 @@ const updatePageSchema = z.object({
   properties: z.any().optional(),
 });
 
+const historyQuerySchema = z.object({
+  limit: z.coerce.number().int().min(1).max(100).optional(),
+  offset: z.coerce.number().int().min(0).optional(),
+});
+
 export function wikiRoutes(
   db: AppDb,
   broadcast: Broadcaster = noopBroadcaster,
@@ -89,7 +94,13 @@ export function wikiRoutes(
   // Get page history
   app.get("/wiki/pages/:pageId/history", async (c) => {
     const pageId = c.req.param("pageId");
-    const history = await wikiSvc.getHistory(pageId);
+    const parsed = historyQuerySchema.safeParse({
+      limit: c.req.query("limit"),
+      offset: c.req.query("offset"),
+    });
+    if (!parsed.success) return c.json({ error: "Invalid pagination" }, 400);
+
+    const history = await wikiSvc.getHistory(pageId, parsed.data);
     return c.json(history);
   });
 

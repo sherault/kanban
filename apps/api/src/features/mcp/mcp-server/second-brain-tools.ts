@@ -210,19 +210,24 @@ async function updateCaptureLinks(
     ...(input.relatedTaskIds ?? []),
   ]);
 
-  return wikiSvc.updatePage(pageId, userId, {
-    properties: {
-      ...current,
-      ...(input.status ? { status: input.status } : {}),
-      ...(input.triageNote ? { triage_note: input.triageNote } : {}),
-      triaged_at:
-        input.status === "triaged"
-          ? new Date().toISOString()
-          : current["triaged_at"],
-      related_wiki_ids: relatedWikiIds,
-      related_task_ids: relatedTaskIds,
+  return wikiSvc.updatePage(
+    pageId,
+    userId,
+    {
+      properties: {
+        ...current,
+        ...(input.status ? { status: input.status } : {}),
+        ...(input.triageNote ? { triage_note: input.triageNote } : {}),
+        triaged_at:
+          input.status === "triaged"
+            ? new Date().toISOString()
+            : current["triaged_at"],
+        related_wiki_ids: relatedWikiIds,
+        related_task_ids: relatedTaskIds,
+      },
     },
-  });
+    "mcp",
+  );
 }
 
 export function registerSecondBrainTools(
@@ -305,18 +310,23 @@ export function registerSecondBrainTools(
       taskProjectId,
       taskEndDate,
     }) => {
-      const capturePage = await wikiSvc.createPage(orgId, userId, {
-        title,
-        content,
-        parentId,
-        projectId,
-        properties: captureProperties(properties ?? null, {
-          capturedFrom,
-          sourceUrls,
-          relatedWikiIds,
-          relatedTaskIds,
-        }),
-      });
+      const capturePage = await wikiSvc.createPage(
+        orgId,
+        userId,
+        {
+          title,
+          content,
+          parentId,
+          projectId,
+          properties: captureProperties(properties ?? null, {
+            capturedFrom,
+            sourceUrls,
+            relatedWikiIds,
+            relatedTaskIds,
+          }),
+        },
+        "mcp",
+      );
 
       if (!createTriageTask) return jsonText({ capturePage });
 
@@ -611,22 +621,27 @@ export function registerSecondBrainTools(
           if (fullPage) {
             const current = fullPage.properties ?? {};
             const freshness = objectProperty(current["freshness"]);
-            await wikiSvc.updatePage(page.id, userId, {
-              properties: {
-                ...current,
-                freshness: {
-                  ...freshness,
-                  status: "review_requested",
-                  review_task_id: task.id,
-                  requested_at: new Date().toISOString(),
-                  findings: pageFindings,
+            await wikiSvc.updatePage(
+              page.id,
+              userId,
+              {
+                properties: {
+                  ...current,
+                  freshness: {
+                    ...freshness,
+                    status: "review_requested",
+                    review_task_id: task.id,
+                    requested_at: new Date().toISOString(),
+                    findings: pageFindings,
+                  },
+                  related_task_ids: uniq([
+                    ...arrayProperty(current["related_task_ids"]),
+                    task.id,
+                  ]),
                 },
-                related_task_ids: uniq([
-                  ...arrayProperty(current["related_task_ids"]),
-                  task.id,
-                ]),
               },
-            });
+              "mcp",
+            );
           }
 
           tasksCreated.push({
@@ -778,6 +793,7 @@ export function registerSecondBrainTools(
             properties ?? null,
           ),
         },
+        "mcp",
       );
 
       const updatedCapture = await updateCaptureLinks(

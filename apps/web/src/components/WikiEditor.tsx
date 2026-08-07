@@ -11,6 +11,7 @@ import type { ChangeEvent } from "react";
 import { marked } from "marked";
 import TurndownService from "turndown";
 import { useWiki } from "@/context/WikiContext";
+import { WikiHistory } from "./WikiHistory";
 import { WikiEditorLinkModal } from "./wiki-editor/WikiEditorLinkModal";
 import { WikiEditorSurface } from "./wiki-editor/WikiEditorSurface";
 import { WikiEditorToolbar } from "./wiki-editor/WikiEditorToolbar";
@@ -55,6 +56,7 @@ export function WikiEditor({
   const properties = pageProperties[pageId] || {};
 
   const [showProperties, setShowProperties] = useState(false);
+  const [showHistory, setShowHistory] = useState(false);
   const [isLinkModalOpen, setIsLinkModalOpen] = useState(false);
   const [linkModalType, setLinkModalType] = useState<LinkModalType>("link");
   const [savedSelectionRange, setSavedSelectionRange] =
@@ -137,6 +139,7 @@ export function WikiEditor({
         onModeChange={(nextMode) => setPageMode(pageId, nextMode)}
         showProperties={showProperties}
         onToggleProperties={() => setShowProperties((visible) => !visible)}
+        onOpenHistory={() => setShowHistory(true)}
       />
 
       <WikiEditorToolbar
@@ -190,6 +193,15 @@ export function WikiEditor({
         broadcast={broadcast}
         scheduleSave={scheduleSave}
       />
+
+      {showHistory && (
+        <WikiHistory
+          pageId={pageId}
+          currentTitle={page.title}
+          currentContent={content}
+          onClose={() => setShowHistory(false)}
+        />
+      )}
     </div>
   );
 }

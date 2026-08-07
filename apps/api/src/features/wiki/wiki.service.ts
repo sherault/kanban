@@ -2,7 +2,8 @@ import type { AppDb, Broadcaster } from "../../types.js";
 import type {
   CreateWikiPageDto,
   UpdateWikiPageDto,
-  WikiHistoryDto,
+  WikiEditSource,
+  WikiHistoryListDto,
   WikiPageDto,
   WikiPageSummaryDto,
 } from "@kanban/shared";
@@ -30,16 +31,18 @@ export class WikiService {
     orgId: string,
     userId: string,
     data: CreateWikiPageDto & { slug?: string },
+    source: WikiEditSource = "web",
   ): Promise<WikiPageDto> {
-    return createWikiPage(this, orgId, userId, data);
+    return createWikiPage(this, orgId, userId, data, source);
   }
 
   async updatePage(
     pageId: string,
     userId: string,
     data: UpdateWikiPageDto,
+    source: WikiEditSource = "web",
   ): Promise<WikiPageDto> {
-    return updateWikiPage(this, pageId, userId, data);
+    return updateWikiPage(this, pageId, userId, data, source);
   }
 
   async deletePage(pageId: string, _userId: string): Promise<void> {
@@ -68,7 +71,10 @@ export class WikiService {
     return searchWikiPages(this, orgId, query);
   }
 
-  async getHistory(pageId: string): Promise<WikiHistoryDto[]> {
-    return getWikiHistory(this, pageId);
+  async getHistory(
+    pageId: string,
+    options?: { limit?: number | undefined; offset?: number | undefined },
+  ): Promise<WikiHistoryListDto> {
+    return getWikiHistory(this, pageId, options);
   }
 }

@@ -13,6 +13,8 @@ export interface WikiPageDto {
   updatedAt: string;
 }
 
+export type WikiEditSource = "web" | "mcp";
+
 export interface WikiHistoryDto {
   id: string;
   pageId: string;
@@ -21,7 +23,13 @@ export interface WikiHistoryDto {
   properties?: Record<string, any> | null;
   changedBy: string;
   changedByName?: string;
+  source: WikiEditSource;
   createdAt: string;
+}
+
+export interface WikiHistoryListDto {
+  items: WikiHistoryDto[];
+  hasMore: boolean;
 }
 
 export interface WikiPageSummaryDto {

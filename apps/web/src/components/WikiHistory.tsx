@@ -1,58 +1,95 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useRef, useState } from "react";
 import { getWikiHistoryAction } from "@/actions/wiki";
-import type { WikiHistoryDto, WikiPageDto } from "@kanban/shared";
-import { WikiHistoryDiff } from "./wiki-history/WikiHistoryDiff";
+import type { WikiHistoryDto } from "@kanban/shared";
+import { WikiHistoryDiffModal } from "./wiki-history/WikiHistoryDiffModal";
 import { WikiHistoryHeader } from "./wiki-history/WikiHistoryHeader";
 import { WikiHistoryVersionList } from "./wiki-history/WikiHistoryVersionList";
 
+const PAGE_SIZE = 20;
+
 interface Props {
   pageId: string;
-  currentPage: WikiPageDto | null;
+  currentTitle: string;
+  currentContent: string;
   onClose: () => void;
 }
 
-export function WikiHistory({ pageId, onClose }: Props) {
-  const [history, setHistory] = useState<WikiHistoryDto[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [selectedVersionIndex, setSelectedVersionIndex] = useState(0);
+export function WikiHistory({
+  pageId,
+  currentTitle,
+  currentContent,
+  onClose,
+}: Props) {
+  const [versions, setVersions] = useState<WikiHistoryDto[]>([]);
+  const [hasMore, setHasMore] = useState(true);
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [selectedVersion, setSelectedVersion] = useState<WikiHistoryDto | null>(
+    null,
+  );
 
-  useEffect(() => {
-    async function fetchHistory() {
-      try {
-        const result = await getWikiHistoryAction(pageId);
-        if (result.history) {
-          setHistory(result.history);
-        } else if (result.error) {
-          console.error("Failed to fetch history", result.error);
-        }
-      } catch (e) {
-        console.error("Failed to fetch history", e);
-      } finally {
-        setIsLoading(false);
-      }
+  // Guards against overlapping loads triggered by the scroll observer.
+  const isLoadingRef = useRef(false);
+  const offsetRef = useRef(0);
+
+  const loadMore = useCallback(async () => {
+    if (isLoadingRef.current) return;
+    isLoadingRef.current = true;
+    setIsLoading(true);
+
+    const result = await getWikiHistoryAction(
+      pageId,
+      PAGE_SIZE,
+      offsetRef.current,
+    );
+
+    if (result.error || !result.history) {
+      setError(result.error ?? "Failed to load history");
+      setHasMore(false);
+    } else {
+      const { items, hasMore: more } = result.history;
+      offsetRef.current += items.length;
+      setVersions((prev) => [...prev, ...items]);
+      setHasMore(more);
     }
-    void fetchHistory();
+
+    setIsLoading(false);
+    isLoadingRef.current = false;
   }, [pageId]);
 
+  // The first page is loaded by the list's scroll sentinel, which is visible
+  // as soon as the panel opens.
+
   return (
-    <div className="fixed inset-0 z-[100] bg-white flex flex-col animate-in fade-in slide-in-from-bottom-4 duration-200">
-      <WikiHistoryHeader pageId={pageId} onClose={onClose} />
-      <div className="flex-1 flex overflow-hidden">
+    <div className="fixed inset-0 z-[100] flex justify-end bg-black/20">
+      <button
+        type="button"
+        aria-label="Close history"
+        className="flex-1 cursor-default"
+        onClick={onClose}
+      />
+      <div className="w-96 h-full bg-white border-l border-gray-200 shadow-2xl flex flex-col animate-in slide-in-from-right duration-200">
+        <WikiHistoryHeader count={versions.length} onClose={onClose} />
         <WikiHistoryVersionList
-          history={history}
+          versions={versions}
           isLoading={isLoading}
-          selectedVersionIndex={selectedVersionIndex}
-          onSelectVersion={setSelectedVersionIndex}
+          hasMore={hasMore}
+          error={error}
+          onLoadMore={loadMore}
+          onSelectVersion={setSelectedVersion}
         />
-        <div className="flex-1 overflow-y-auto bg-gray-50/30 p-8">
-          <WikiHistoryDiff
-            history={history}
-            selectedVersionIndex={selectedVersionIndex}
-          />
-        </div>
       </div>
+
+      {selectedVersion && (
+        <WikiHistoryDiffModal
+          version={selectedVersion}
+          currentTitle={currentTitle}
+          currentContent={currentContent}
+          onClose={() => setSelectedVersion(null)}
+        />
+      )}
     </div>
   );
 }

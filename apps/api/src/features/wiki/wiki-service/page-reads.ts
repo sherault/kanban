@@ -1,9 +1,9 @@
 import type {
-  WikiHistoryDto,
+  WikiHistoryListDto,
   WikiPageDto,
   WikiPageSummaryDto,
 } from "@kanban/shared";
-import { desc, eq } from "drizzle-orm";
+import { desc, eq, sql } from "drizzle-orm";
 import { memberships, users } from "../../../db/schema/index.js";
 import { wikiPageHistory, wikiPages } from "../../../db/schema/wiki.js";
 import type { WikiServiceContext } from "./context.js";
@@ -64,15 +64,32 @@ export async function searchWikiPages(
 export async function getWikiHistory(
   ctx: WikiServiceContext,
   pageId: string,
-): Promise<WikiHistoryDto[]> {
-  const rows = await ctx.db
+  options?: { limit?: number | undefined; offset?: number | undefined },
+): Promise<WikiHistoryListDto> {
+  const limit = options?.limit;
+  const offset = options?.offset ?? 0;
+
+  const query = ctx.db
     .select()
     .from(wikiPageHistory)
     .leftJoin(users, eq(wikiPageHistory.changedBy, users.id))
     .where(eq(wikiPageHistory.pageId, pageId))
-    .orderBy(desc(wikiPageHistory.createdAt));
+    // rowid breaks ties: createdAt only has second precision, so several
+    // revisions of the same page can share a timestamp and paginate unstably.
+    .orderBy(desc(wikiPageHistory.createdAt), sql`wiki_page_history.rowid desc`)
+    .$dynamic();
 
-  return rows.map((r) => toWikiHistoryDto(r));
+  // Fetch one extra row to detect whether another page is available.
+  const rows = limit
+    ? await query.limit(limit + 1).offset(offset)
+    : await query;
+
+  const hasMore = limit !== undefined && rows.length > limit;
+  const items = (hasMore ? rows.slice(0, limit) : rows).map((r) =>
+    toWikiHistoryDto(r),
+  );
+
+  return { items, hasMore };
 }
 
 async function selectWikiPageSummaries(

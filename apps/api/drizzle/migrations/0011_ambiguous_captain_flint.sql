@@ -1,0 +1,1 @@
+ALTER TABLE `wiki_page_history` ADD `source` text DEFAULT 'web' NOT NULL;

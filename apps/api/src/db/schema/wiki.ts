@@ -44,6 +44,7 @@ export const wikiPageHistory = sqliteTable("wiki_page_history", {
   changedBy: text("changed_by")
     .notNull()
     .references(() => users.id),
+  source: text("source").notNull().default("web"),
   createdAt: text("created_at")
     .notNull()
     .default(sql`(datetime('now'))`),

@@ -7,6 +7,7 @@ export function WikiEditorTopBar({
   onModeChange,
   showProperties,
   onToggleProperties,
+  onOpenHistory,
 }: {
   isConnected: boolean;
   status: SaveStatus;
@@ -14,6 +15,7 @@ export function WikiEditorTopBar({
   onModeChange: (mode: WikiEditorMode) => void;
   showProperties: boolean;
   onToggleProperties: () => void;
+  onOpenHistory: () => void;
 }) {
   return (
     <div className="flex-none h-12 border-b border-gray-100 bg-white px-4 flex items-center justify-between shrink-0">
@@ -71,16 +73,25 @@ export function WikiEditorTopBar({
         ))}
       </div>
 
-      <button
-        onClick={onToggleProperties}
-        className={`px-3 py-1.5 rounded-lg text-[9px] font-black uppercase tracking-widest transition-all ${
-          showProperties
-            ? "bg-blue-50 text-blue-600 border border-blue-100"
-            : "bg-gray-50 text-gray-400 border border-gray-100 hover:text-gray-600"
-        }`}
-      >
-        {showProperties ? "Hide Details" : "Details"}
-      </button>
+      <div className="flex items-center gap-2">
+        <button
+          onClick={onToggleProperties}
+          className={`px-3 py-1.5 rounded-lg text-[9px] font-black uppercase tracking-widest transition-all ${
+            showProperties
+              ? "bg-blue-50 text-blue-600 border border-blue-100"
+              : "bg-gray-50 text-gray-400 border border-gray-100 hover:text-gray-600"
+          }`}
+        >
+          {showProperties ? "Hide Details" : "Details"}
+        </button>
+
+        <button
+          onClick={onOpenHistory}
+          className="px-3 py-1.5 rounded-lg text-[9px] font-black uppercase tracking-widest transition-all bg-gray-50 text-gray-400 border border-gray-100 hover:text-gray-600"
+        >
+          History
+        </button>
+      </div>
     </div>
   );
 }

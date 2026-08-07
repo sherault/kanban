@@ -40,11 +40,34 @@ describe("WikiService page operations", () => {
 
     expect(page.slug).toBe("sprint-notes");
     expect(page.properties).toEqual({ status: "draft" });
-    expect(await wikiSvc.getHistory(page.id)).toHaveLength(1);
+    expect((await wikiSvc.getHistory(page.id)).items).toHaveLength(1);
     expect(events[0]).toMatchObject({
       room: `org:${org.id}`,
       event: { type: "wiki.page_created", page: { id: page.id } },
     });
+    testDb.close();
+  });
+
+  it("paginates history and records the edit source", async () => {
+    const { testDb, wikiSvc, user, org } = await setup();
+    const page = await wikiSvc.createPage(org.id, user.id, {
+      title: "Draft",
+      content: "v0",
+    });
+    for (let i = 1; i <= 4; i++) {
+      await wikiSvc.updatePage(page.id, user.id, { content: `v${i}` }, "mcp");
+    }
+
+    const firstPage = await wikiSvc.getHistory(page.id, { limit: 2 });
+    expect(firstPage.items).toHaveLength(2);
+    expect(firstPage.hasMore).toBe(true);
+    expect(firstPage.items.every((v) => v.source === "mcp")).toBe(true);
+
+    const lastPage = await wikiSvc.getHistory(page.id, { limit: 2, offset: 4 });
+    expect(lastPage.items).toHaveLength(1);
+    expect(lastPage.hasMore).toBe(false);
+    expect(lastPage.items[0]!.source).toBe("web");
+
     testDb.close();
   });
 
@@ -63,7 +86,7 @@ describe("WikiService page operations", () => {
 
     expect(updated.slug).toBe("launch-plan");
     expect(updated.properties).toEqual({ state: "ready" });
-    expect(await wikiSvc.getHistory(page.id)).toHaveLength(2);
+    expect((await wikiSvc.getHistory(page.id)).items).toHaveLength(2);
     expect(events.at(-1)).toMatchObject({
       room: `org:${org.id}`,
       event: { type: "wiki.page_updated", page: { id: page.id } },

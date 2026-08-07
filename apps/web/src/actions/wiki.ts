@@ -7,7 +7,7 @@ import { getAccessToken } from "../lib/session";
 import type {
   CreateWikiPageDto,
   UpdateWikiPageDto,
-  WikiHistoryDto,
+  WikiHistoryListDto,
   WikiPageDto,
   WikiPageSummaryDto,
 } from "@kanban/shared";
@@ -301,12 +301,19 @@ export async function deleteWikiPageAction(
 
 export async function getWikiHistoryAction(
   pageId: string,
-): Promise<{ error?: string; history?: WikiHistoryDto[] }> {
+  limit = 20,
+  offset = 0,
+): Promise<{ error?: string; history?: WikiHistoryListDto }> {
   const token = await getAccessToken();
   if (!token) redirect("/login");
 
   try {
-    const { data: history } = await api.wiki.getHistory(token, pageId);
+    const { data: history } = await api.wiki.getHistory(
+      token,
+      pageId,
+      limit,
+      offset,
+    );
     return { history };
   } catch (e) {
     return {

@@ -63,13 +63,18 @@ export function registerWikiTools(
     },
     async ({ orgId, title, content, parentId, projectId, properties }) =>
       jsonText(
-        await wikiSvc.createPage(orgId, userId, {
-          title,
-          content,
-          parentId,
-          projectId,
-          properties: properties ?? null,
-        }),
+        await wikiSvc.createPage(
+          orgId,
+          userId,
+          {
+            title,
+            content,
+            parentId,
+            projectId,
+            properties: properties ?? null,
+          },
+          "mcp",
+        ),
       ),
   );
 
@@ -96,12 +101,17 @@ export function registerWikiTools(
     },
     async ({ pageId, title, content, parentId, properties }) =>
       jsonText(
-        await wikiSvc.updatePage(pageId, userId, {
-          title,
-          content,
-          parentId,
-          properties: properties ?? null,
-        }),
+        await wikiSvc.updatePage(
+          pageId,
+          userId,
+          {
+            title,
+            content,
+            parentId,
+            properties: properties ?? null,
+          },
+          "mcp",
+        ),
       ),
   );
 
@@ -123,7 +133,7 @@ export function registerWikiTools(
       description: "Get the revision history of a wiki page",
       inputSchema: { pageId: z.string().describe("Wiki Page ID") },
     },
-    async ({ pageId }) => jsonText(await wikiSvc.getHistory(pageId)),
+    async ({ pageId }) => jsonText((await wikiSvc.getHistory(pageId)).items),
   );
 
   server.registerTool(

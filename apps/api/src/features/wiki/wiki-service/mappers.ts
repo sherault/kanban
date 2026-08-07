@@ -1,4 +1,8 @@
-import type { WikiHistoryDto, WikiPageDto } from "@kanban/shared";
+import type {
+  WikiEditSource,
+  WikiHistoryDto,
+  WikiPageDto,
+} from "@kanban/shared";
 import type { wikiPageHistory, wikiPages } from "../../../db/schema/wiki.js";
 import type { users } from "../../../db/schema/index.js";
 
@@ -40,6 +44,7 @@ export function toWikiHistoryDto(
     content: historyRow.content,
     properties: parseWikiProperties(historyRow.properties) ?? null,
     changedBy: historyRow.changedBy,
+    source: historyRow.source === "mcp" ? "mcp" : ("web" as WikiEditSource),
     createdAt: historyRow.createdAt,
   };
 

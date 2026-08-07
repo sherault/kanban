@@ -1,7 +1,7 @@
 import type {
   CreateWikiPageDto,
   UpdateWikiPageDto,
-  WikiHistoryDto,
+  WikiHistoryListDto,
   WikiPageDto,
   WikiPageSummaryDto,
 } from "@kanban/shared";
@@ -39,9 +39,10 @@ export const wikiApi = {
       token,
     });
   },
-  getHistory(token: string, pageId: string) {
-    return apiFetch<WikiHistoryDto[]>(`/wiki/pages/${pageId}/history`, {
-      token,
-    });
+  getHistory(token: string, pageId: string, limit: number, offset: number) {
+    return apiFetch<WikiHistoryListDto>(
+      `/wiki/pages/${pageId}/history?limit=${limit}&offset=${offset}`,
+      { token },
+    );
   },
 };
