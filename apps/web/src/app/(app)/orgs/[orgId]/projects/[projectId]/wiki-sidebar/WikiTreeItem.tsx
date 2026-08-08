@@ -5,6 +5,8 @@ import { useRouter } from "next/navigation";
 import * as DndKit from "@dnd-kit/core";
 import { updateWikiPageAction } from "@/actions/wiki";
 import type { WikiPageSummaryDto } from "@kanban/shared";
+import { DeleteWikiPageDialog } from "./DeleteWikiPageDialog";
+import { useWikiPageDeletion } from "./useWikiPageDeletion";
 
 interface WikiTreeItemProps {
   page: WikiPageSummaryDto;
@@ -13,8 +15,11 @@ interface WikiTreeItemProps {
   hasChildren: boolean;
   isExpanded: boolean;
   isRenamable: boolean;
+  isDeletable: boolean;
+  descendantIds: string[];
   onToggle: () => void;
   onRenamed: () => void;
+  onDeleted: () => void;
 }
 
 export function WikiTreeItem({
@@ -24,12 +29,21 @@ export function WikiTreeItem({
   hasChildren,
   isExpanded,
   isRenamable,
+  isDeletable,
+  descendantIds,
   onToggle,
   onRenamed,
+  onDeleted,
 }: WikiTreeItemProps) {
   const router = useRouter();
   const [draftTitle, setDraftTitle] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
+  const [isConfirmingDelete, setIsConfirmingDelete] = useState(false);
+  const { deletePage, isDeleting, error, resetError } = useWikiPageDeletion({
+    orgId,
+    projectId,
+    onDeleted,
+  });
   const inputRef = useRef<HTMLInputElement>(null);
   const { attributes, listeners, setNodeRef, transform, isDragging } =
     DndKit.useDraggable({ id: page.id });
@@ -69,6 +83,16 @@ export function WikiTreeItem({
     } finally {
       setIsSaving(false);
     }
+  };
+
+  const closeDialog = () => {
+    setIsConfirmingDelete(false);
+    resetError();
+  };
+
+  const confirmDelete = async () => {
+    const deleted = await deletePage(page.id, descendantIds);
+    if (deleted) setIsConfirmingDelete(false);
   };
 
   return (
@@ -148,6 +172,33 @@ export function WikiTreeItem({
             {page.title}
           </div>
         )}
+        {isDeletable && (
+          <button
+            type="button"
+            disabled={isDeleting}
+            className="p-1 opacity-0 group-hover:opacity-100 text-gray-300 hover:text-red-600 transition-opacity disabled:opacity-50"
+            title="Delete page"
+            aria-label={`Delete ${page.title}`}
+            onClick={(event) => {
+              event.stopPropagation();
+              setIsConfirmingDelete(true);
+            }}
+          >
+            <svg
+              className="w-3.5 h-3.5"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
+              />
+            </svg>
+          </button>
+        )}
         <div
           {...listeners}
           className="p-1 opacity-0 group-hover:opacity-100 cursor-grab text-gray-300 hover:text-gray-500 transition-opacity"
@@ -168,6 +219,16 @@ export function WikiTreeItem({
           </svg>
         </div>
       </div>
+      {isConfirmingDelete && (
+        <DeleteWikiPageDialog
+          title={page.title}
+          descendantCount={descendantIds.length}
+          isDeleting={isDeleting}
+          error={error}
+          onCancel={closeDialog}
+          onConfirm={confirmDelete}
+        />
+      )}
     </div>
   );
 }

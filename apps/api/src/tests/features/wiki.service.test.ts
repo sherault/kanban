@@ -167,6 +167,39 @@ describe("WikiService page operations", () => {
     testDb.close();
   });
 
+  it("refuses to delete project knowledge base pages", async () => {
+    const { testDb, wikiSvc, user, org, project } = await setup();
+    await wikiSvc.ensureRootPage(org.id, user.id);
+    const kbPage = (await wikiSvc.listPages(org.id, user.id)).find(
+      (page) => page.projectId === project.id,
+    );
+
+    await expect(wikiSvc.deletePage(kbPage!.id, user.id)).rejects.toThrow(
+      "Project knowledge base pages cannot be deleted",
+    );
+    expect(await wikiSvc.getPage(kbPage!.id)).toBeTruthy();
+    testDb.close();
+  });
+
+  it("deletes a page together with its descendants", async () => {
+    const { testDb, wikiSvc, user, org } = await setup();
+    const parent = await wikiSvc.createPage(org.id, user.id, {
+      title: "Parent",
+      content: "p",
+    });
+    const child = await wikiSvc.createPage(org.id, user.id, {
+      title: "Child",
+      content: "c",
+      parentId: parent.id,
+    });
+
+    await wikiSvc.deletePage(parent.id, user.id);
+
+    expect(await wikiSvc.getPage(parent.id)).toBeUndefined();
+    expect(await wikiSvc.getPage(child.id)).toBeUndefined();
+    testDb.close();
+  });
+
   it("refuses to rename the organization index and project knowledge bases", async () => {
     const { testDb, wikiSvc, user, org, project } = await setup();
     const root = await wikiSvc.ensureRootPage(org.id, user.id);

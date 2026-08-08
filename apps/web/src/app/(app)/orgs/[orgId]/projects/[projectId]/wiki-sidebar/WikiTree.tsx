@@ -1,5 +1,6 @@
 import {
   ORGANIZATION_INDEX_SLUG,
+  isWikiPageDeletable,
   isWikiPageRenamable,
   type WikiPageSummaryDto,
 } from "@kanban/shared";
@@ -25,6 +26,16 @@ export function WikiTree({
   const indexPageId =
     pages.find((page) => page.slug === ORGANIZATION_INDEX_SLUG)?.id ?? null;
 
+  // Deleting a page cascades over its subtree, so the confirm dialog needs the
+  // full descendant set, not just the direct children.
+  const descendantIdsOf = (pageId: string): string[] => {
+    const children = pages.filter((candidate) => candidate.parentId === pageId);
+    return children.flatMap((child) => [
+      child.id,
+      ...descendantIdsOf(child.id),
+    ]);
+  };
+
   const renderItem = (page: WikiPageSummaryDto) => {
     const hasChildren = pages.some(
       (candidate) => candidate.parentId === page.id,
@@ -40,8 +51,11 @@ export function WikiTree({
           hasChildren={hasChildren}
           isExpanded={isExpanded}
           isRenamable={isWikiPageRenamable(page, indexPageId)}
+          isDeletable={isWikiPageDeletable(page, indexPageId)}
+          descendantIds={descendantIdsOf(page.id)}
           onToggle={() => onToggle(page.id)}
           onRenamed={onRefresh}
+          onDeleted={onRefresh}
         />
         {isExpanded && (
           <div className="ml-3 border-l border-gray-100 pl-1">

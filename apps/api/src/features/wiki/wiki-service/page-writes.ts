@@ -4,7 +4,11 @@ import type {
   WikiEditSource,
   WikiPageDto,
 } from "@kanban/shared";
-import { ORGANIZATION_INDEX_SLUG, isWikiPageRenamable } from "@kanban/shared";
+import {
+  ORGANIZATION_INDEX_SLUG,
+  isWikiPageDeletable,
+  isWikiPageRenamable,
+} from "@kanban/shared";
 import { eq } from "drizzle-orm";
 import { v4 as uuidv4 } from "uuid";
 import { wikiPageHistory, wikiPages } from "../../../db/schema/wiki.js";
@@ -156,8 +160,13 @@ export async function deleteWikiPage(
   if (!existing) return;
   // Project knowledge bases hang under the index page, so deleting it would
   // cascade over the whole organization wiki.
-  if (existing.slug === "root") {
+  if (existing.slug === ORGANIZATION_INDEX_SLUG) {
     throw conflict("The organization index page cannot be deleted");
+  }
+
+  const indexPage = findOrganizationIndexPage(ctx, existing.organizationId);
+  if (!isWikiPageDeletable(existing, indexPage?.id)) {
+    throw conflict("Project knowledge base pages cannot be deleted");
   }
 
   await ctx.db.delete(wikiPages).where(eq(wikiPages.id, pageId));
