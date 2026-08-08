@@ -149,4 +149,91 @@ describe("0015_org_scoped_wiki_links", () => {
     expect(revision!.content).toBe(legacy);
     testDb.close();
   });
+
+  it("rewrites each page's content independently across multiple pages and orgs", async () => {
+    const testDb = createTestDb();
+    const orgSvc = new OrganizationService(testDb.db);
+    const projectSvc = new ProjectService(testDb.db);
+    const user = await createVerifiedUser(testDb.db, {
+      email: "bob@example.com",
+      password: "password123",
+      displayName: "Bob",
+    });
+
+    const orgA = orgSvc.createOrg(user.id, { name: "Org A" });
+    const alphaA = projectSvc.createProject(
+      orgA.id,
+      { name: "Alpha A" },
+      user.id,
+    );
+    const betaA = projectSvc.createProject(
+      orgA.id,
+      { name: "Beta A" },
+      user.id,
+    );
+
+    const orgB = orgSvc.createOrg(user.id, { name: "Org B" });
+    const gammaB = projectSvc.createProject(
+      orgB.id,
+      { name: "Gamma B" },
+      user.id,
+    );
+
+    insertPage(testDb.db, {
+      id: "page-alpha",
+      orgId: orgA.id,
+      userId: user.id,
+      content: `[ALPHA-MARKER](/orgs/${orgA.id}/projects/${alphaA.id}/wiki/target-alpha)`,
+    });
+    insertPage(testDb.db, {
+      id: "page-beta",
+      orgId: orgA.id,
+      userId: user.id,
+      content: `[BETA-MARKER](/orgs/${orgA.id}/projects/${betaA.id}/wiki/target-beta)`,
+    });
+    insertPage(testDb.db, {
+      id: "page-gamma",
+      orgId: orgB.id,
+      userId: user.id,
+      content: `[GAMMA-MARKER](/orgs/${orgB.id}/projects/${gammaB.id}/wiki/target-gamma)`,
+    });
+
+    testDb.db.run(sql.raw(migrationSql()));
+
+    expect(contentOf(testDb.db, "page-alpha")).toBe(
+      `[ALPHA-MARKER](/orgs/${orgA.id}/wiki/target-alpha)`,
+    );
+    expect(contentOf(testDb.db, "page-beta")).toBe(
+      `[BETA-MARKER](/orgs/${orgA.id}/wiki/target-beta)`,
+    );
+    expect(contentOf(testDb.db, "page-gamma")).toBe(
+      `[GAMMA-MARKER](/orgs/${orgB.id}/wiki/target-gamma)`,
+    );
+    testDb.close();
+  });
+
+  it("leaves a page's content untouched when its org has no projects", async () => {
+    const testDb = createTestDb();
+    const orgSvc = new OrganizationService(testDb.db);
+    const user = await createVerifiedUser(testDb.db, {
+      email: "carol@example.com",
+      password: "password123",
+      displayName: "Carol",
+    });
+
+    const emptyOrg = orgSvc.createOrg(user.id, { name: "Empty Org" });
+    const content = `[Stray](/orgs/${emptyOrg.id}/projects/nonexistent-project/wiki/page-z)`;
+
+    insertPage(testDb.db, {
+      id: "page-1",
+      orgId: emptyOrg.id,
+      userId: user.id,
+      content,
+    });
+
+    testDb.db.run(sql.raw(migrationSql()));
+
+    expect(contentOf(testDb.db, "page-1")).toBe(content);
+    testDb.close();
+  });
 });
