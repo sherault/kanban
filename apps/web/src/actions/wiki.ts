@@ -50,8 +50,8 @@ function mergeRelatedTaskId(
   };
 }
 
-function projectWikiPath(orgId: string, projectId: string) {
-  return `/orgs/${orgId}/projects/${projectId}/wiki`;
+function orgWikiPath(orgId: string) {
+  return `/orgs/${orgId}/wiki`;
 }
 
 export async function listWikiPagesAction(
@@ -119,7 +119,7 @@ export async function createSecondBrainCaptureAction(
         },
       },
     });
-    revalidatePath(projectWikiPath(orgId, projectId));
+    revalidatePath(orgWikiPath(orgId));
     return { page };
   } catch (error) {
     return { error: actionMessage(error, "Failed to create capture") };
@@ -161,7 +161,7 @@ export async function createTriageTaskForWikiPageAction(
     const { data: updatedPage } = await api.wiki.updatePage(token, pageId, {
       properties: mergeRelatedTaskId(page.properties, taggedTask.id),
     });
-    revalidatePath(projectWikiPath(orgId, projectId));
+    revalidatePath(orgWikiPath(orgId));
     return { taskId: taggedTask.id, page: updatedPage };
   } catch (error) {
     return { error: actionMessage(error, "Failed to create triage task") };
@@ -219,7 +219,7 @@ export async function createFreshnessTaskForWikiPageAction(
         },
       },
     });
-    revalidatePath(projectWikiPath(orgId, projectId));
+    revalidatePath(orgWikiPath(orgId));
     return { taskId: taggedTask.id, page: updatedPage };
   } catch (error) {
     return { error: actionMessage(error, "Failed to create freshness task") };
@@ -243,7 +243,7 @@ export async function markWikiPageTriagedAction(
         triaged_at: new Date().toISOString(),
       },
     });
-    revalidatePath(projectWikiPath(orgId, projectId));
+    revalidatePath(orgWikiPath(orgId));
     return { page: updatedPage };
   } catch (error) {
     return { error: actionMessage(error, "Failed to mark capture triaged") };
