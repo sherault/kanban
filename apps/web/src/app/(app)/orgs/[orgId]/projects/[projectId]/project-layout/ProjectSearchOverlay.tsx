@@ -9,7 +9,6 @@ export function ProjectSearchOverlay({
   taskResults,
   isSearchingTasks,
   orgId,
-  projectId,
   onClear,
   onOpenWiki,
   onOpenTask,
@@ -19,7 +18,6 @@ export function ProjectSearchOverlay({
   taskResults: Array<TaskDto & { projectName: string }>;
   isSearchingTasks: boolean;
   orgId: string;
-  projectId: string;
   onClear: () => void;
   onOpenWiki: (url: string) => void;
   onOpenTask: (taskId: string) => void;
@@ -55,11 +53,7 @@ export function ProjectSearchOverlay({
                   <WikiResult
                     key={page.id}
                     page={page}
-                    onClick={() =>
-                      onOpenWiki(
-                        `/orgs/${orgId}/projects/${projectId}/wiki/${page.id}`,
-                      )
-                    }
+                    onClick={() => onOpenWiki(`/orgs/${orgId}/wiki/${page.id}`)}
                   />
                 ))}
               </ResultGroup>

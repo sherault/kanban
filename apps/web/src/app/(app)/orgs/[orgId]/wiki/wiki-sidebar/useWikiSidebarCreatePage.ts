@@ -6,13 +6,11 @@ import { createWikiPageAction } from "@/actions/wiki";
 
 interface UseWikiSidebarCreatePageParams {
   orgId: string;
-  projectId: string;
   onRefresh: () => void;
 }
 
 export function useWikiSidebarCreatePage({
   orgId,
-  projectId,
   onRefresh,
 }: UseWikiSidebarCreatePageParams) {
   const router = useRouter();
@@ -31,9 +29,7 @@ export function useWikiSidebarCreatePage({
           return;
         }
         onRefresh();
-        router.push(
-          `/orgs/${orgId}/projects/${projectId}/wiki/${result.page.id}`,
-        );
+        router.push(`/orgs/${orgId}/wiki/${result.page.id}`);
         window.dispatchEvent(
           new CustomEvent("kanban_open_wiki_page", { detail: result.page.id }),
         );
@@ -46,5 +42,5 @@ export function useWikiSidebarCreatePage({
     return () => {
       window.removeEventListener("kanban_create_wiki_page", handleCreatePage);
     };
-  }, [orgId, projectId, onRefresh, router]);
+  }, [orgId, onRefresh, router]);
 }

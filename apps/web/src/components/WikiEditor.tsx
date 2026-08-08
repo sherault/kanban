@@ -34,7 +34,7 @@ const td = new TurndownService({
 export function WikiEditor({
   pageId,
   orgId,
-  projectId,
+  projectId = "",
   tasks = [],
 }: WikiEditorProps) {
   const wiki = useWiki();

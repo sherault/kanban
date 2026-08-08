@@ -1,5 +1,6 @@
 "use client";
 
+import type { ProjectDto } from "@kanban/shared";
 import { useWiki } from "@/context/WikiContext";
 import * as DndKit from "@dnd-kit/core";
 import { CreateWikiPageButton } from "./wiki-sidebar/CreateWikiPageButton";
@@ -14,19 +15,23 @@ import { WikiTree } from "./wiki-sidebar/WikiTree";
 
 interface Props {
   orgId: string;
-  projectId: string;
-  onRefresh: () => void;
+  projects: ProjectDto[];
+  selectedProjectId: string | null;
+  onSelectProject: (projectId: string) => void;
   enableSecondBrain: boolean;
+  onRefresh: () => void;
 }
 
 export function WikiSidebar({
   orgId,
-  projectId,
-  onRefresh,
+  projects,
+  selectedProjectId,
+  onSelectProject,
   enableSecondBrain,
+  onRefresh,
 }: Props) {
   const { pages, isLoading } = useWiki();
-  useWikiSidebarCreatePage({ orgId, projectId, onRefresh });
+  useWikiSidebarCreatePage({ orgId, onRefresh });
   const {
     activeId,
     expandedIds,
@@ -39,10 +44,12 @@ export function WikiSidebar({
   return (
     <aside className="w-64 bg-white border-r border-gray-200 shrink-0 h-full flex flex-col shadow-sm">
       <WikiSidebarHeader onRefresh={onRefresh} />
-      {enableSecondBrain && (
+      {enableSecondBrain && selectedProjectId && (
         <SecondBrainPanel
           orgId={orgId}
-          projectId={projectId}
+          projectId={selectedProjectId}
+          projects={projects}
+          onSelectProject={onSelectProject}
           pages={pages}
           onRefresh={onRefresh}
         />
@@ -63,7 +70,6 @@ export function WikiSidebar({
               <WikiTree
                 pages={pages}
                 orgId={orgId}
-                projectId={projectId}
                 expandedIds={expandedIds}
                 onToggle={toggleExpanded}
                 onRefresh={onRefresh}

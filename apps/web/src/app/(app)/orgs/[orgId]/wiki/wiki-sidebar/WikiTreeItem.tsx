@@ -11,7 +11,6 @@ import { useWikiPageDeletion } from "./useWikiPageDeletion";
 interface WikiTreeItemProps {
   page: WikiPageSummaryDto;
   orgId: string;
-  projectId: string;
   hasChildren: boolean;
   isExpanded: boolean;
   isRenamable: boolean;
@@ -26,7 +25,6 @@ interface WikiTreeItemProps {
 export function WikiTreeItem({
   page,
   orgId,
-  projectId,
   hasChildren,
   isExpanded,
   isRenamable,
@@ -43,7 +41,6 @@ export function WikiTreeItem({
   const [isConfirmingDelete, setIsConfirmingDelete] = useState(false);
   const { deletePage, isDeleting, error, resetError } = useWikiPageDeletion({
     orgId,
-    projectId,
     onDeleted,
   });
   const inputRef = useRef<HTMLInputElement>(null);
@@ -158,9 +155,7 @@ export function WikiTreeItem({
                 : "This page is managed automatically and cannot be renamed"
             }
             onClick={() => {
-              router.push(
-                `/orgs/${orgId}/projects/${projectId}/wiki/${page.id}`,
-              );
+              router.push(`/orgs/${orgId}/wiki/${page.id}`);
               window.dispatchEvent(
                 new CustomEvent("kanban_open_wiki_page", { detail: page.id }),
               );

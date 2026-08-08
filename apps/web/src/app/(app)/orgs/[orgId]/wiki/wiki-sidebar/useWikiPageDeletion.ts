@@ -7,7 +7,6 @@ import { useWiki } from "@/context/WikiContext";
 
 interface UseWikiPageDeletionParams {
   orgId: string;
-  projectId: string;
   onDeleted: () => void;
 }
 
@@ -18,7 +17,6 @@ interface UseWikiPageDeletionParams {
  */
 export function useWikiPageDeletion({
   orgId,
-  projectId,
   onDeleted,
 }: UseWikiPageDeletionParams) {
   const router = useRouter();
@@ -54,7 +52,7 @@ export function useWikiPageDeletion({
 
       const urlPageId = params.wikiPageId as string | undefined;
       if (urlPageId && removed.has(urlPageId)) {
-        router.push(`/orgs/${orgId}/projects/${projectId}/wiki`);
+        router.push(`/orgs/${orgId}/wiki`);
       }
 
       onDeleted();

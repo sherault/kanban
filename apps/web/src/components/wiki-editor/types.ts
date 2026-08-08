@@ -8,7 +8,8 @@ export type LinkModalType = "link" | "wiki" | "task";
 export interface WikiEditorProps {
   pageId: string;
   orgId: string;
-  projectId: string;
+  /** Legacy project scoping, still threaded down to MarkdownLink. */
+  projectId?: string;
   tasks?: TaskDto[];
 }
 

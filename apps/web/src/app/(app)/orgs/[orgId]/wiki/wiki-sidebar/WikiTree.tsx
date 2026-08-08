@@ -10,7 +10,6 @@ import { WikiTreeItem } from "./WikiTreeItem";
 interface WikiTreeProps {
   pages: WikiPageSummaryDto[];
   orgId: string;
-  projectId: string;
   expandedIds: Set<string>;
   onToggle: (pageId: string) => void;
   onRefresh: () => void;
@@ -19,7 +18,6 @@ interface WikiTreeProps {
 export function WikiTree({
   pages,
   orgId,
-  projectId,
   expandedIds,
   onToggle,
   onRefresh,
@@ -48,7 +46,6 @@ export function WikiTree({
         <WikiTreeItem
           page={page}
           orgId={orgId}
-          projectId={projectId}
           hasChildren={hasChildren}
           isExpanded={isExpanded}
           isRenamable={isWikiPageRenamable(page, indexPageId)}

@@ -2,7 +2,7 @@
 
 import { useState, useSyncExternalStore, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import type { WikiPageSummaryDto } from "@kanban/shared";
+import type { ProjectDto, WikiPageSummaryDto } from "@kanban/shared";
 import {
   createFreshnessTaskForWikiPageAction,
   createSecondBrainCaptureAction,
@@ -25,6 +25,8 @@ const SECOND_BRAIN_BODY_ID = "second-brain-body";
 interface SecondBrainPanelProps {
   orgId: string;
   projectId: string;
+  projects: ProjectDto[];
+  onSelectProject: (projectId: string) => void;
   pages: WikiPageSummaryDto[];
   onRefresh: () => void;
 }
@@ -37,9 +39,13 @@ type Notice = {
 export function SecondBrainPanel({
   orgId,
   projectId,
+  projects,
+  onSelectProject,
   pages,
   onRefresh,
 }: SecondBrainPanelProps) {
+  void projects;
+  void onSelectProject;
   const router = useRouter();
   const [isCaptureOpen, setIsCaptureOpen] = useState(false);
   const [captureTitle, setCaptureTitle] = useState("");
@@ -65,10 +71,7 @@ export function SecondBrainPanel({
     useSecondBrainData(pages, projectId);
 
   const openPage = (pageId: string) => {
-    router.push(`/orgs/${orgId}/projects/${projectId}/wiki/${pageId}`);
-    window.dispatchEvent(
-      new CustomEvent("kanban_tab_changed", { detail: "wiki" }),
-    );
+    router.push(`/orgs/${orgId}/wiki/${pageId}`);
     window.dispatchEvent(
       new CustomEvent("kanban_open_wiki_page", { detail: pageId }),
     );

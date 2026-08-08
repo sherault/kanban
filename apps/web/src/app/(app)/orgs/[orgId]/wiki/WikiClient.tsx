@@ -1,13 +1,12 @@
 "use client";
 
 import { useEffect, useRef } from "react";
-import type { TaskDto } from "@kanban/shared";
 import { WikiTabs } from "@/components/WikiTabs";
 import { useWiki } from "@/context/WikiContext";
 import { readWikiTabs, writeWikiTabs } from "@/lib/wikiTabsStorage";
 import dynamic from "next/dynamic";
 
-import { useRouter, useParams, usePathname } from "next/navigation";
+import { useRouter, useParams } from "next/navigation";
 
 const WikiEditor = dynamic(
   () => import("@/components/WikiEditor").then((m) => m.WikiEditor),
@@ -24,11 +23,11 @@ const WikiEditor = dynamic(
 
 interface Props {
   orgId: string;
-  projectId: string;
-  tasks?: TaskDto[];
+  sessionProjectId: string | null;
 }
 
-export function WikiClient({ orgId, projectId, tasks }: Props) {
+export function WikiClient({ orgId, sessionProjectId }: Props) {
+  void sessionProjectId;
   const router = useRouter();
   const {
     pages,
@@ -45,16 +44,6 @@ export function WikiClient({ orgId, projectId, tasks }: Props) {
   const params = useParams();
   const wikiParam = params.wikiPageId;
   const urlWikiPageId = wikiParam as string | undefined;
-
-  // This tree stays mounted on the board tab (hidden via CSS), so URL syncing
-  // has to be gated on the route. Read it from the pathname rather than the
-  // layout's `activeTab` state: that state is set in a parent effect, which
-  // runs after this component's effects, so it still says "wiki" on the render
-  // that lands on the board — long enough to push us back to the wiki.
-  const pathname = usePathname();
-  const isWikiRoute = pathname.startsWith(
-    `/orgs/${orgId}/projects/${projectId}/wiki`,
-  );
 
   const activeSplitRef = useRef(activeSplitIndex);
   useEffect(() => {
@@ -140,13 +129,10 @@ export function WikiClient({ orgId, projectId, tasks }: Props) {
   // activePageId when a click bubbles up from inside the editor.
   const focusedPageId = splits[activeSplitIndex]?.activePageId ?? null;
   useEffect(() => {
-    // Restored tabs give us a focused page even on the board, so pushing here
-    // unconditionally would bounce the board straight to the wiki.
-    if (!isWikiRoute) return;
     if (!isRestoredRef.current) return;
     if (!focusedPageId || focusedPageId === urlWikiPageId) return;
-    router.push(`/orgs/${orgId}/projects/${projectId}/wiki/${focusedPageId}`);
-  }, [isWikiRoute, focusedPageId, urlWikiPageId, orgId, projectId, router]);
+    router.push(`/orgs/${orgId}/wiki/${focusedPageId}`);
+  }, [focusedPageId, urlWikiPageId, orgId, router]);
 
   useEffect(() => {
     const handleOpenPage = (e: Event) => {
@@ -221,8 +207,6 @@ export function WikiClient({ orgId, projectId, tasks }: Props) {
                   key={split.activePageId}
                   pageId={split.activePageId}
                   orgId={orgId}
-                  projectId={projectId}
-                  tasks={tasks}
                 />
               ) : (
                 <div className="h-full flex items-center justify-center text-gray-400 text-sm italic">

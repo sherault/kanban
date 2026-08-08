@@ -1,10 +1,8 @@
 import type { MembershipDto, TaskDto } from "@kanban/shared";
 import type { ReactNode } from "react";
 import { BoardClient } from "../BoardClient";
-import { WikiClient } from "../WikiClient";
 
 export function ProjectContentArea({
-  activeTab,
   initialTasks,
   orgMembers,
   projectId,
@@ -13,7 +11,6 @@ export function ProjectContentArea({
   userPreferences,
   children,
 }: {
-  activeTab: "board" | "wiki";
   initialTasks: TaskDto[];
   orgMembers: MembershipDto[];
   projectId: string;
@@ -29,7 +26,7 @@ export function ProjectContentArea({
 }) {
   return (
     <main className="flex-1 overflow-hidden relative">
-      <div className={`h-full ${activeTab === "board" ? "block" : "hidden"}`}>
+      <div className="h-full">
         <BoardClient
           initialTasks={initialTasks}
           orgMembers={orgMembers}
@@ -41,9 +38,6 @@ export function ProjectContentArea({
           maxNotifications={userPreferences.maxNotifications}
           notificationDuration={userPreferences.notificationDuration}
         />
-      </div>
-      <div className={`h-full ${activeTab === "wiki" ? "block" : "hidden"}`}>
-        <WikiClient orgId={orgId} projectId={projectId} tasks={initialTasks} />
       </div>
       <div className="hidden">{children}</div>
     </main>
