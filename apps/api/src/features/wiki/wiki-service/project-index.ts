@@ -225,7 +225,7 @@ function buildAutomatedIndexBlock(
         project,
       ).id;
       lines.push(
-        `- **${escapeMarkdownText(project.name)}**: [Board](/orgs/${orgId}/projects/${project.id}) | [Knowledge Base](/orgs/${orgId}/projects/${project.id}/wiki/${pageId})`,
+        `- **${escapeMarkdownText(project.name)}**: [Board](/orgs/${orgId}/projects/${project.id}) | [Knowledge Base](/orgs/${orgId}/wiki/${pageId})`,
       );
     }
   }
@@ -241,7 +241,7 @@ function buildAutomatedIndexBlock(
         project,
       ).id;
       lines.push(
-        `- **${escapeMarkdownText(project.name)}**: archived on ${formatDeletedAt(new Date(project.archivedAt))} | [Board](/orgs/${orgId}/projects/${project.id}) | [Knowledge Base](/orgs/${orgId}/projects/${project.id}/wiki/${pageId})`,
+        `- **${escapeMarkdownText(project.name)}**: archived on ${formatDeletedAt(new Date(project.archivedAt))} | [Board](/orgs/${orgId}/projects/${project.id}) | [Knowledge Base](/orgs/${orgId}/wiki/${pageId})`,
       );
     }
   }

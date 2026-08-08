@@ -28,6 +28,37 @@ async function setup() {
 }
 
 describe("WikiService page operations", () => {
+  it("links project knowledge bases with org-scoped wiki urls", async () => {
+    const { testDb, wikiSvc, user, org, project } = await setup();
+
+    const root = await wikiSvc.ensureRootPage(org.id, user.id);
+    const pages = await wikiSvc.listPages(org.id, user.id);
+    const kbPage = pages.find((page) => page.projectId === project.id);
+
+    expect(kbPage).toBeTruthy();
+    expect(root.content).toContain(
+      `[Board](/orgs/${org.id}/projects/${project.id})`,
+    );
+    expect(root.content).toContain(
+      `[Knowledge Base](/orgs/${org.id}/wiki/${kbPage!.id})`,
+    );
+    expect(root.content).not.toContain(
+      `/orgs/${org.id}/projects/${project.id}/wiki/`,
+    );
+    testDb.close();
+  });
+
+  it("regenerating the organization index produces no diff", async () => {
+    const { testDb, wikiSvc, user, org } = await setup();
+
+    const first = await wikiSvc.ensureRootPage(org.id, user.id);
+    await wikiSvc.listPages(org.id, user.id);
+    const second = await wikiSvc.ensureRootPage(org.id, user.id);
+
+    expect(second.content).toBe(first.content);
+    testDb.close();
+  });
+
   it("creates pages with parsed properties, history, and broadcasts", async () => {
     const { testDb, wikiSvc, events, user, org, project } = await setup();
 
