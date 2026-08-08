@@ -32,6 +32,19 @@ export function isWikiPageDeletable(
   return true;
 }
 
+/**
+ * Same guard again: the index page is the wiki root and project knowledge bases
+ * must stay directly under it, so neither can be reparented.
+ */
+export function isWikiPageMovable(
+  page: RenameGuardPage,
+  organizationIndexPageId: string | null | undefined,
+): boolean {
+  if (page.slug === ORGANIZATION_INDEX_SLUG) return false;
+  if (isProjectKnowledgeBase(page, organizationIndexPageId)) return false;
+  return true;
+}
+
 function isProjectKnowledgeBase(
   page: RenameGuardPage,
   organizationIndexPageId: string | null | undefined,

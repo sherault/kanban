@@ -16,6 +16,7 @@ interface WikiTreeItemProps {
   isExpanded: boolean;
   isRenamable: boolean;
   isDeletable: boolean;
+  isMovable: boolean;
   descendantIds: string[];
   onToggle: () => void;
   onRenamed: () => void;
@@ -30,6 +31,7 @@ export function WikiTreeItem({
   isExpanded,
   isRenamable,
   isDeletable,
+  isMovable,
   descendantIds,
   onToggle,
   onRenamed,
@@ -46,7 +48,7 @@ export function WikiTreeItem({
   });
   const inputRef = useRef<HTMLInputElement>(null);
   const { attributes, listeners, setNodeRef, transform, isDragging } =
-    DndKit.useDraggable({ id: page.id });
+    DndKit.useDraggable({ id: page.id, disabled: !isMovable });
   const { setNodeRef: setDropRef, isOver } = DndKit.useDroppable({
     id: page.id,
   });
@@ -199,25 +201,27 @@ export function WikiTreeItem({
             </svg>
           </button>
         )}
-        <div
-          {...listeners}
-          className="p-1 opacity-0 group-hover:opacity-100 cursor-grab text-gray-300 hover:text-gray-500 transition-opacity"
-          title="Drag to reorder"
-        >
-          <svg
-            className="w-3.5 h-3.5"
-            fill="none"
-            stroke="currentColor"
-            viewBox="0 0 24 24"
+        {isMovable && (
+          <div
+            {...listeners}
+            className="p-1 opacity-0 group-hover:opacity-100 cursor-grab text-gray-300 hover:text-gray-500 transition-opacity"
+            title="Drag to reorder"
           >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth={2}
-              d="M4 8h16M4 16h16"
-            />
-          </svg>
-        </div>
+            <svg
+              className="w-3.5 h-3.5"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M4 8h16M4 16h16"
+              />
+            </svg>
+          </div>
+        )}
       </div>
       {isConfirmingDelete && (
         <DeleteWikiPageDialog

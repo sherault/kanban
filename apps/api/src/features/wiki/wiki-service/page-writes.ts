@@ -7,6 +7,7 @@ import type {
 import {
   ORGANIZATION_INDEX_SLUG,
   isWikiPageDeletable,
+  isWikiPageMovable,
   isWikiPageRenamable,
 } from "@kanban/shared";
 import { eq } from "drizzle-orm";
@@ -97,6 +98,7 @@ export async function updateWikiPage(
   }
 
   if (titleChanged) assertRenamable(ctx, existing);
+  if (parentChanged) assertMovable(ctx, existing);
 
   const updateData: Partial<typeof wikiPages.$inferInsert> = {
     updatedBy: userId,
@@ -149,6 +151,17 @@ function assertRenamable(ctx: WikiServiceContext, page: WikiPageDto): void {
   const indexPage = findOrganizationIndexPage(ctx, page.organizationId);
   if (!isWikiPageRenamable(page, indexPage?.id)) {
     throw conflict("Project knowledge base pages cannot be renamed");
+  }
+}
+
+function assertMovable(ctx: WikiServiceContext, page: WikiPageDto): void {
+  if (page.slug === ORGANIZATION_INDEX_SLUG) {
+    throw conflict("The organization index page cannot be moved");
+  }
+
+  const indexPage = findOrganizationIndexPage(ctx, page.organizationId);
+  if (!isWikiPageMovable(page, indexPage?.id)) {
+    throw conflict("Project knowledge base pages cannot be moved");
   }
 }
 

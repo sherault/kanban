@@ -1,6 +1,7 @@
 import {
   ORGANIZATION_INDEX_SLUG,
   isWikiPageDeletable,
+  isWikiPageMovable,
   isWikiPageRenamable,
   type WikiPageSummaryDto,
 } from "@kanban/shared";
@@ -52,6 +53,7 @@ export function WikiTree({
           isExpanded={isExpanded}
           isRenamable={isWikiPageRenamable(page, indexPageId)}
           isDeletable={isWikiPageDeletable(page, indexPageId)}
+          isMovable={isWikiPageMovable(page, indexPageId)}
           descendantIds={descendantIdsOf(page.id)}
           onToggle={() => onToggle(page.id)}
           onRenamed={onRefresh}

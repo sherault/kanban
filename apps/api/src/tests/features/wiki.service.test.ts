@@ -223,6 +223,48 @@ describe("WikiService page operations", () => {
     testDb.close();
   });
 
+  it("refuses to move the organization index and project knowledge bases", async () => {
+    const { testDb, wikiSvc, user, org, project } = await setup();
+    const root = await wikiSvc.ensureRootPage(org.id, user.id);
+    const kbPage = (await wikiSvc.listPages(org.id, user.id)).find(
+      (page) => page.projectId === project.id,
+    );
+    const host = await wikiSvc.createPage(org.id, user.id, {
+      title: "Host",
+      content: "h",
+    });
+
+    await expect(
+      wikiSvc.updatePage(root.id, user.id, { parentId: host.id }),
+    ).rejects.toThrow("The organization index page cannot be moved");
+    await expect(
+      wikiSvc.updatePage(kbPage!.id, user.id, { parentId: host.id }),
+    ).rejects.toThrow("Project knowledge base pages cannot be moved");
+
+    expect((await wikiSvc.getPage(root.id))?.parentId).toBeNull();
+    expect((await wikiSvc.getPage(kbPage!.id))?.parentId).toBe(root.id);
+    testDb.close();
+  });
+
+  it("moves a regular page under a new parent", async () => {
+    const { testDb, wikiSvc, user, org } = await setup();
+    const parent = await wikiSvc.createPage(org.id, user.id, {
+      title: "Parent",
+      content: "p",
+    });
+    const page = await wikiSvc.createPage(org.id, user.id, {
+      title: "Loose",
+      content: "l",
+    });
+
+    const moved = await wikiSvc.updatePage(page.id, user.id, {
+      parentId: parent.id,
+    });
+
+    expect(moved.parentId).toBe(parent.id);
+    testDb.close();
+  });
+
   it("renames a regular page and regenerates its slug", async () => {
     const { testDb, wikiSvc, user, org, project } = await setup();
     const root = await wikiSvc.ensureRootPage(org.id, user.id);
