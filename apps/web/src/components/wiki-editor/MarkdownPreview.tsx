@@ -7,13 +7,11 @@ export function MarkdownPreview({
   content,
   emptyText,
   orgId,
-  projectId,
   pages,
 }: {
   content: string;
   emptyText: string;
   orgId: string;
-  projectId: string;
   pages: WikiPageSummaryDto[];
 }) {
   return (
@@ -23,12 +21,7 @@ export function MarkdownPreview({
         urlTransform={(url) => url}
         components={{
           a: ({ href, children }) => (
-            <MarkdownLink
-              href={href}
-              currentOrgId={orgId}
-              projectId={projectId}
-              pages={pages}
-            >
+            <MarkdownLink href={href} currentOrgId={orgId} pages={pages}>
               {children}
             </MarkdownLink>
           ),

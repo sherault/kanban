@@ -18,7 +18,6 @@ export function WikiEditorSurface({
   pages,
   tasks,
   orgId,
-  projectId,
   showProperties,
   properties,
   onPropertiesChange,
@@ -33,7 +32,6 @@ export function WikiEditorSurface({
   pages: WikiPageSummaryDto[];
   tasks: TaskDto[];
   orgId: string;
-  projectId: string;
   showProperties: boolean;
   properties: Record<string, unknown>;
   onPropertiesChange: (properties: Record<string, unknown>) => void;
@@ -73,7 +71,6 @@ export function WikiEditorSurface({
             content={content}
             emptyText="_Start writing on the left..._"
             orgId={orgId}
-            projectId={projectId}
             pages={pages}
           />
         </>
@@ -84,7 +81,6 @@ export function WikiEditorSurface({
           content={content}
           emptyText="_No content yet._"
           orgId={orgId}
-          projectId={projectId}
           pages={pages}
         />
       )}

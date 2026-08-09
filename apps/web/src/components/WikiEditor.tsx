@@ -31,12 +31,7 @@ const td = new TurndownService({
   codeBlockStyle: "fenced",
 });
 
-export function WikiEditor({
-  pageId,
-  orgId,
-  projectId = "",
-  tasks = [],
-}: WikiEditorProps) {
+export function WikiEditor({ pageId, orgId, tasks = [] }: WikiEditorProps) {
   const wiki = useWiki();
   const {
     pages,
@@ -169,7 +164,6 @@ export function WikiEditor({
         pages={pages}
         tasks={tasks}
         orgId={orgId}
-        projectId={projectId}
         showProperties={showProperties}
         properties={properties}
         onPropertiesChange={handlePropertiesChange}

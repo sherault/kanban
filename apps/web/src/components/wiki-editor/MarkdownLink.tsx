@@ -19,43 +19,44 @@ export function MarkdownLink({
   href,
   children,
   currentOrgId,
-  projectId,
   pages,
 }: {
   href?: string;
   children: ReactNode;
   currentOrgId: string;
-  projectId: string;
   pages: WikiPageSummaryDto[];
 }) {
   const router = useRouter();
   if (!href) return <span>{children}</span>;
 
+  // Three shapes reach here: the wiki:// scheme, the current org-scoped URL,
+  // and the legacy project-scoped URL still stored in old page revisions.
   let wikiPageId: string | null = null;
-  let matchedProjectId = "";
   if (href.startsWith("wiki://")) {
     wikiPageId = href.replace("wiki://", "");
-    const page = pages.find((p) => p.id === wikiPageId);
-    if (page) matchedProjectId = page.projectId || "";
   } else {
-    const wikiMatch = href.match(
-      /\/orgs\/([^/]+)\/projects\/([^/]+)\/wiki\/([^/]+)/,
+    const legacyMatch = href.match(
+      /\/orgs\/([^/]+)\/projects\/([^/]+)\/wiki\/([^/?#]+)/,
     );
-    if (wikiMatch) {
-      const [, matchedOrgId, projId, pageId] = wikiMatch;
+    const orgMatch = href.match(/\/orgs\/([^/]+)\/wiki\/([^/?#]+)/);
+    if (legacyMatch) {
+      const [, matchedOrgId, , pageId] = legacyMatch;
       if (matchedOrgId !== currentOrgId) {
         return <DisabledLink>{children}</DisabledLink>;
       }
-      wikiPageId = pageId;
-      matchedProjectId = projId;
+      wikiPageId = pageId ?? null;
+    } else if (orgMatch) {
+      const [, matchedOrgId, pageId] = orgMatch;
+      if (matchedOrgId !== currentOrgId) {
+        return <DisabledLink>{children}</DisabledLink>;
+      }
+      wikiPageId = pageId ?? null;
     }
   }
 
   if (wikiPageId) {
     const exists = pages.some((p) => p.id === wikiPageId);
-    const realHref = matchedProjectId
-      ? `/orgs/${currentOrgId}/projects/${matchedProjectId}/wiki/${wikiPageId}`
-      : href;
+    const targetUrl = `/orgs/${currentOrgId}/wiki/${wikiPageId}`;
 
     const handleClick = (e: MouseEvent) => {
       if (e.metaKey || e.ctrlKey) return;
@@ -66,10 +67,6 @@ export function MarkdownLink({
         return;
       }
 
-      const targetUrl = matchedProjectId
-        ? `/orgs/${currentOrgId}/projects/${matchedProjectId}/wiki/${wikiPageId}`
-        : `/orgs/${currentOrgId}/projects/${projectId}/wiki/${wikiPageId}`;
-
       router.push(targetUrl);
       window.dispatchEvent(
         new CustomEvent("kanban_open_wiki_page", { detail: wikiPageId }),
@@ -78,7 +75,7 @@ export function MarkdownLink({
 
     return (
       <a
-        href={realHref}
+        href={targetUrl}
         onClick={handleClick}
         className="text-blue-600 hover:underline cursor-pointer"
       >
