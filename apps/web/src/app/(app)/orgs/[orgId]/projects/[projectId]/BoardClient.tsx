@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import {
   DndContext,
   DragOverlay,
@@ -86,6 +87,15 @@ export function BoardClient({
     return () =>
       window.removeEventListener("kanban_open_task", handleOpenEvent);
   }, [panels]);
+
+  const searchParams = useSearchParams();
+  const requestedTaskId = searchParams.get("taskId");
+  useEffect(() => {
+    if (!requestedTaskId || !isMounted) return;
+    panels.handleOpenTask(requestedTaskId);
+    // Opening once per arrival: handleOpenTask is recreated on every render.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [requestedTaskId, isMounted]);
 
   const { objectives, allTags, activeDoerName } = useBoardFilterOptions(
     tasks,

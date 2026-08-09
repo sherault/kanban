@@ -103,20 +103,18 @@ export function MarkdownLink({
   }
 
   if (taskId) {
+    // The board is a different route now, so opening a task means navigating:
+    // the window event alone would be dispatched into a page with no board.
     const realHref = taskProjectId
       ? `/orgs/${currentOrgId}/projects/${taskProjectId}?taskId=${taskId}`
       : href;
 
     const handleClick = (e: MouseEvent) => {
       if (e.metaKey || e.ctrlKey) return;
+      if (!taskProjectId) return;
       e.preventDefault();
       e.stopPropagation();
-      window.dispatchEvent(
-        new CustomEvent("kanban_tab_changed", { detail: "board" }),
-      );
-      window.dispatchEvent(
-        new CustomEvent("kanban_open_task", { detail: taskId }),
-      );
+      router.push(realHref);
     };
 
     return (
