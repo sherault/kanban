@@ -1,9 +1,11 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { WikiTabs } from "@/components/WikiTabs";
 import { useWiki } from "@/context/WikiContext";
 import { readWikiTabs, writeWikiTabs } from "@/lib/wikiTabsStorage";
+import { getProjectViewDataAction } from "@/actions/projects";
+import type { TaskDto } from "@kanban/shared";
 import dynamic from "next/dynamic";
 
 import { useRouter, useParams } from "next/navigation";
@@ -27,7 +29,6 @@ interface Props {
 }
 
 export function WikiClient({ orgId, sessionProjectId }: Props) {
-  void sessionProjectId;
   const router = useRouter();
   const {
     pages,
@@ -49,6 +50,29 @@ export function WikiClient({ orgId, sessionProjectId }: Props) {
   useEffect(() => {
     activeSplitRef.current = activeSplitIndex;
   }, [activeSplitIndex]);
+
+  // The wiki layout is a server component and cannot read sessionStorage, so
+  // the mention list is fetched after hydration, for whichever project the tab
+  // is currently attached to. No project → no mentions.
+  const [tasks, setTasks] = useState<TaskDto[] | undefined>(undefined);
+  useEffect(() => {
+    if (!sessionProjectId) return;
+    let cancelled = false;
+    void getProjectViewDataAction(orgId, sessionProjectId)
+      .then((data) => {
+        if (!cancelled) setTasks(data.tasks);
+      })
+      .catch((e: unknown) => {
+        console.error("Failed to load tasks for wiki mentions", e);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [orgId, sessionProjectId]);
+  // `tasks` state is only ever populated for a project fetch; mask it out
+  // entirely once there's no session project so a prior project's mentions
+  // can't leak in (and no synchronous setState-in-effect is needed to clear it).
+  const wikiMentionTasks = sessionProjectId ? tasks : undefined;
 
   // Open tabs only live in context, so a reload would lose everything but the
   // page in the URL. Restore the persisted set once, before any other effect
@@ -207,6 +231,7 @@ export function WikiClient({ orgId, sessionProjectId }: Props) {
                   key={split.activePageId}
                   pageId={split.activePageId}
                   orgId={orgId}
+                  tasks={wikiMentionTasks}
                 />
               ) : (
                 <div className="h-full flex items-center justify-center text-gray-400 text-sm italic">
