@@ -32,18 +32,20 @@ export function OrgWikiLayout({
   // sessionStorage is unreadable during render, so the selection is resolved
   // after hydration: the `from` hint of a redirected old URL wins, then the
   // session, then the first non-archived project. The hint is only allowed
-  // to win on the first run — a later re-render (e.g. a server refresh that
-  // changes `projects` identity) must not clobber a selection the user made
-  // via the selector while `?from=` is still sitting in the URL.
-  const hintConsumed = useRef(false);
+  // to win once per org — a later re-render within the same org (e.g. a
+  // server refresh that changes `projects` identity) must not clobber a
+  // selection the user made via the selector while `?from=` is still sitting
+  // in the URL. But navigating to a different org should allow its hint to
+  // win, since this layout persists across org switches.
+  const hintConsumedForOrgId = useRef<string | null>(null);
   useEffect(() => {
     const hinted =
-      !hintConsumed.current &&
+      hintConsumedForOrgId.current !== orgId &&
       fromProjectId &&
       activeProjects.some((project) => project.id === fromProjectId)
         ? fromProjectId
         : null;
-    hintConsumed.current = true;
+    hintConsumedForOrgId.current = orgId;
     if (hinted) {
       writeActiveProject(orgId, hinted);
       setSelectedProjectId(hinted);
