@@ -10,6 +10,7 @@ import { ProjectContentArea } from "./project-layout/ProjectContentArea";
 import { ProjectHydrationSkeleton } from "./project-layout/ProjectHydrationSkeleton";
 import { ProjectSearchFooter } from "./project-layout/ProjectSearchFooter";
 import { ProjectSearchOverlay } from "./project-layout/ProjectSearchOverlay";
+import { writeActiveProject } from "@/lib/activeProjectSession";
 interface Props {
   projects: ProjectDto[];
   orgId: string;
@@ -62,6 +63,12 @@ export function ProjectClientLayout({
       window.removeEventListener("keydown", handleKeyDown);
     };
   }, []);
+
+  // The wiki has no project in its URL; this is how the Board tab and the
+  // Second Brain panel know which project the tab was last working on.
+  useEffect(() => {
+    writeActiveProject(orgId, projectId);
+  }, [orgId, projectId]);
 
   useEffect(() => {
     if (searchQuery.length < 2) {
