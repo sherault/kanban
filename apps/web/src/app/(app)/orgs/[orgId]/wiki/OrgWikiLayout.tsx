@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import type { ReactNode } from "react";
 import { useSearchParams } from "next/navigation";
 import type { ProjectDto } from "@kanban/shared";
@@ -31,13 +31,19 @@ export function OrgWikiLayout({
 
   // sessionStorage is unreadable during render, so the selection is resolved
   // after hydration: the `from` hint of a redirected old URL wins, then the
-  // session, then the first non-archived project.
+  // session, then the first non-archived project. The hint is only allowed
+  // to win on the first run — a later re-render (e.g. a server refresh that
+  // changes `projects` identity) must not clobber a selection the user made
+  // via the selector while `?from=` is still sitting in the URL.
+  const hintConsumed = useRef(false);
   useEffect(() => {
     const hinted =
+      !hintConsumed.current &&
       fromProjectId &&
       activeProjects.some((project) => project.id === fromProjectId)
         ? fromProjectId
         : null;
+    hintConsumed.current = true;
     if (hinted) {
       writeActiveProject(orgId, hinted);
       setSelectedProjectId(hinted);

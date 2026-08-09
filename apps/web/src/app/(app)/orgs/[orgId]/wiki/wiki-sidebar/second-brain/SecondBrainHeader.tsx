@@ -1,5 +1,7 @@
 "use client";
 
+import type { ProjectDto } from "@kanban/shared";
+
 interface Props {
   collapsed: boolean;
   onToggle: () => void;
@@ -8,6 +10,9 @@ interface Props {
   onCapture: () => void;
   captureDisabled: boolean;
   bodyId: string;
+  projects: ProjectDto[];
+  projectId: string;
+  onSelectProject: (projectId: string) => void;
 }
 
 export function SecondBrainHeader({
@@ -18,33 +23,54 @@ export function SecondBrainHeader({
   onCapture,
   captureDisabled,
   bodyId,
+  projects,
+  projectId,
+  onSelectProject,
 }: Props) {
   return (
-    <div className="flex items-center justify-between gap-2">
-      <button
-        type="button"
-        onClick={onToggle}
-        aria-expanded={!collapsed}
-        aria-controls={bodyId}
-        title={collapsed ? "Expand Second Brain" : "Collapse Second Brain"}
-        className="flex min-w-0 flex-1 items-center gap-1.5 rounded-md px-1 py-1 text-left hover:bg-gray-100"
-      >
-        <ChevronIcon collapsed={collapsed} />
-        <span className="text-[11px] font-bold uppercase tracking-wider text-gray-500">
-          Second Brain
-        </span>
-        {inboxCount > 0 && <CountBadge label="Inbox" value={inboxCount} />}
-        {reviewCount > 0 && <CountBadge label="Review" value={reviewCount} />}
-      </button>
-      <button
-        type="button"
-        title="Create capture"
-        onClick={onCapture}
-        disabled={captureDisabled}
-        className="h-8 w-8 shrink-0 rounded-md border border-gray-200 bg-white text-gray-600 hover:border-gray-300 hover:text-gray-900 disabled:opacity-50"
-      >
-        <PlusIcon />
-      </button>
+    <div className="space-y-2">
+      <div className="flex items-center justify-between gap-2">
+        <button
+          type="button"
+          onClick={onToggle}
+          aria-expanded={!collapsed}
+          aria-controls={bodyId}
+          title={collapsed ? "Expand Second Brain" : "Collapse Second Brain"}
+          className="flex min-w-0 flex-1 items-center gap-1.5 rounded-md px-1 py-1 text-left hover:bg-gray-100"
+        >
+          <ChevronIcon collapsed={collapsed} />
+          <span className="text-[11px] font-bold uppercase tracking-wider text-gray-500">
+            Second Brain
+          </span>
+          {inboxCount > 0 && <CountBadge label="Inbox" value={inboxCount} />}
+          {reviewCount > 0 && <CountBadge label="Review" value={reviewCount} />}
+        </button>
+        <button
+          type="button"
+          title="Create capture"
+          onClick={onCapture}
+          disabled={captureDisabled}
+          className="h-8 w-8 shrink-0 rounded-md border border-gray-200 bg-white text-gray-600 hover:border-gray-300 hover:text-gray-900 disabled:opacity-50"
+        >
+          <PlusIcon />
+        </button>
+      </div>
+      {!collapsed && projects.length > 1 && (
+        <label className="flex items-center gap-2 text-[10px] uppercase tracking-wider text-gray-400">
+          <span className="shrink-0">Project</span>
+          <select
+            value={projectId}
+            onChange={(event) => onSelectProject(event.target.value)}
+            className="h-7 min-w-0 flex-1 rounded-md border border-gray-200 bg-white px-1.5 text-[11px] normal-case tracking-normal text-gray-700 outline-none focus:border-blue-400"
+          >
+            {projects.map((project) => (
+              <option key={project.id} value={project.id}>
+                {project.name}
+              </option>
+            ))}
+          </select>
+        </label>
+      )}
     </div>
   );
 }

@@ -44,8 +44,6 @@ export function SecondBrainPanel({
   pages,
   onRefresh,
 }: SecondBrainPanelProps) {
-  void projects;
-  void onSelectProject;
   const router = useRouter();
   const [isCaptureOpen, setIsCaptureOpen] = useState(false);
   const [captureTitle, setCaptureTitle] = useState("");
@@ -142,6 +140,9 @@ export function SecondBrainPanel({
         }}
         captureDisabled={isPending}
         bodyId={SECOND_BRAIN_BODY_ID}
+        projects={projects}
+        projectId={projectId}
+        onSelectProject={onSelectProject}
       />
 
       {!collapsed && (
