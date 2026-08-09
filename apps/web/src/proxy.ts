@@ -45,6 +45,24 @@ function isTokenExpiringSoon(token: string | undefined): boolean {
 
 export async function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
+
+  // Redirect legacy project-scoped wiki URLs to org-scoped URLs.
+  // This runs before any auth check that would fail on a deleted project.
+  // Patterns:
+  //   /orgs/X/projects/Y/wiki           → /orgs/X/wiki?from=Y
+  //   /orgs/X/projects/Y/wiki/Z         → /orgs/X/wiki/Z?from=Y
+  const m = pathname.match(
+    /^\/orgs\/([^/]+)\/projects\/([^/]+)\/wiki(?:\/([^/]+))?$/,
+  );
+  if (m) {
+    const [, orgId, projectId, pageId] = m;
+    const to = pageId ? `/orgs/${orgId}/wiki/${pageId}` : `/orgs/${orgId}/wiki`;
+    return NextResponse.redirect(
+      new URL(`${to}?from=${encodeURIComponent(projectId)}`, request.url),
+      308,
+    );
+  }
+
   const accessToken = request.cookies.get(KB_ACCESS_TOKEN_COOKIE)?.value;
   const refreshToken = request.cookies.get(KB_REFRESH_TOKEN_COOKIE)?.value;
 
