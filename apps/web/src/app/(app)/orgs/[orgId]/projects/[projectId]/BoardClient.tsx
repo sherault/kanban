@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useSearchParams } from "next/navigation";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import {
   DndContext,
   DragOverlay,
@@ -88,14 +88,27 @@ export function BoardClient({
       window.removeEventListener("kanban_open_task", handleOpenEvent);
   }, [panels]);
 
+  const router = useRouter();
+  const pathname = usePathname();
   const searchParams = useSearchParams();
   const requestedTaskId = searchParams.get("taskId");
   useEffect(() => {
-    if (!requestedTaskId || !isMounted) return;
+    // Wait for useBoardPanels' own localStorage hydration, not just isMounted:
+    // that hydration replaces openTasks wholesale, so opening before it
+    // resolves gets silently clobbered by the persisted (task-less) state.
+    if (!requestedTaskId || !panels.isHydrated) return;
     panels.handleOpenTask(requestedTaskId);
+    // Drop taskId from the URL once handled, so a later reload doesn't
+    // force the panel back open after the user has closed it.
+    const params = new URLSearchParams(searchParams.toString());
+    params.delete("taskId");
+    const query = params.toString();
+    router.replace(query ? `${pathname}?${query}` : pathname, {
+      scroll: false,
+    });
     // Opening once per arrival: handleOpenTask is recreated on every render.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [requestedTaskId, isMounted]);
+  }, [requestedTaskId, panels.isHydrated]);
 
   const { objectives, allTags, activeDoerName } = useBoardFilterOptions(
     tasks,

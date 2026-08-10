@@ -109,6 +109,7 @@ export function useBoardPanels({
     stableShells,
     sidebarTotalWidth,
     panelsRightOffset,
+    isHydrated,
     handleOpenTask,
     handleOpenAsComparison,
     handleActivateTask: handleOpenTask,
