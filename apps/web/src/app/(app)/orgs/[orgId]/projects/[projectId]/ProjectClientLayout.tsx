@@ -24,7 +24,6 @@ interface Props {
     enableNotifications: boolean;
     maxNotifications: number;
     notificationDuration: number;
-    enableSecondBrain: boolean;
   };
 }
 export function ProjectClientLayout({

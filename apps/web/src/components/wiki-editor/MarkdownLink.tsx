@@ -111,9 +111,9 @@ export function MarkdownLink({
 
     const handleClick = (e: MouseEvent) => {
       if (e.metaKey || e.ctrlKey) return;
-      if (!taskProjectId) return;
       e.preventDefault();
       e.stopPropagation();
+      if (!taskProjectId) return;
       router.push(realHref);
     };
 

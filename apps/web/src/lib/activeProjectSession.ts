@@ -28,3 +28,12 @@ export function writeActiveProject(orgId: string, projectId: string): void {
     // Quota or privacy mode — the Board tab just falls back to the org page.
   }
 }
+
+export function clearActiveProject(orgId: string): void {
+  if (typeof window === "undefined") return;
+  try {
+    window.sessionStorage.removeItem(storageKey(orgId));
+  } catch {
+    // Quota or privacy mode — nothing to clean up.
+  }
+}

@@ -5,6 +5,7 @@ import type { ReactNode } from "react";
 import { useSearchParams } from "next/navigation";
 import type { ProjectDto } from "@kanban/shared";
 import {
+  clearActiveProject,
   readActiveProject,
   writeActiveProject,
 } from "@/lib/activeProjectSession";
@@ -56,6 +57,13 @@ export function OrgWikiLayout({
       stored && activeProjects.some((project) => project.id === stored)
         ? stored
         : (activeProjects[0]?.id ?? null);
+    if (valid !== stored) {
+      if (valid) {
+        writeActiveProject(orgId, valid);
+      } else {
+        clearActiveProject(orgId);
+      }
+    }
     setSelectedProjectId(valid);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [orgId, fromProjectId, projects]);
