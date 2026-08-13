@@ -3,6 +3,8 @@
 import { useRouter } from "next/navigation";
 import type { WikiPageSummaryDto } from "@kanban/shared";
 import type { MouseEvent, ReactNode } from "react";
+import { getTaskByIdAction } from "@/actions/tasks";
+import { parseSchemeId } from "./linkScheme";
 
 function DisabledLink({ children }: { children: ReactNode }) {
   return (
@@ -29,12 +31,10 @@ export function MarkdownLink({
   const router = useRouter();
   if (!href) return <span>{children}</span>;
 
-  // Three shapes reach here: the wiki:// scheme, the current org-scoped URL,
+  // Three shapes reach here: the wiki: scheme, the current org-scoped URL,
   // and the legacy project-scoped URL still stored in old page revisions.
-  let wikiPageId: string | null = null;
-  if (href.startsWith("wiki://")) {
-    wikiPageId = href.replace("wiki://", "");
-  } else {
+  let wikiPageId: string | null = parseSchemeId(href, "wiki");
+  if (!wikiPageId) {
     const legacyMatch = href.match(
       /\/orgs\/([^/]+)\/projects\/([^/]+)\/wiki\/([^/?#]+)/,
     );
@@ -84,11 +84,9 @@ export function MarkdownLink({
     );
   }
 
-  let taskId: string | null = null;
+  let taskId: string | null = parseSchemeId(href, "task");
   let taskProjectId = "";
-  if (href.startsWith("task://")) {
-    taskId = href.replace("task://", "");
-  } else {
+  if (!taskId) {
     const taskMatch = href.match(
       /\/orgs\/([^/]+)\/projects\/([^/]+)\/tasks\/([^/]+)/,
     );
@@ -113,8 +111,21 @@ export function MarkdownLink({
       if (e.metaKey || e.ctrlKey) return;
       e.preventDefault();
       e.stopPropagation();
-      if (!taskProjectId) return;
-      router.push(realHref);
+      if (taskProjectId) {
+        router.push(realHref);
+        return;
+      }
+      // The task: scheme carries no project, and the wiki is org-scoped now,
+      // so the owning project has to be resolved before we can open the board.
+      void getTaskByIdAction(taskId).then((res) => {
+        if (!res.task) {
+          alert(`Task does not exist: ${taskId}`);
+          return;
+        }
+        router.push(
+          `/orgs/${currentOrgId}/projects/${res.task.projectId}?taskId=${taskId}`,
+        );
+      });
     };
 
     return (

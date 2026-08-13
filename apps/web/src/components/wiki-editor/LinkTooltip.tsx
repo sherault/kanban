@@ -1,4 +1,5 @@
 import type { TaskDto, WikiPageSummaryDto } from "@kanban/shared";
+import { parseSchemeId } from "./linkScheme";
 
 export function getTooltipLabel({
   href,
@@ -11,16 +12,18 @@ export function getTooltipLabel({
   tasks: TaskDto[];
   taskCache: Record<string, string>;
 }): { label: string; isError: boolean } {
-  if (href.startsWith("wiki://")) {
-    const id = href.replace("wiki://", "");
+  const wikiId = parseSchemeId(href, "wiki");
+  if (wikiId) {
+    const id = wikiId;
     const page = pages.find((p) => p.id === id);
     return page
       ? { label: `Wiki: ${page.title}`, isError: false }
       : { label: "Error: Wiki page not found", isError: true };
   }
 
-  if (href.startsWith("task://")) {
-    const id = href.replace("task://", "");
+  const schemeTaskId = parseSchemeId(href, "task");
+  if (schemeTaskId) {
+    const id = schemeTaskId;
     const task = tasks.find((t) => t.id === id);
     if (task) return { label: `Task: ${task.title}`, isError: false };
     if (!taskCache[id]) {

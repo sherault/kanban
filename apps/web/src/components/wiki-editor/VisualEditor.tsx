@@ -15,6 +15,7 @@ import {
   saveSelection,
 } from "./selection";
 import { LinkTooltip } from "./LinkTooltip";
+import { parseSchemeId } from "./linkScheme";
 import type { VisualEditorProps, VisualEditorRef } from "./types";
 
 const VisualEditorInner = forwardRef<VisualEditorRef, VisualEditorProps>(
@@ -54,8 +55,9 @@ const VisualEditorInner = forwardRef<VisualEditorRef, VisualEditorProps>(
           } as DOMRect,
         });
 
-        if (href.startsWith("task://")) {
-          const id = href.replace("task://", "");
+        const taskLinkId = parseSchemeId(href, "task");
+        if (taskLinkId) {
+          const id = taskLinkId;
           const isKnown = tasks.some((t) => t.id === id) || taskCache[id];
           if (!isKnown) {
             void getTaskByIdAction(id).then((res) => {
