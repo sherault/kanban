@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { WikiTabs } from "@/components/WikiTabs";
 import { useWiki } from "@/context/WikiContext";
 import { readWikiTabs, writeWikiTabs } from "@/lib/wikiTabsStorage";
@@ -8,7 +8,7 @@ import { getProjectViewDataAction } from "@/actions/projects";
 import type { TaskDto } from "@kanban/shared";
 import dynamic from "next/dynamic";
 
-import { useRouter, useParams } from "next/navigation";
+import { useRouter, usePathname } from "next/navigation";
 
 const WikiEditor = dynamic(
   () => import("@/components/WikiEditor").then((m) => m.WikiEditor),
@@ -42,9 +42,16 @@ export function WikiClient({ orgId, sessionProjectId }: Props) {
     closePageInSplit,
   } = useWiki();
 
-  const params = useParams();
-  const wikiParam = params.wikiPageId;
-  const urlWikiPageId = wikiParam as string | undefined;
+  // Read the page id off the pathname rather than useParams(): this component
+  // lives in the wiki *layout*, and on a soft navigation into /wiki/<id> the
+  // layout's first render pass sees the child segment's params as undefined.
+  // The effects below would then treat that pass as "no page in the URL" and
+  // bounce the user back to the previously focused page.
+  const pathname = usePathname();
+  const urlWikiPageId = useMemo(() => {
+    const match = pathname?.match(/^\/orgs\/[^/]+\/wiki\/([^/?#]+)/);
+    return match?.[1];
+  }, [pathname]);
 
   const activeSplitRef = useRef(activeSplitIndex);
   useEffect(() => {
@@ -142,21 +149,48 @@ export function WikiClient({ orgId, sessionProjectId }: Props) {
     );
   }, [pages, setSplits]);
 
-  useEffect(() => {
-    if (urlWikiPageId) {
-      openPageInSplit(urlWikiPageId, activeSplitRef.current);
-    }
-  }, [urlWikiPageId, openPageInSplit]);
-
-  // Keep the URL in sync with the focused split's active page. Doing this in an
-  // effect (rather than pushing from click handlers) avoids stale reads of
-  // activePageId when a click bubbles up from inside the editor.
+  // URL and focused tab are kept in sync in a single effect, because two
+  // independent effects (URL→state and state→URL) ping-pong forever: the
+  // WikiProvider sits at the org layout, so `splits` still holds the previously
+  // focused page when this tree mounts from a wiki link elsewhere in the app,
+  // and each effect would keep correcting the other's side.
+  //
+  // Rule: a URL change always wins (link click, back/forward, restore); a
+  // focus change with an unchanged URL pushes. Syncing in an effect rather than
+  // from click handlers avoids stale reads of activePageId when a click bubbles
+  // up from inside the editor.
   const focusedPageId = splits[activeSplitIndex]?.activePageId ?? null;
+  // `null` is the "nothing synced yet" sentinel — the URL page id is
+  // `string | undefined`, so the first pass always takes the adopt branch.
+  const syncedUrlPageIdRef = useRef<string | undefined | null>(null);
+  // Set while a URL page id has been adopted but `splits` has not caught up
+  // yet. Without it, any re-run of this effect before the state commit (React
+  // StrictMode re-invokes mount effects immediately, with the pre-adopt
+  // `focusedPageId` still in the closure) reads the stale focus and pushes the
+  // previously focused page over the one the user actually clicked.
+  const pendingUrlPageIdRef = useRef<string | null>(null);
   useEffect(() => {
+    if (syncedUrlPageIdRef.current !== urlWikiPageId) {
+      syncedUrlPageIdRef.current = urlWikiPageId;
+      pendingUrlPageIdRef.current = urlWikiPageId ?? null;
+      if (urlWikiPageId) {
+        // The ref (not `activeSplitIndex`) is what the restore effect syncs
+        // ahead of this one, so it names the split that will be focused.
+        openPageInSplit(urlWikiPageId, activeSplitRef.current);
+      }
+      return;
+    }
+    if (pendingUrlPageIdRef.current !== null) {
+      // Only the commit that actually focuses the URL's page releases the lock.
+      if (focusedPageId !== pendingUrlPageIdRef.current) return;
+      pendingUrlPageIdRef.current = null;
+      return;
+    }
     if (!isRestoredRef.current) return;
     if (!focusedPageId || focusedPageId === urlWikiPageId) return;
+    syncedUrlPageIdRef.current = focusedPageId;
     router.push(`/orgs/${orgId}/wiki/${focusedPageId}`);
-  }, [focusedPageId, urlWikiPageId, orgId, router]);
+  }, [focusedPageId, urlWikiPageId, openPageInSplit, orgId, router]);
 
   useEffect(() => {
     const handleOpenPage = (e: Event) => {
