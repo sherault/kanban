@@ -4,8 +4,12 @@ import {
   KB_ACCESS_TOKEN_COOKIE,
   KB_REFRESH_TOKEN_COOKIE,
   KB_ACCESS_TOKEN_HEADER,
+  KB_USER_NAME_COOKIE,
+  KB_USER_ID_COOKIE,
   createLogger,
 } from "@kanban/shared";
+
+import { decodeJwtPayload } from "./lib/jwt-claims";
 
 const API_URL = process.env["API_URL"] ?? "http://localhost:3010";
 const APP_URL = process.env["APP_URL"] ?? "http://localhost:3009";
@@ -14,33 +18,16 @@ const secure = process.env["NODE_ENV"] === "production";
 const logger = createLogger("proxy");
 
 /**
- * Decodes a JWT payload without verification (Base64 only).
+ * Returns true when the access token is missing, malformed, or has less than
+ * six minutes of life left.
  */
 function isTokenExpiringSoon(token: string | undefined): boolean {
-  if (!token) return true;
-  try {
-    const parts = token.split(".");
-    if (parts.length !== 3) return true;
-
-    // Base64Url to Base64
-    let base64 = parts[1].replace(/-/g, "+").replace(/_/g, "/");
-    // Add padding if missing
-    while (base64.length % 4) {
-      base64 += "=";
-    }
-
-    const payload = JSON.parse(atob(base64));
-    const exp = payload.exp;
-    if (!exp) return true;
-    const now = Math.floor(Date.now() / 1000);
-    const lifeLeft = exp - now;
-
-    logger.debug(`Token life left: ${lifeLeft}s (threshold: 360s)`);
-    return lifeLeft < 6 * 60;
-  } catch (err) {
-    logger.warn("Token decode failed", err);
-    return true;
-  }
+  const exp = decodeJwtPayload(token)?.["exp"];
+  if (typeof exp !== "number") return true;
+  const now = Math.floor(Date.now() / 1000);
+  const lifeLeft = exp - now;
+  logger.debug(`Token life left: ${lifeLeft}s (threshold: 360s)`);
+  return lifeLeft < 6 * 60;
 }
 
 export async function proxy(request: NextRequest) {
@@ -124,6 +111,22 @@ export async function proxy(request: NextRequest) {
             maxAge: 7 * 24 * 60 * 60,
             path: "/",
           });
+        }
+
+        // The display-name and user-id cookies are only written at login:
+        // slide their expiry along with the refreshed session so they do not
+        // vanish while the user is still authenticated.
+        for (const name of [KB_USER_NAME_COOKIE, KB_USER_ID_COOKIE]) {
+          const value = request.cookies.get(name)?.value;
+          if (value) {
+            response.cookies.set(name, value, {
+              httpOnly: false,
+              sameSite: "lax",
+              secure,
+              maxAge: 7 * 24 * 60 * 60,
+              path: "/",
+            });
+          }
         }
         return response;
       } else {

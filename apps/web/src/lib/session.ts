@@ -7,6 +7,8 @@ import {
   KB_USER_ID_COOKIE,
 } from "@kanban/shared";
 
+import { getJwtSubject } from "./jwt-claims";
+
 const ACCESS_COOKIE = KB_ACCESS_TOKEN_COOKIE;
 const REFRESH_COOKIE = KB_REFRESH_TOKEN_COOKIE;
 const USER_NAME_COOKIE = KB_USER_NAME_COOKIE;
@@ -26,8 +28,17 @@ export async function getUserName(): Promise<string> {
   return (await cookies()).get(USER_NAME_COOKIE)?.value ?? "User";
 }
 
+/**
+ * Current user id, derived from the access token's `sub` claim so it stays
+ * correct for the whole session lifetime (the id cookie is only set at login
+ * and may expire before the refresh-token session does).
+ */
 export async function getUserId(): Promise<string | undefined> {
-  return (await cookies()).get(USER_ID_COOKIE)?.value;
+  const jar = await cookies();
+  return (
+    getJwtSubject(jar.get(ACCESS_COOKIE)?.value) ??
+    jar.get(USER_ID_COOKIE)?.value
+  );
 }
 
 /**
@@ -80,6 +91,7 @@ export async function clearTokens(): Promise<void> {
   jar.delete(ACCESS_COOKIE);
   jar.delete(REFRESH_COOKIE);
   jar.delete(USER_NAME_COOKIE);
+  jar.delete(USER_ID_COOKIE);
 }
 
 /**
