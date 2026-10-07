@@ -1,5 +1,6 @@
 import type { TaskDto } from "@kanban/shared";
 import { getDisplayInitials } from "./initials";
+import { TaskIdCopy } from "./TaskIdCopy";
 
 interface TaskCardContentProps {
   date: Date | null;
@@ -28,13 +29,19 @@ export function TaskCardContent({
         {task.title}
       </p>
       <div className="flex items-center justify-between gap-2">
-        {isMounted && date && (
-          <span
-            className={`text-xs ${isOverdue ? "text-red-500 font-medium" : "text-gray-400"}`}
-          >
-            {date.toLocaleDateString("en", { month: "short", day: "numeric" })}
-          </span>
-        )}
+        <div className="flex items-center gap-2 min-w-0">
+          <TaskIdCopy taskId={task.id} />
+          {isMounted && date && (
+            <span
+              className={`text-xs ${isOverdue ? "text-red-500 font-medium" : "text-gray-400"}`}
+            >
+              {date.toLocaleDateString("en", {
+                month: "short",
+                day: "numeric",
+              })}
+            </span>
+          )}
+        </div>
         {initials && (
           <span
             onClick={

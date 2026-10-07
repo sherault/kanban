@@ -76,7 +76,7 @@ export class TaskImportSearchOperations extends TaskServiceBase {
             like(tasks.description, `%${query}%`),
             like(tasks.globalSubject, `%${query}%`),
             like(tasks.objective, `%${query}%`),
-            eq(tasks.id, query),
+            like(tasks.id, `${query}%`),
           ),
         ),
       )

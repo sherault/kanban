@@ -53,7 +53,7 @@ export function NoResults() {
       <div className="text-center">
         <p className="text-sm font-medium text-gray-900">No results found</p>
         <p className="text-xs text-gray-500 mt-1">
-          Try searching for a different title or keyword.
+          Try a different title, keyword or task id.
         </p>
       </div>
     </div>

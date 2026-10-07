@@ -6,7 +6,7 @@ export function BoardColumns({
   tasks,
   sidebarTotalWidth,
   ideasCollapsed,
-  activeTag,
+  activeTags,
   activeObjective,
   activeDoerId,
   selectedDoneIds,
@@ -22,7 +22,7 @@ export function BoardColumns({
   tasks: TaskDto[];
   sidebarTotalWidth: number;
   ideasCollapsed: boolean;
-  activeTag: string | null;
+  activeTags: string[];
   activeObjective: string | null;
   activeDoerId: string | null;
   selectedDoneIds: Set<string>;
@@ -43,7 +43,7 @@ export function BoardColumns({
       {BOARD_COLUMNS.map(({ id, label }) => {
         const columnTasks = filterAndSortTasks(tasks, {
           column: id,
-          activeTag,
+          activeTags,
           activeObjective,
           activeDoerId,
         });
@@ -77,7 +77,7 @@ function filterAndSortTasks(
   tasks: TaskDto[],
   filters: {
     column: Column;
-    activeTag: string | null;
+    activeTags: string[];
     activeObjective: string | null;
     activeDoerId: string | null;
   },
@@ -86,7 +86,7 @@ function filterAndSortTasks(
     .filter(
       (task) =>
         task.column === filters.column &&
-        (!filters.activeTag || task.tags.includes(filters.activeTag)) &&
+        filters.activeTags.every((tag) => task.tags.includes(tag)) &&
         (!filters.activeObjective ||
           task.objective === filters.activeObjective) &&
         (!filters.activeDoerId || task.doer?.id === filters.activeDoerId),

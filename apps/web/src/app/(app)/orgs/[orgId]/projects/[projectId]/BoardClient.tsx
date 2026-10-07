@@ -48,7 +48,7 @@ export function BoardClient({
   const [showImport, setShowImport] = useState(false);
   const [ideasCollapsed, setIdeasCollapsed] = useState(true);
   const [sidebarRevision, setSidebarRevision] = useState(0);
-  const [activeTag, setActiveTag] = useState<string | null>(null);
+  const [activeTags, setActiveTags] = useState<string[]>([]);
   const [activeObjective, setActiveObjective] = useState<string | null>(null);
   const [activeDoerId, setActiveDoerId] = useState<string | null>(null);
 
@@ -114,6 +114,10 @@ export function BoardClient({
     tasks,
     activeDoerId,
   );
+  const toggleTag = (tag: string) =>
+    setActiveTags((prev) =>
+      prev.includes(tag) ? prev.filter((t) => t !== tag) : [...prev, tag],
+    );
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
   );
@@ -132,15 +136,15 @@ export function BoardClient({
             onClear={() => interactions.setError(null)}
           />
           <BoardFilters
-            activeTag={activeTag}
+            activeTags={activeTags}
             activeObjective={activeObjective}
             activeDoerName={activeDoerName}
             activeDoerId={activeDoerId}
-            onClearTag={() => setActiveTag(null)}
+            onClearTag={toggleTag}
             onClearObjective={() => setActiveObjective(null)}
             onClearDoer={() => setActiveDoerId(null)}
             onClearAll={() => {
-              setActiveTag(null);
+              setActiveTags([]);
               setActiveObjective(null);
               setActiveDoerId(null);
             }}
@@ -149,7 +153,7 @@ export function BoardClient({
             tasks={tasks}
             sidebarTotalWidth={panels.sidebarTotalWidth}
             ideasCollapsed={ideasCollapsed}
-            activeTag={activeTag}
+            activeTags={activeTags}
             activeObjective={activeObjective}
             activeDoerId={activeDoerId}
             selectedDoneIds={interactions.selectedDoneIds}
@@ -157,7 +161,7 @@ export function BoardClient({
             onOpenTask={panels.handleOpenTask}
             onOpenAsComparison={panels.handleOpenAsComparison}
             onNewTask={setNewTaskColumn}
-            onTagClick={setActiveTag}
+            onTagClick={toggleTag}
             onObjectiveClick={setActiveObjective}
             onDoerClick={setActiveDoerId}
             onSelectionChange={interactions.handleDoneSelection}

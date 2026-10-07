@@ -1,5 +1,7 @@
+import type { ReactNode } from "react";
+
 export function BoardFilters({
-  activeTag,
+  activeTags,
   activeObjective,
   activeDoerName,
   activeDoerId,
@@ -8,25 +10,27 @@ export function BoardFilters({
   onClearDoer,
   onClearAll,
 }: {
-  activeTag: string | null;
+  activeTags: string[];
   activeObjective: string | null;
   activeDoerName: string | null;
   activeDoerId: string | null;
-  onClearTag: () => void;
+  onClearTag: (tag: string) => void;
   onClearObjective: () => void;
   onClearDoer: () => void;
   onClearAll: () => void;
 }) {
-  if (!activeTag && !activeObjective && !activeDoerId) return null;
+  if (activeTags.length === 0 && !activeObjective && !activeDoerId) {
+    return null;
+  }
 
   return (
     <div className="mx-6 mt-4 flex items-center gap-2 shrink-0 flex-wrap">
       <span className="text-xs text-gray-400">Filters:</span>
-      {activeTag && (
-        <FilterChip tone="blue" onClear={onClearTag}>
-          #{activeTag}
+      {activeTags.map((tag) => (
+        <FilterChip key={tag} tone="blue" onClear={() => onClearTag(tag)}>
+          #{tag}
         </FilterChip>
-      )}
+      ))}
       {activeObjective && (
         <FilterChip tone="purple" onClear={onClearObjective}>
           {activeObjective}
@@ -37,7 +41,8 @@ export function BoardFilters({
           {activeDoerName}
         </FilterChip>
       )}
-      {[activeTag, activeObjective, activeDoerId].filter(Boolean).length >
+      {activeTags.length +
+        [activeObjective, activeDoerId].filter(Boolean).length >
         1 && (
         <button
           onClick={onClearAll}
@@ -80,4 +85,3 @@ function FilterChip({
     </span>
   );
 }
-import type { ReactNode } from "react";

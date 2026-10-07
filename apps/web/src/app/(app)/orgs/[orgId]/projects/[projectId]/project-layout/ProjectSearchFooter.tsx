@@ -17,7 +17,7 @@ export function ProjectSearchFooter({
           type="text"
           value={searchQuery}
           onChange={(e) => onSearchChange(e.target.value)}
-          placeholder="Search wiki, tasks or ask a question... (Cmd+K)"
+          placeholder="Search wiki, tasks, task id or ask a question... (Cmd+K)"
           className="w-full bg-gray-100 border-none rounded-full px-5 py-2.5 text-sm focus:ring-2 focus:ring-blue-500/20 transition-all pl-11 shadow-inner"
         />
         <div className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400">
