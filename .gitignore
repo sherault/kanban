@@ -16,3 +16,4 @@ apps/web/tsconfig.tsbuildinfo
 packages/shared/tsconfig.tsbuildinfo
 docker-compose.local.yml
 apps/web/next-env.d.ts
+.claude/settings.local.json
