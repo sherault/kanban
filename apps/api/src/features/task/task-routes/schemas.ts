@@ -30,3 +30,7 @@ export const updateTaskSchema = z.object({
 export const moveSchema = z.object({
   column: columnEnum,
 });
+
+export const transferSchema = z.object({
+  targetProjectId: z.string().min(1),
+});

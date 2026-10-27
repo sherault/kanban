@@ -138,7 +138,7 @@ Each task has a rich detail sidebar with:
   - `list_organizations`, `create_organization`, `list_members`
   - `list_projects`, `create_project`
   - `get_board`
-  - `list_tasks`, `get_task`, `get_task_history`, `create_task`, `update_task`, `append_task_note`, `move_task`, `delete_task`
+  - `list_tasks`, `get_task`, `get_task_history`, `create_task`, `update_task`, `append_task_note`, `move_task`, `transfer_task`, `delete_task`
   - `list_wiki_pages`, `get_wiki_page`, `create_wiki_page`, `update_wiki_page`, `delete_wiki_page`
   - `get_wiki_history`, `search_wiki`
   - `set_wiki_page_property`
@@ -356,6 +356,7 @@ Connect Claude (or any other MCP client) to your board from the **Profile** page
 - `update_task`: Update task details. Tags can be set wholesale with `tags`, or edited incrementally with `addTags`/`removeTags` (mutually exclusive with `tags`).
 - `append_task_note`: Append a note to the end of a task description, atomically server-side. Use it instead of read + `update_task(description)` for traceability blocks: it never overwrites concurrent edits and needs no prior read. The server prefixes the note with a UTC timestamp heading naming the current doer, and records the note text alone as a `note` history entry (read it back with `get_task_history(field: "note")`).
 - `move_task`: Change task column. Unlike drag-and-drop, it never auto-assigns or auto-clears the doer — and because of that it rejects (422) a move to `doing` on a task with no doer. Assign one with `update_task` first.
+- `transfer_task`: Transfer a task (archived ones included) to another project of the same organization. The task keeps its id, column, history, tags, links and participants, lands at the end of its column, and stays archived if it was. Recorded as a `projectId` history entry (old and new project IDs). Rejects (422) a transfer to the task's own project; a project outside the organization answers 404.
 - `delete_task`: Remove a task.
 - `link_tasks`: Add a bidirectional link between two tasks.
 - `unlink_tasks`: Remove a link between two tasks.

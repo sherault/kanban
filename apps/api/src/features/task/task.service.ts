@@ -14,6 +14,7 @@ import { TaskImportSearchOperations } from "./task-service/import-search.js";
 import { TaskMoveOperations } from "./task-service/move.js";
 import { TaskParticipantOperations } from "./task-service/participants.js";
 import { TaskRelationOperations } from "./task-service/relations.js";
+import { TaskTransferOperations } from "./task-service/transfer.js";
 import {
   type UpdateTaskInput,
   TaskUpdateHistoryOperations,
@@ -27,6 +28,7 @@ export class TaskService {
   private readonly move: TaskMoveOperations;
   private readonly participants: TaskParticipantOperations;
   private readonly relations: TaskRelationOperations;
+  private readonly transfer: TaskTransferOperations;
   private readonly updateHistory: TaskUpdateHistoryOperations;
 
   constructor(db: AppDb, broadcast: Broadcaster = noopBroadcaster) {
@@ -37,6 +39,7 @@ export class TaskService {
     this.move = new TaskMoveOperations(db, broadcast);
     this.participants = new TaskParticipantOperations(db, broadcast);
     this.relations = new TaskRelationOperations(db, broadcast);
+    this.transfer = new TaskTransferOperations(db, broadcast);
     this.updateHistory = new TaskUpdateHistoryOperations(db, broadcast);
   }
 
@@ -155,6 +158,15 @@ export class TaskService {
     isMcp?: boolean,
   ): TaskDto {
     return this.move.moveTask(taskId, actorId, input, isMcp);
+  }
+
+  transferTask(
+    taskId: string,
+    actorId: string,
+    input: { targetProjectId: string },
+    isMcp?: boolean,
+  ): TaskDto {
+    return this.transfer.transferTask(taskId, actorId, input, isMcp);
   }
 
   archiveTasks(

@@ -4,7 +4,7 @@ import type { HonoEnv } from "../../../types.js";
 import { unprocessable } from "../../../lib/errors.js";
 import type { TaskService } from "../task.service.js";
 import { assertProjectTask } from "./guards.js";
-import { moveSchema } from "./schemas.js";
+import { moveSchema, transferSchema } from "./schemas.js";
 
 export function registerTaskMoveImportRoutes(
   router: Hono<HonoEnv>,
@@ -18,6 +18,20 @@ export function registerTaskMoveImportRoutes(
       const { column } = c.req.valid("json");
       return c.json(
         svc.moveTask(c.req.param("taskId"), c.get("userId"), { column }),
+      );
+    },
+  );
+
+  router.post(
+    "/:projectId/tasks/:taskId/transfer",
+    zValidator("json", transferSchema),
+    (c) => {
+      assertProjectTask(svc, c.req.param("projectId"), c.req.param("taskId"));
+      const { targetProjectId } = c.req.valid("json");
+      return c.json(
+        svc.transferTask(c.req.param("taskId"), c.get("userId"), {
+          targetProjectId,
+        }),
       );
     },
   );

@@ -26,6 +26,22 @@ export function registerTaskLifecycleTools(
   );
 
   server.registerTool(
+    "transfer_task",
+    {
+      description:
+        "Transfer a task to another project of the same organization. The task keeps its id, column, history, tags, links and participants, lands at the end of its column, and stays archived if it was. The transfer is recorded in the task history.",
+      inputSchema: {
+        taskId: z.string().describe("Task ID (archived tasks accepted)"),
+        targetProjectId: z
+          .string()
+          .describe("Destination project ID, in the task's organization"),
+      },
+    },
+    ({ taskId, targetProjectId }) =>
+      jsonText(taskSvc.transferTask(taskId, userId, { targetProjectId }, true)),
+  );
+
+  server.registerTool(
     "archive_task",
     {
       description: "Archive a task (only works for tasks in 'done' column)",
