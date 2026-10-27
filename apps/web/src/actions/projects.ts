@@ -114,6 +114,21 @@ export async function createProjectAction(
   redirect(`/orgs/${orgId}/projects/${projectId}`);
 }
 
+export async function listProjectsAction(
+  orgId: string,
+): Promise<{ error?: string; projects?: ProjectDto[] }> {
+  const token = await getAccessToken();
+  if (!token) redirect("/login");
+  try {
+    const { data: projects } = await api.projects.list(token, orgId);
+    return { projects };
+  } catch (e) {
+    return {
+      error: e instanceof ApiError ? e.message : "Failed to load projects",
+    };
+  }
+}
+
 export async function getProjectSettingsDataAction(
   orgId: string,
   projectId: string,

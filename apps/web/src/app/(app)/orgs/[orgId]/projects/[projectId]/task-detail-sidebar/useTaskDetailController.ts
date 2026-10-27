@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState, useTransition } from "react";
 import type { MouseEvent as ReactMouseEvent } from "react";
-import type { TaskDto, TaskHistoryDto } from "@kanban/shared";
+import type { ProjectDto, TaskDto, TaskHistoryDto } from "@kanban/shared";
 import {
   addAdvisorAction,
   addTagAction,
@@ -11,8 +11,10 @@ import {
   removeAdvisorAction,
   removeTagAction,
   removeWatcherAction,
+  transferTaskAction,
   updateTaskAction,
 } from "@/actions/tasks";
+import { listProjectsAction } from "@/actions/projects";
 import { getActiveConflict } from "./conflicts";
 import { resolveTaskShell } from "./taskShell";
 import { useTaskLinks } from "./useTaskLinks";
@@ -22,6 +24,7 @@ import type { TaskDetailSidebarProps, TaskUpdateBody } from "./types";
 export function useTaskDetailController({
   task: initialTask,
   projectId,
+  orgId,
   revision,
   onUpdated,
   onDeleted,
@@ -35,6 +38,7 @@ export function useTaskDetailController({
   const [showHistory, setShowHistory] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
   const [confirmDelete, setConfirmDelete] = useState(false);
+  const [projects, setProjects] = useState<ProjectDto[] | null>(null);
   const [isPending, startTransition] = useTransition();
   const [prevInitialTask, setPrevInitialTask] = useState(initialTask);
 
@@ -126,6 +130,30 @@ export function useTaskDetailController({
     });
   }
 
+  const loadProjects = useCallback(() => {
+    if (projects !== null) return;
+    void listProjectsAction(orgId).then((res) => {
+      if (res.projects) setProjects(res.projects);
+      else if (res.error) setSaveError(res.error);
+    });
+  }, [orgId, projects]);
+
+  function handleTransfer(targetProjectId: string) {
+    if (!task || !targetProjectId) return;
+    setSaveError(null);
+    startTransition(async () => {
+      // The task's own project, not the board's: an external task opened
+      // here must be addressed where it lives.
+      const result = await transferTaskAction(
+        task.projectId,
+        task.id,
+        targetProjectId,
+      );
+      if (result.error) setSaveError(result.error);
+      else onDeleted(task.id);
+    });
+  }
+
   const mutateTask = (
     action: () => Promise<{ task?: TaskDto; error?: string }>,
   ) => {
@@ -135,6 +163,10 @@ export function useTaskDetailController({
       if (result.task) onUpdated(result.task);
     });
   };
+
+  useEffect(() => {
+    if (showHistory) loadProjects();
+  }, [showHistory, loadProjects]);
 
   useEffect(() => {
     if (!showHistory || !task?.id) return;
@@ -149,6 +181,9 @@ export function useTaskDetailController({
     history,
     showHistory,
     setShowHistory,
+    projects,
+    loadProjects,
+    handleTransfer,
     linkedTasks: taskLinks.linkedTasks,
     loadingLinks: taskLinks.loadingLinks,
     isPending,

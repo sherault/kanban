@@ -53,6 +53,22 @@ export async function moveTaskAction(
   }
 }
 
+export async function transferTaskAction(
+  projectId: string,
+  taskId: string,
+  targetProjectId: string,
+): Promise<{ error?: string; task?: TaskDto }> {
+  const token = await requireTaskActionToken();
+  try {
+    const { data: task } = await api.tasks.transfer(token, projectId, taskId, {
+      targetProjectId,
+    });
+    return { task };
+  } catch (error) {
+    return { error: actionError(error, "Failed to transfer task") };
+  }
+}
+
 export async function searchTasksInOrgAction(
   orgId: string,
   query: string,

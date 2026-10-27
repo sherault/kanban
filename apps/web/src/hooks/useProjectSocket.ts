@@ -23,6 +23,7 @@ type IncomingEvent =
       type: "task.deleted";
       payload: { id: string; projectId: string };
       archived?: boolean | undefined;
+      transferred?: boolean | undefined;
       actorId?: string | undefined;
       isMcp?: boolean | undefined;
     };
@@ -35,6 +36,7 @@ export interface ProjectSocketCallbacks {
     actorId?: string,
     isMcp?: boolean,
     archived?: boolean,
+    transferred?: boolean,
   ) => void;
 }
 
@@ -130,6 +132,7 @@ export function useProjectSocket(
               msg.actorId,
               msg.isMcp,
               msg.archived,
+              msg.transferred,
             );
             break;
         }

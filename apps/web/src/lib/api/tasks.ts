@@ -60,6 +60,17 @@ export const tasksApi = {
       token,
     });
   },
+  transfer(
+    token: string,
+    projectId: string,
+    taskId: string,
+    body: { targetProjectId: string },
+  ) {
+    return apiFetch<TaskDto>(
+      `/projects/${projectId}/tasks/${taskId}/transfer`,
+      { method: "POST", body: JSON.stringify(body), token },
+    );
+  },
   delete(token: string, projectId: string, taskId: string) {
     return apiFetch<{ success: true }>(
       `/projects/${projectId}/tasks/${taskId}`,

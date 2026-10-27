@@ -4,7 +4,12 @@ import { useEffect, useState } from "react";
 
 export interface NotificationData {
   id: string; // unique
-  type: "task.created" | "task.updated" | "task.deleted" | "task.archived";
+  type:
+    | "task.created"
+    | "task.updated"
+    | "task.deleted"
+    | "task.archived"
+    | "task.transferred";
   taskId?: string;
   message: string;
   duration: number; // in seconds
@@ -72,6 +77,7 @@ function NotificationItem({
   let bgColor = "bg-blue-500";
   if (notification.type === "task.deleted") bgColor = "bg-red-500";
   if (notification.type === "task.archived") bgColor = "bg-amber-500";
+  if (notification.type === "task.transferred") bgColor = "bg-violet-500";
   if (notification.type === "task.updated") bgColor = "bg-blue-500";
   if (notification.type === "task.created") bgColor = "bg-green-500";
 

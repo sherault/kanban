@@ -74,6 +74,8 @@ export function TaskDetailSidebar(props: TaskDetailSidebarProps) {
             loadingLinks={controller.loadingLinks}
             history={controller.history}
             showHistory={controller.showHistory}
+            projects={controller.projects}
+            isPending={controller.isPending}
             save={controller.save}
             setShowHistory={controller.setShowHistory}
             onOpenRelatedTask={onOpenRelatedTask}

@@ -1,4 +1,9 @@
-import type { MembershipDto, TaskDto, TaskHistoryDto } from "@kanban/shared";
+import type {
+  MembershipDto,
+  ProjectDto,
+  TaskDto,
+  TaskHistoryDto,
+} from "@kanban/shared";
 import { LinkedTasksSection } from "./LinkedTasksSection";
 import { TaskCoreFields } from "./TaskCoreFields";
 import { TaskHistorySection } from "./TaskHistorySection";
@@ -21,6 +26,8 @@ export function TaskDetailBody({
   loadingLinks,
   history,
   showHistory,
+  projects,
+  isPending,
   save,
   setShowHistory,
   onOpenRelatedTask,
@@ -45,6 +52,8 @@ export function TaskDetailBody({
   loadingLinks: boolean;
   history: TaskHistoryDto[] | null;
   showHistory: boolean;
+  projects: ProjectDto[] | null;
+  isPending: boolean;
   save: (body: TaskUpdateBody) => void;
   setShowHistory: (show: boolean | ((show: boolean) => boolean)) => void;
   onOpenRelatedTask?: (taskId: string) => void;
@@ -57,6 +66,8 @@ export function TaskDetailBody({
     handleWatcherRemove: (userId: string) => void;
     handleAdvisorAdd: (userId: string) => void;
     handleAdvisorRemove: (userId: string) => void;
+    loadProjects: () => void;
+    handleTransfer: (targetProjectId: string) => void;
   };
 }) {
   return (
@@ -79,6 +90,10 @@ export function TaskDetailBody({
             orgId={orgId}
             projectId={projectId}
             currentOpenTaskIds={currentOpenTaskIds}
+            projects={projects}
+            isPending={isPending}
+            onLoadProjects={actions.loadProjects}
+            onTransfer={actions.handleTransfer}
           />
           <TaskCoreFields
             task={task}
@@ -111,6 +126,9 @@ export function TaskDetailBody({
           <TaskHistorySection
             showHistory={showHistory}
             history={history}
+            projectNames={Object.fromEntries(
+              (projects ?? []).map((project) => [project.id, project.name]),
+            )}
             onToggle={() => setShowHistory((value) => !value)}
           />
         </div>

@@ -4,10 +4,12 @@ import { HistoryFeed } from "./HistoryFeed";
 export function TaskHistorySection({
   showHistory,
   history,
+  projectNames,
   onToggle,
 }: {
   showHistory: boolean;
   history: TaskHistoryDto[] | null;
+  projectNames: Record<string, string>;
   onToggle: () => void;
 }) {
   return (
@@ -23,7 +25,7 @@ export function TaskHistorySection({
           {history === null ? (
             <p className="text-xs text-gray-400">Loading history…</p>
           ) : (
-            <HistoryFeed history={history} />
+            <HistoryFeed history={history} projectNames={projectNames} />
           )}
         </div>
       )}

@@ -13,6 +13,7 @@ import {
   moveTaskAction as moveTask,
   restoreTaskAction as restoreTask,
   searchTasksInOrgAction as searchTasksInOrg,
+  transferTaskAction as transferTask,
 } from "./task-actions/lifecycle";
 import {
   addAdvisorAction as addAdvisor,
@@ -90,6 +91,14 @@ export async function moveTaskAction(
   column: Column,
 ): Promise<{ error?: string; task?: TaskDto }> {
   return moveTask(projectId, taskId, column);
+}
+
+export async function transferTaskAction(
+  projectId: string,
+  taskId: string,
+  targetProjectId: string,
+): Promise<{ error?: string; task?: TaskDto }> {
+  return transferTask(projectId, taskId, targetProjectId);
 }
 
 export async function searchTasksInOrgAction(

@@ -85,7 +85,7 @@ export function useBoardRealtime({
         message: `Task "${task.title}" was updated.`,
       });
     },
-    onTaskDeleted(taskId, actorId, isMcp, archived) {
+    onTaskDeleted(taskId, actorId, isMcp, archived, transferred) {
       const actor = actorId ?? "";
       const fromMcp = Boolean(isMcp);
       setTasks((prev) => prev.filter((task) => task.id !== taskId));
@@ -105,9 +105,13 @@ export function useBoardRealtime({
         actorId: actor,
         currentUserId,
         isMcp: fromMcp,
-        type: archived ? "task.archived" : "task.deleted",
+        type: transferred
+          ? "task.transferred"
+          : archived
+            ? "task.archived"
+            : "task.deleted",
         taskId,
-        message: `Task "${task?.title || taskId}" was ${archived ? "archived" : "deleted"}.`,
+        message: `Task "${task?.title || taskId}" was ${transferred ? "transferred to another project" : archived ? "archived" : "deleted"}.`,
       });
     },
   });

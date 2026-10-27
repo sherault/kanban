@@ -5,7 +5,16 @@ const SOURCE_LABELS: Record<NonNullable<TaskHistoryDto["source"]>, string> = {
   web: "via Web",
 };
 
-export function HistoryFeed({ history }: { history: TaskHistoryDto[] }) {
+export function HistoryFeed({
+  history,
+  projectNames = {},
+}: {
+  history: TaskHistoryDto[];
+  projectNames?: Record<string, string>;
+}) {
+  const projectName = (id: string | null) =>
+    id === null ? "?" : (projectNames[id] ?? id);
+
   if (!history || history.length === 0) {
     return <p className="text-xs text-gray-400">No history yet.</p>;
   }
@@ -22,21 +31,34 @@ export function HistoryFeed({ history }: { history: TaskHistoryDto[] }) {
               {SOURCE_LABELS[entry.source]}
             </span>
           )}
-          {" changed "}
-          <span className="font-medium">{entry.field}</span>
-          {entry.oldValue !== null && (
+          {entry.field === "projectId" ? (
             <>
-              {" "}
-              from{" "}
-              <span className="line-through text-gray-400">
-                {entry.oldValue}
+              {" transferred the task from "}
+              <span className="font-medium">{projectName(entry.oldValue)}</span>
+              {" to "}
+              <span className="font-medium text-gray-700">
+                {projectName(entry.newValue)}
               </span>
             </>
-          )}
-          {entry.newValue !== null && (
+          ) : (
             <>
-              {" "}
-              to <span className="text-gray-700">{entry.newValue}</span>
+              {" changed "}
+              <span className="font-medium">{entry.field}</span>
+              {entry.oldValue !== null && (
+                <>
+                  {" "}
+                  from{" "}
+                  <span className="line-through text-gray-400">
+                    {entry.oldValue}
+                  </span>
+                </>
+              )}
+              {entry.newValue !== null && (
+                <>
+                  {" "}
+                  to <span className="text-gray-700">{entry.newValue}</span>
+                </>
+              )}
             </>
           )}
           <span className="ml-1 text-gray-400">
