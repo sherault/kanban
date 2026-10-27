@@ -22,6 +22,7 @@ type IncomingEvent =
   | {
       type: "task.deleted";
       payload: { id: string; projectId: string };
+      archived?: boolean | undefined;
       actorId?: string | undefined;
       isMcp?: boolean | undefined;
     };
@@ -29,7 +30,12 @@ type IncomingEvent =
 export interface ProjectSocketCallbacks {
   onTaskCreated: (task: TaskDto, actorId?: string, isMcp?: boolean) => void;
   onTaskUpdated: (task: TaskDto, actorId?: string, isMcp?: boolean) => void;
-  onTaskDeleted: (taskId: string, actorId?: string, isMcp?: boolean) => void;
+  onTaskDeleted: (
+    taskId: string,
+    actorId?: string,
+    isMcp?: boolean,
+    archived?: boolean,
+  ) => void;
 }
 
 async function fetchConfig(): Promise<{ token: string; wsUrl: string } | null> {
@@ -123,6 +129,7 @@ export function useProjectSocket(
               msg.payload.id,
               msg.actorId,
               msg.isMcp,
+              msg.archived,
             );
             break;
         }

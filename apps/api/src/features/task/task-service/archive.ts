@@ -42,6 +42,7 @@ export class TaskArchiveOperations extends TaskServiceBase {
       this.broadcast(`project:${projectId}`, {
         type: "task.deleted",
         payload: { id: taskId, projectId },
+        archived: true,
         actorId,
         isMcp,
       });

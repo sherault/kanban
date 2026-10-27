@@ -39,6 +39,7 @@ export type WsEvent =
   | {
       type: "task.deleted";
       payload: { id: string; projectId: string };
+      archived?: boolean | undefined;
       actorId?: string | undefined;
       isMcp?: boolean | undefined;
     }
