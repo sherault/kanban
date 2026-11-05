@@ -20,7 +20,7 @@ function makeHarness() {
 }
 
 describe("transfer_task MCP tool", () => {
-  it("forwards to the task service as an MCP call and returns the task", () => {
+  it("forwards to the task service as an MCP call and acknowledges the task", () => {
     const { tools, calls } = makeHarness();
 
     const result = tools.get("transfer_task")!({
@@ -36,7 +36,7 @@ describe("transfer_task MCP tool", () => {
         isMcp: true,
       },
     ]);
-    expect(JSON.parse(result.content[0].text)).toEqual({
+    expect(JSON.parse(result.content[0].text)).toMatchObject({
       id: "task-1",
       projectId: "project-2",
     });

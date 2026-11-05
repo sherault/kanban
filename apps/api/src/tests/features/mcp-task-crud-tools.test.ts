@@ -28,6 +28,7 @@ function makeHarness() {
   const taskSvc = {
     createTask: () => ({}),
     deleteTask: () => undefined,
+    getTask: () => undefined,
     updateTask(taskId: string, userId: string, fields: any, isMcp: boolean) {
       updateCalls.push({ taskId, userId, fields, isMcp });
       return { id: taskId, ...fields };

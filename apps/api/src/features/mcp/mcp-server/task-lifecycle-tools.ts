@@ -2,7 +2,13 @@ import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
 import type { Column } from "@kanban/shared";
 import type { TaskService } from "../../task/task.service.js";
-import { COLUMN_VALUES, jsonText } from "./utils.js";
+import {
+  COLUMN_VALUES,
+  COMPACT_ACK_GUIDANCE,
+  jsonText,
+  taskResult,
+  verboseInput,
+} from "./utils.js";
 
 export function registerTaskLifecycleTools(
   server: McpServer,
@@ -12,33 +18,37 @@ export function registerTaskLifecycleTools(
   server.registerTool(
     "move_task",
     {
-      description:
-        'Move a task to a different column. Moving to "doing" is rejected unless the task already has a doer — assign one with update_task first.',
+      description: `Move a task to a different column. Moving to "doing" is rejected unless the task already has a doer — assign one with update_task first. ${COMPACT_ACK_GUIDANCE}`,
       inputSchema: {
         taskId: z.string().describe("Task ID"),
         column: z.enum(COLUMN_VALUES).describe("Target column"),
+        verbose: verboseInput,
       },
     },
-    ({ taskId, column }) =>
-      jsonText(
+    ({ taskId, column, verbose }) =>
+      taskResult(
         taskSvc.moveTask(taskId, userId, { column: column as Column }, true),
+        verbose,
       ),
   );
 
   server.registerTool(
     "transfer_task",
     {
-      description:
-        "Transfer a task to another project of the same organization. The task keeps its id, column, history, tags, links and participants, lands at the end of its column, and stays archived if it was. The transfer is recorded in the task history.",
+      description: `Transfer a task to another project of the same organization. The task keeps its id, column, history, tags, links and participants, lands at the end of its column, and stays archived if it was. The transfer is recorded in the task history. ${COMPACT_ACK_GUIDANCE}`,
       inputSchema: {
         taskId: z.string().describe("Task ID (archived tasks accepted)"),
         targetProjectId: z
           .string()
           .describe("Destination project ID, in the task's organization"),
+        verbose: verboseInput,
       },
     },
-    ({ taskId, targetProjectId }) =>
-      jsonText(taskSvc.transferTask(taskId, userId, { targetProjectId }, true)),
+    ({ taskId, targetProjectId, verbose }) =>
+      taskResult(
+        taskSvc.transferTask(taskId, userId, { targetProjectId }, true),
+        verbose,
+      ),
   );
 
   server.registerTool(
@@ -86,9 +96,13 @@ export function registerTaskLifecycleTools(
   server.registerTool(
     "restore_task",
     {
-      description: "Restore an archived task",
-      inputSchema: { taskId: z.string().describe("Task ID") },
+      description: `Restore an archived task. ${COMPACT_ACK_GUIDANCE}`,
+      inputSchema: {
+        taskId: z.string().describe("Task ID"),
+        verbose: verboseInput,
+      },
     },
-    ({ taskId }) => jsonText(taskSvc.restoreTask(taskId, userId, true)),
+    ({ taskId, verbose }) =>
+      taskResult(taskSvc.restoreTask(taskId, userId, true), verbose),
   );
 }
