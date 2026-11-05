@@ -2,7 +2,14 @@ import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
 import type { Column } from "@kanban/shared";
 import type { TaskService } from "../../task/task.service.js";
-import { jsonText } from "./utils.js";
+import {
+  COMPACT_ACK_GUIDANCE,
+  appendedNoteHeading,
+  changedFields,
+  jsonText,
+  taskResult,
+  verboseInput,
+} from "./utils.js";
 
 const KANBAN_LINK_GUIDANCE =
   "Kanban supports durable Markdown interlinks. Use [label](task://<TASK_UUID>) for task references and [label](wiki://<WIKI_PAGE_UUID>) for wiki references. Do not invent UUIDs: search or fetch the target first, then use its id.";
@@ -15,7 +22,7 @@ export function registerTaskCrudTools(
   server.registerTool(
     "create_task",
     {
-      description: `Create a new task in a project. ${KANBAN_LINK_GUIDANCE}`,
+      description: `Create a new task in a project. ${COMPACT_ACK_GUIDANCE} ${KANBAN_LINK_GUIDANCE}`,
       inputSchema: {
         projectId: z.string().describe("Project ID"),
         title: z.string().min(1).max(500).describe("Task title"),
@@ -49,6 +56,7 @@ export function registerTaskCrudTools(
           .optional()
           .describe("Assign a validator user ID"),
         tags: z.array(z.string()).optional().describe("List of tags"),
+        verbose: verboseInput,
       },
     },
     ({
@@ -60,9 +68,10 @@ export function registerTaskCrudTools(
       globalSubject,
       doerId,
       validatorId,
+      verbose,
       ...input
     }) =>
-      jsonText(
+      taskResult(
         taskSvc.createTask(
           projectId,
           userId,
@@ -78,13 +87,14 @@ export function registerTaskCrudTools(
           },
           true,
         ),
+        verbose,
       ),
   );
 
   server.registerTool(
     "update_task",
     {
-      description: `Update one or more fields of an existing task. Tags can be set wholesale with tags, or edited incrementally with addTags/removeTags; tags is mutually exclusive with addTags/removeTags. ${KANBAN_LINK_GUIDANCE}`,
+      description: `Update one or more fields of an existing task. Tags can be set wholesale with tags, or edited incrementally with addTags/removeTags; tags is mutually exclusive with addTags/removeTags. ${COMPACT_ACK_GUIDANCE} The acknowledgement adds changed: the names of the fields whose value actually changed. ${KANBAN_LINK_GUIDANCE}`,
       inputSchema: {
         taskId: z.string().describe("Task ID"),
         title: z.string().min(1).max(500).optional().describe("New title"),
@@ -148,16 +158,22 @@ export function registerTaskCrudTools(
           .describe(
             "Tags to remove, keeping the others. Unknown tags are ignored. Cannot be combined with tags. Applied before addTags.",
           ),
+        verbose: verboseInput,
       },
     },
-    ({ taskId, ...fields }) =>
-      jsonText(taskSvc.updateTask(taskId, userId, fields, true)),
+    ({ taskId, verbose, ...fields }) => {
+      const before = taskSvc.getTask(taskId);
+      const after = taskSvc.updateTask(taskId, userId, fields, true);
+      return taskResult(after, verbose, {
+        changed: changedFields(before, after),
+      });
+    },
   );
 
   server.registerTool(
     "append_task_note",
     {
-      description: `Append a note to the end of a task description, atomically server-side. Use this instead of read + update_task(description) for traceability blocks: it never overwrites concurrent edits and needs no prior read. The server prefixes the note with a UTC timestamp heading naming the currently assigned doer, and records the note text alone as a "note" history entry readable via get_task_history(field: "note"). ${KANBAN_LINK_GUIDANCE}`,
+      description: `Append a note to the end of a task description, atomically server-side. Use this instead of read + update_task(description) for traceability blocks: it never overwrites concurrent edits and needs no prior read. The server prefixes the note with a UTC timestamp heading naming the currently assigned doer, and records the note text alone as a "note" history entry readable via get_task_history(field: "note"). ${COMPACT_ACK_GUIDANCE} The acknowledgement adds noteHeading: the stamped heading written above the note. ${KANBAN_LINK_GUIDANCE}`,
       inputSchema: {
         taskId: z.string().describe("Task ID"),
         text: z
@@ -166,10 +182,15 @@ export function registerTaskCrudTools(
           .describe(
             "Note body as Markdown, appended verbatim under the stamped heading. Use wiki:// and task:// Markdown links for durable references.",
           ),
+        verbose: verboseInput,
       },
     },
-    ({ taskId, text }) =>
-      jsonText(taskSvc.appendTaskNote(taskId, userId, text, true)),
+    ({ taskId, text, verbose }) => {
+      const task = taskSvc.appendTaskNote(taskId, userId, text, true);
+      return taskResult(task, verbose, {
+        noteHeading: appendedNoteHeading(task, text),
+      });
+    },
   );
 
   server.registerTool(
