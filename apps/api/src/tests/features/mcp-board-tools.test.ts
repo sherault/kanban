@@ -148,4 +148,36 @@ describe("get_board", () => {
     expect(text).toContain("## DONE (0)");
     expect(text).not.toContain("more (use list_tasks)");
   });
+
+  it("leaves descriptions out by default, with the line format unchanged", () => {
+    const text = callBoard([
+      makeTask({
+        id: "t1",
+        title: "Long",
+        description: "## Plan\nsecret body",
+      }),
+    ]);
+
+    expect(text).toContain("- [t1] Long due:2026-07-28\n");
+    expect(text).not.toContain("secret body");
+  });
+
+  it("renders each description indented under its task when includeDescription is true", () => {
+    const text = callBoard(
+      [
+        makeTask({
+          id: "t1",
+          title: "Long",
+          description: "## Plan\n\nsecret body",
+        }),
+        makeTask({ id: "t2", title: "Empty", position: 1 }),
+      ],
+      { includeDescription: true },
+    );
+
+    expect(text).toContain(
+      "- [t1] Long due:2026-07-28\n    ## Plan\n\n    secret body\n- [t2] Empty due:2026-07-28\n",
+    );
+    expect(text).toContain("## TODO (2)");
+  });
 });

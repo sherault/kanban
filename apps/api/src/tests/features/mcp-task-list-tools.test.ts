@@ -44,6 +44,7 @@ function makeTask(overrides: Record<string, unknown> = {}) {
     tags: ["mcp"],
     linkedTaskIds: [],
     archivedAt: null,
+    updatedAt: "2026-07-27 18:04:11",
     doer: null,
     validator: null,
     ...overrides,
@@ -113,6 +114,167 @@ describe("get_task MCP tool", () => {
     const result = parseToolResult(getTask!({ taskId: "task-1" }));
 
     expect(result.archived).toBeUndefined();
+  });
+});
+
+describe("get_task sections parameter", () => {
+  const description = [
+    "Intro paragraph",
+    "",
+    "## Fichiers",
+    "- a.ts",
+    "### Détail",
+    "kept with its parent section",
+    "",
+    "## Contexte",
+    "```md",
+    "## Dépendances",
+    "```",
+    "",
+    "## Dépendances",
+    "- task-2",
+  ].join("\n");
+
+  function getSections(sections: string[]) {
+    const { tools } = makeHarness([makeTask({ description })]);
+    return parseToolResult(
+      tools.get("get_task")!({ taskId: "task-1", sections }),
+    );
+  }
+
+  it("returns only the requested section, nested headings included", () => {
+    const result = getSections(["## Fichiers"]);
+
+    expect(result.description).toBe(
+      "## Fichiers\n- a.ts\n### Détail\nkept with its parent section",
+    );
+    expect(result.missingSections).toEqual([]);
+    expect(result.title).toBe("Ship get_task");
+  });
+
+  it("returns several sections in their original order, not the requested one", () => {
+    const result = getSections(["## Dépendances", "## Fichiers"]);
+
+    expect(result.description).toBe(
+      "## Fichiers\n- a.ts\n### Détail\nkept with its parent section\n\n## Dépendances\n- task-2",
+    );
+    expect(result.missingSections).toEqual([]);
+  });
+
+  it("ignores headings inside fenced code blocks", () => {
+    const result = getSections(["## Contexte"]);
+
+    expect(result.description).toBe("## Contexte\n```md\n## Dépendances\n```");
+  });
+
+  it("lists an absent section in missingSections", () => {
+    const result = getSections(["## Fichiers", "## Risques"]);
+
+    expect(result.description).toContain("## Fichiers");
+    expect(result.description).not.toContain("Intro paragraph");
+    expect(result.missingSections).toEqual(["## Risques"]);
+  });
+
+  it("reports every section missing when the description is null", () => {
+    const { tools } = makeHarness([makeTask({ description: null })]);
+
+    const result = parseToolResult(
+      tools.get("get_task")!({ taskId: "task-1", sections: ["## Fichiers"] }),
+    );
+
+    expect(result.description).toBe("");
+    expect(result.missingSections).toEqual(["## Fichiers"]);
+  });
+
+  it("keeps the full description and no missingSections by default", () => {
+    const { tools } = makeHarness([makeTask({ description })]);
+
+    const result = parseToolResult(
+      tools.get("get_task")!({ taskId: "task-1" }),
+    );
+
+    expect(result.description).toBe(description);
+    expect(result.missingSections).toBeUndefined();
+  });
+});
+
+describe("get_task ifUpdatedSince parameter", () => {
+  function getSince(ifUpdatedSince: string) {
+    const { tools } = makeHarness([
+      makeTask({ description: "body", updatedAt: "2026-07-27 18:04:11" }),
+    ]);
+    return parseToolResult(
+      tools.get("get_task")!({ taskId: "task-1", ifUpdatedSince }),
+    );
+  }
+
+  it("returns only the unchanged marker when updatedAt is before the date", () => {
+    expect(getSince("2026-07-28T00:00:00Z")).toEqual({
+      id: "task-1",
+      updatedAt: "2026-07-27 18:04:11",
+      unchanged: true,
+    });
+  });
+
+  it("treats an updatedAt equal to the date as unchanged", () => {
+    expect(getSince("2026-07-27T18:04:11Z").unchanged).toBe(true);
+  });
+
+  it("returns the full task when updatedAt is after the date", () => {
+    const result = getSince("2026-07-27T18:04:10Z");
+
+    expect(result.unchanged).toBeUndefined();
+    expect(result.description).toBe("body");
+  });
+
+  it("honours the time zone offset of the date", () => {
+    expect(getSince("2026-07-27T20:04:11+02:00").unchanged).toBe(true);
+    expect(getSince("2026-07-27T19:04:11+02:00").unchanged).toBeUndefined();
+  });
+
+  it("combines with sections when the task has changed", () => {
+    const { tools } = makeHarness([
+      makeTask({ description: "## A\none\n## B\ntwo" }),
+    ]);
+
+    const result = parseToolResult(
+      tools.get("get_task")!({
+        taskId: "task-1",
+        sections: ["## B"],
+        ifUpdatedSince: "2026-07-01",
+      }),
+    );
+
+    expect(result.description).toBe("## B\ntwo");
+  });
+});
+
+describe("list_tasks includeDescription parameter", () => {
+  const tasks = [
+    makeTask({ id: "with", description: "## Fichiers\n- a.ts" }),
+    makeTask({ id: "without", description: null }),
+  ];
+
+  it("omits descriptions and exposes descriptionLength by default", () => {
+    const { tools } = makeHarness(tasks);
+
+    const result = parseToolResult(tools.get("list_tasks")!(listArgs()));
+
+    for (const task of result.tasks)
+      expect(task).not.toHaveProperty("description");
+    expect(result.tasks.map((task: any) => task.descriptionLength)).toEqual([
+      18, 0,
+    ]);
+  });
+
+  it("includes full descriptions when includeDescription is true", () => {
+    const { tools } = makeHarness(tasks);
+
+    const result = parseToolResult(
+      tools.get("list_tasks")!(listArgs({ includeDescription: true })),
+    );
+
+    expect(result.tasks).toEqual(tasks);
   });
 });
 
