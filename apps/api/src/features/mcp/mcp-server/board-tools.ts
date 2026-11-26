@@ -9,7 +9,7 @@ export function registerBoardTools(server: McpServer, taskSvc: TaskService) {
     "get_board",
     {
       description:
-        "Full board snapshot in one call — every column with each task's doer, deadline, tags and colour. Use this at session start instead of several paginated list_tasks calls. Archived tasks are excluded.",
+        "Full board snapshot in one call — every column with each task's doer, deadline, tags and colour. Use this at session start instead of several paginated list_tasks calls. Archived tasks are excluded. Descriptions are left out; pass includeDescription: true to render each description, indented, under its task line.",
       inputSchema: {
         projectId: z.string().describe("Project ID"),
         limitPerColumn: z
@@ -19,11 +19,22 @@ export function registerBoardTools(server: McpServer, taskSvc: TaskService) {
           .max(200)
           .default(DEFAULT_LIMIT_PER_COLUMN)
           .describe("Max tasks rendered per column (1-200, default 50)"),
+        includeDescription: z
+          .boolean()
+          .default(false)
+          .describe(
+            "Render each task description under its line (default false)",
+          ),
       },
     },
-    ({ projectId, limitPerColumn }) =>
+    ({ projectId, limitPerColumn, includeDescription }) =>
       textResult(
-        renderBoard(taskSvc.listTasks(projectId), projectId, limitPerColumn),
+        renderBoard(
+          taskSvc.listTasks(projectId),
+          projectId,
+          limitPerColumn,
+          includeDescription,
+        ),
       ),
   );
 }
